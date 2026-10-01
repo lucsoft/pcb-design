@@ -34,9 +34,9 @@
     "category": "manual",
     "pins": ""
   },
-  "designVerdict": "SELECTED - Vgs clamp on the power-path P-FET",
+  "designVerdict": "SELECTED - Vgs clamp, one per channel load switch",
   "notes": [
-    "BZT52C12, 12 V Zener, SOD-123, 552k stock, $0.017. Without it the P-FET gate would see the full 36 V source-to-gate, far beyond the TM40P06D's +/-20 V Vgs limit.",
-    "12 V is above the 10 V at which TM40P06D's 23 mOhm RDS(on) is specified, so the FET is fully enhanced, and 8 V below its 20 V limit."
+    "BZT52C12, 12 V Zener, SOD-123, 552k stock, $0.017. One per channel switch.",
+    "Limits Vgs on the TM40P06D, whose maximum is +/-20 V. The exact clamp depends on the gate network values, which are not yet derived - and note the Zener will run far below its 5 mA test current in any high-impedance network, so the clamp sits nearer 10-11 V than 12 V. That still clears the 10 V at which the FET's 23 mOhm is specified."
   ]
 }
