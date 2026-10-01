@@ -1024,14 +1024,30 @@ already budgets — the GPIO assignment does not change.
 that chose picoMAX with a latch over screw terminals applies to a stacked
 daughterboard. Pin headers soldered through both boards, no receptacle.
 
-**The pin map is NOT yet recorded, deliberately.** The official WIZnet WIZ850io
-(C134462, LCSC, **$22.89**) publishes two 1×6 headers — J1 as GND/GND/MOSI/SCLK/
-SCSn/INTn and J2 as GND/3V3/3V3/NC/RSTn/MISO. Many "W5500 Lite" clones copy that
-footprint; some do not. **Assuming it would be the same class of error as
-inventing an LCSC part number** — the board comes back from fab wrong — so the
-order of the pads goes into the knowledge base only once it comes from the
-product page of the module actually bought. Until then the netlist cannot be
-written for this block. See Open questions.
+**Pin map, confirmed against the module on hand.** Two 1×6 headers, taken from
+the WIZ850io datasheet p.2 and checked against the clone's silkscreen:
+
+| | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| **J1** | GND | GND | MOSI | SCLK | SCSn | INTn |
+| **J2** | GND | 3V3 | 3V3 | NC | RSTn | MISO |
+
+The clone reads as `INT CS SCK MO G G` and `G V V NC RST WT`. The first of those
+is J1 right-to-left, which is what reading both headers left-to-right across the
+board produces — **J1 and J2 sit on opposite edges, so they run in opposite
+directions.** Both readings are therefore consistent with the table above. J2
+position 4 being **NC** also settles which family it is: the WIZ550io carries a
+RDY pin there, the WIZ850io does not.
+
+**`WT` is MISO by elimination, not by datasheet.** Twelve pads; eleven are
+identified, and the only mandatory SPI signal left unexposed is MISO — a W5500
+module without it would be useless — and it sits exactly where both official
+variants put it. That is sound but weaker than a datasheet line, so it carries
+provenance `inferred` in the knowledge base.
+
+Two checks at layout, each worth a minute: confirm **pin 1 from the square pad**
+rather than from reading direction, and **ring out `WT` to the W5500's MISO**.
+Both guard the one error class that survives fabrication.
 
 **Area is not the reason to do this.** The module is ~25 × 23 mm = 575 mm²
 against roughly 496 mm² for the chip, crystal, jack and support passives, so the
@@ -1123,8 +1139,9 @@ here.
 
 ### Still unresolved in this section
 
-- The Ethernet module's pad order, which must come from the product page of the
-  module actually bought — see Ethernet module.
+- The Ethernet module's pin 1 end, to be confirmed from the square pad at layout,
+  and a continuity check of `WT` to MISO — see Ethernet module. Neither blocks
+  the netlist.
 - D1 is **selected**: BZT52C20 (C19077415). See the note below on why 20 V
   rather than Hynetek's 28 V.
 - **The hold-up capacitor's series element.** See Known electrical limits: the
@@ -1421,22 +1438,13 @@ would do without this cost.
    netlist must parallel **all four VBUS and all four GND contacts** (a Type-C
    contact is 1.25 A) and tie DP1/DN1 to DP2/DN2 for flip support.
 
-2. **The Ethernet module's pad order is not recorded.** The design switched from
-   a bare W5500 to a soldered-down module, which retired the crystal-CL and
-   magnetics-bias questions that used to sit here. What replaces them is smaller
-   but blocking all the same: the official WIZ850io publishes J1 as
-   GND/GND/MOSI/SCLK/SCSn/INTn and J2 as GND/3V3/3V3/NC/RSTn/MISO, and clone
-   "W5500 Lite" boards may or may not match. The pad order must come from the
-   product page of the module actually bought before the netlist is written —
-   guessing it is the same class of error as inventing an LCSC part number.
-
-3. **The module is not an LCSC/JLCPCB assembly part.** Like the picoMAX
+2. **The module is not an LCSC/JLCPCB assembly part.** Like the picoMAX
    connectors it is sourced and fitted by hand, so the board is no longer fully
    JLCPCB-assemblable. The official WIZ850io (C134462) *is* on LCSC at **$22.89**
    against roughly $3-6 for a clone and $4.65 for the discrete parts it replaces,
    so buying official costs about five times the discrete BOM for this block.
 
-4. **The BSS138 follower may not clear the HUSB238A's UVLO at vSafe5V.** With VDD
+3. **The BSS138 follower may not clear the HUSB238A's UVLO at vSafe5V.** With VDD
    unavailable the chip needs VBUS ≥ 3.67-4.4 V and draws 4.5 mA; at 5 V in, the
    follower delivers roughly 2.8-3.5 V. Feeding the rails pre-FET means VDD is
    powered before this matters, which should resolve it — but the margin at the
@@ -1445,7 +1453,7 @@ would do without this cost.
 
 ### Verification, not design
 
-5. **The SOA margin rests on a graphical reading, now taken by pixel.** The
+4. **The SOA margin rests on a graphical reading, now taken by pixel.** The
    NSS085N100S's Fig. 12 p.4 has no 100 ms curve, so the 61-96 ms ramp is bounded
    by the **DC** line: a constant-power asymptote at ~72 W at Vds 36 V, giving
    **1.8x** over the 39.8 W power limit and **1.46x** at the PWR_ILM max corner.
@@ -1456,7 +1464,7 @@ would do without this cost.
    The thermal half of this is no longer open: Fig. 13 p.6 gives single-pulse
    transient thermal impedance, and at 96 ms it puts the junction rise at ~81 °C.
 
-6. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
+5. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
    not observed. Testable for free using the XL1509's own thermal shutdown: run
    one module at full white for 15 minutes and watch for the LEDs cutting out and
    recovering. The TSD threshold is unspecified, so a pass means "below some
@@ -1464,26 +1472,26 @@ would do without this cost.
 
 ### Depends on the converter board
 
-7. **The differential receiver footprint and 120 Ω termination** must exist on
+6. **The differential receiver footprint and 120 Ω termination** must exist on
    the first converter board of each chain. Populating only the controller end is
    useless.
 
-8. **The module's inductor, catch diode and input bulk capacitor** are unknown —
+7. **The module's inductor, catch diode and input bulk capacitor** are unknown —
    the .epro2 converter sheet has no LCSC parts assigned. None of them block the
    controller: the inrush ramp was sized for a worst case beyond what it can
    power.
 
 ### Accepted
 
-9. **No overvoltage protection above 28 V**, inherent to the HUSB238A topology.
+8. **No overvoltage protection above 28 V**, inherent to the HUSB238A topology.
     The SMAJ36CA and the ADC divider carry it.
 
-10. **Connector orientation is handled mechanically** — picoMAX is polarised and
+9. **Connector orientation is handled mechanically** — picoMAX is polarised and
     each module sits in a hard shell. The residual risk is a mis-wired cable, and
     the failure modes are asymmetric: A/B swapped is non-destructive, power onto
     a data pole destroys the transceiver.
 
-11. **The OVLO cannot be set to protect the modules.** Carrying both the ±10%
+10. **The OVLO cannot be set to protect the modules.** Carrying both the ±10%
     comparator spread and the 1% resistors, an OVLO that stays above the 37.8 V
     maximum bus at its *low* extreme needs **≥42.8 V** nominal, and one that stays
     below the modules' 45 V absolute at its *high* extreme needs **≤40.1 V**.
