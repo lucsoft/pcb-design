@@ -1020,8 +1020,10 @@ A workable assignment, which also shows how tight it is:
 
 **No spare GPIO left.** The last free pin now carries the shared PGD line, so
 the budget is 20 signals on exactly 23 pads with BOOT and UART0. One
-unverified assumption: if PARLIO TX needs a clock-output pin for the two
-synchronised channels, that is a 20th signal and the last spare is gone.
+unverified assumption, and it no longer has slack to absorb: if PARLIO TX needs a
+clock-output pin for the two synchronised channels, that is a **21st** signal and
+something has to give — the likeliest candidate is dropping the shared PGD line
+back off the budget and inferring channel state from the INA226 instead.
 
 ## Recovery and debug
 
@@ -1282,9 +1284,11 @@ Kept so they are not re-opened:
   28% of rating, so the connector stopped being a binding constraint.
   (Supersedes the Wurth WR-PHD 2.54 mm at 3 A, and the Micro-Fit alternative.)
 - **Catch diode** — SS36 (C2903825), 3.0 A / 60 V. On the **controller** it is
-  the TPS54360B's catch diode at **0.86 A** average (29% of rating). The 1.86 A /
-  62% figure that appeared here is the **module's** diode and does not belong in
-  the controller's list.
+  the TPS54360B's catch diode at **0.60 A** average (20% of rating) for the
+  0.7 A rail load used everywhere else in this document; an 0.86 A figure
+  appeared here from a 1.0 A load assumption that nothing else uses. The 1.86 A /
+  62% figure is the **module's** diode and does not belong in the controller's
+  list.
 - **Rails** — TPS54360B to 5 V, SY8089 to 3.3 V. Chosen for ~100% duty
   pass-through so a 5 V bus still works. See Rail architecture.
 - **Bus voltage and budget** — 36 V / 180 W, the highest EPR PDO the modules
@@ -1292,6 +1296,12 @@ Kept so they are not re-opened:
 - **Channel count** — two, verified against three and four. See Why two channels.
 - **Module BOM** — extracted from the .epro2 with `tools/epro.py`. The project is
   titled V2 but is V3.
+- **Channel switching** — one **LM5069** hot-swap controller per channel driving
+  an **NSS085N100S**, after four discrete gate networks failed. Ramp, current
+  limit, power limit, fast turn-off and dV/dt immunity are integrated; the
+  high-side gate drive, the level shifters and the Vgs clamps are gone. Values
+  are derived in Channel switching and inrush. **Do not re-open this as a
+  discrete network** — the four attempts and why each failed are recorded there.
 
 ## Reference design
 
