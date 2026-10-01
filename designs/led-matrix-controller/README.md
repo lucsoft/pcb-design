@@ -574,6 +574,22 @@ and by physics but is not verifiable from this part's documentation. It is a
 single event at power-on rather than a repetitive one, which is what makes that
 acceptable.
 
+**The two channels must be ramped one at a time.** Under power limit the current
+*rises* as the output charges — it is P_LIM/V_DS — so it starts at 1.05 A and
+reaches the 5.5 A current limit once V_out passes **30.6 V**, after which the
+channel charges at a flat 5.5 A for the last **4.3 ms**. Per channel the average
+over the ramp is only ~1.0 A (2.36 J in 61 ms), but two channels released
+together would put **11 A** against a 5.0 A contract.
+
+Staggering is a firmware requirement, not a hardware property: both insertion
+timers run from the moment VBUS crossed ~5.5-7.5 V regardless of UVLO, so they
+expire together, and what separates the two ramps is firmware releasing one
+enable GPIO at a time. Even staggered, the 4.3 ms peak and a lit neighbouring
+channel sum to ~7.9 A, so **the channels have to be ramped before pixel data
+starts**, while the modules draw only quiescent current. That ordering is already
+what the cold-start sequence does; it is recorded here because it is now a
+constraint rather than an accident.
+
 **Thresholds**, with the 1% resistor tolerance carried through rather than the
 comparator spread alone:
 
