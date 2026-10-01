@@ -41,7 +41,8 @@
     "Chosen specifically for 5 V bus operation. Its automatic BOOT recharge circuit allows 'duty cycles approaching 100%', so 'the maximum output voltage is near the minimum input supply voltage' (datasheet p.10). An ordinary buck cannot produce 5 V from a 5 V input; this one passes through.",
     "4.5-60 V in, 3.5 A, internal UVLO 4.3 V rising.",
     "Dropout formula, datasheet p.12: VINmin = (VOUT + VF + Rdc*IOUT)/0.99 + RDSon*IOUT - VF. At 0.7 A this gives a 4.60 V rail from a 4.75 V bus (USB-C low tolerance), 4.85 V from 5.00 V, and a clean 5.00 V at 5.25 V and above. All within the 74AHCT541's 4.5-5.5 V.",
-    "The sag at low bus voltage is self-correcting: the modules' XL1509 is also in pass-through at 5 V, so module VDD falls too, and WS2812 VIH is 0.7 x VDD. The level shifter and the modules track together."
+    "The sag at low bus voltage is self-correcting: the modules' XL1509 is also in pass-through at 5 V, so module VDD falls too, and WS2812 VIH is 0.7 x VDD. The level shifter and the modules track together.",
+    "The dropout table assumes the bus feeds VIN directly. A series Schottky for the hold-up path would cost 0.35-0.45 V and break the 5 V-bus case - see the design README's known limits."
   ],
   "designVerdict": "SELECTED - bus 5-36 V to the 5 V rail"
 }

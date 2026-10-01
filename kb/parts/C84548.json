@@ -44,7 +44,8 @@
     "Needed because WS2812D-F8 VIH is 0.7 x VDD = 3.5 V on a 5 V module rail, above what an ESP32-C6 GPIO can drive.",
     "Octal, so it covers both data channels with six spare - the status LED chain uses one of those.",
     "Supply range 4.5-5.5 V. The 5 V rail reaches 4.60 V worst case, which is inside it.",
-    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground."
+    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground.",
+    "SETTLED as U9 in the BOM: it drives the status chain only, one channel of eight. Oversized but it is what the assembly catalogue offers."
   ],
   "designVerdict": "RECONSIDER - the data path no longer needs it"
 }

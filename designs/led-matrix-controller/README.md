@@ -649,9 +649,20 @@ EMI, but that is a different problem from ESD.)
 stays off at 36 V and clamps below 60 V" and leaned on the P-FET's body diode to
 excuse a 64 V clamp. Both halves were wrong.
 
-**SMAJ36CA exists** and does exactly that: Vrwm 36 V, Vbr 40.0-44.2 V so it does
-not conduct at the PDO's +5% (37.8 V), and **Vc 58.1 V** — under the TM40P06D's
-60 V. The claim that no such part existed was never checked.
+**SMAJ36CA** clamps at **58.1 V**, under the TM40P06D's 60 V — so the earlier
+claim that no part could both stay off at 36 V and clamp below 60 V was simply
+wrong, and was never checked.
+
+But it is not comfortable either. A compliant PD fixed PDO is **±5%**, so a
+source may sit at **37.8 V indefinitely** against Vrwm = 36 V. Checking only
+Vbr(min) = 40 V was the wrong criterion: above Vrwm the leakage is unspecified
+and strongly temperature-dependent — µA at 25 °C, potentially mA at 85 °C — which
+means standby draw and self-heating on three parts. And 58.1 V against 60 V is
+**1.03x**, measured at 10/1000 µs; an 8/20 µs surge drives it higher.
+
+**This is the same squeeze as before, moved to the other side of the window**,
+and it is not resolved. The honest options are a 100 V FET, or a TVS between the
+two standoffs that does not exist in this family.
 
 **The body diode does not protect against input-side surges.** With Q1 off and
 the bus discharged — plugged in before negotiation, or after a FAULT — a surge on
@@ -726,13 +737,16 @@ is shed in microseconds regardless of what firmware is doing.
 Supporting pieces:
 
 - **Bus voltage sense**: **470 k / 27 k** divider into an ESP32-C6 ADC, plus
-  **100 nF** at the tap. Gives **1.95 V at 36 V**, so 50-60 V is still on-scale —
+  **100 nF** at the tap. Gives **1.95 V at 36 V** and 2.72 V at 50 V, so events up to ~57 V are on-scale (3.26 V at 60 V is above the SAR's usable ceiling) —
   which matters because this divider is now the only overvoltage measurement the
   system has. An earlier 330 k/33 k gave 3.27 V, above the SAR ADC's ~3.1 V
   usable top at 12 dB, pinning the reading at full scale **at the normal
   operating point**. The INA226 cannot do this job: its VBUS pin is specified
-  0-36 V against a 36 V bus, so no margin. The 100 nF also fixes the source
-  impedance, which an ESP32 SAR wants nearer 10 kΩ.
+  0-36 V against a 36 V bus, so no margin. The 100 nF fixes the source
+  impedance, which an ESP32 SAR wants nearer 10 kΩ — but 25.5 kΩ with 100 nF is
+  **τ = 2.55 ms**, so this cannot see an OV event faster than ~10 ms. It is a
+  slow check, not fast protection, which matters because it is carrying the OVP
+  role the HUSB238A lost.
 - **100 uF hold-up on the rail input, behind a series Schottky.** Two things
   broke the earlier version. Topologically, Q1's body diode conducts bus to VBUS,
   so a capacitor on the bus discharges backwards into a collapsed source —
@@ -938,7 +952,7 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | Source | W | Note |
 |---|---|---|
 | TM40P06D main path | 0.57 | TO-252, 23 mΩ at 5 A |
-| ESP32-C6 (TX peak) | 0.50 | |
+| ESP32-C6 (TX peak) | 1.26 | 382 mA at 3.3 V, module datasheet |
 | W5500 | 0.50 | |
 | TPS54360B catch diode | 0.43 | conducts 86% of the cycle |
 | TPS54360B IC | ~0.5 | conduction + switching at ~1 MHz |
@@ -949,12 +963,17 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | BSS138 follower + 10 kΩ | 0.11 | ~17.5 V at 4.5 mA with BZT52C20, plus 26 mW in the pull-up |
 | **total** | **3.13** | status LEDs excluded |
 
-**0.061 W/cm².** A bare PCB in free air sheds roughly 0.08–0.1 W/cm² for a 40 °C
-rise, so capacity is about 4.6 W — **1.5x headroom**. Workable, not generous.
+Corrected totals: the ESP32-C6 row was 0.50 W against a datasheet 382 mA at
+3.3 V = **1.26 W**, the TPS54360B row assumed 500 kHz when ~1 MHz is now chosen,
+and Q1's dissipation uses the 25 °C *typ* 23 mΩ where 28 mΩ max at Tj ≈ 100 °C
+gives ~1.0 W. The realistic total is **~4.2-4.5 W against ~4.6 W capacity —
+roughly 1.0x headroom, not 1.5x**, and that is at **25 °C ambient**. Inside an
+enclosure on a soundwall it is worse. This needs resolving before layout.
 
 **Capping status-LED brightness is a thermal requirement, not a preference.**
-Eight SK6812 at full white add 2.4 W, taking the total to 5.5 W and past the
-board's capacity. They are indicators; a few percent duty is plenty. This is the
+Eight SK6812MINI-E at full white add **1.44 W typ / 1.74 W max** — the earlier
+2.4 W assumed 20 mA per channel, but this is the 12 mA part — which still takes
+the total past the board's capacity. They are indicators; a few percent duty is plenty. This is the
 second reason to cap them — the first was the 22 µH inductor's saturation
 margin.
 

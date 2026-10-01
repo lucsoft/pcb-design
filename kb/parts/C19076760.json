@@ -34,6 +34,7 @@
   "designVerdict": "SELECTED - W5500 reference clock",
   "notes": [
     "25 MHz, SMD3225-4P, $0.068, 23k stock. The W5500 needs an external 25 MHz crystal; the ESP32-C6 module has its own on board.",
-    "CONFIRM the load capacitance against the W5500 datasheet before committing the matching capacitors - it was not checked here."
+    "CONFIRM the load capacitance against the W5500 datasheet before committing the matching capacitors - it was not checked here.",
+    "CONFIRMED AND MISMATCHED: the W5500 requires CL = 18 pF (datasheet section 5.5.3 p.60); this part is 20 pF. Either swap for an 18 pF-CL crystal with 27 pF load caps, or keep it with 30 pF caps and accept an uncharacterised negative-resistance margin."
   ]
 }
