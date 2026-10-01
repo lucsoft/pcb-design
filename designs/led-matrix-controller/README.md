@@ -43,7 +43,7 @@ fatigue. Affected, and still to be revisited:
 | Bus voltage | **36 V** | highest EPR PDO the modules survive; XL1509 is 40 V operating / 45 V absolute |
 | Power budget | **180 W** (36 V x 5 A) | EPR fixed PDO; matches the original brief |
 | PD controller | **HUSB238A-BB001-QN16R** (C24833806) | I2C variant |
-| PD mode | **I2C**, ADDR tied for 0x62 or 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
+| PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip must sit behind an external regulator with the power path on an external P-FET |
 | External part ratings | **60 V class** | enough for a 36 V bus at 1.67x margin. This does NOT leave room for a future 48 V/240 W bus — that would want 100 V parts, and would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
@@ -69,7 +69,7 @@ flowchart LR
 
     subgraph FE["PD front end"]
         direction TB
-        RZ["R + Zener<br/>clamp ~20 V"]
+        RZ["BSS138 follower<br/>+ BZT52C20"]
         PD["HUSB238A<br/>PD sink, I2C mode"]
         RC["RC slew<br/>+ Zener Vgs clamp"]
         FET["P-FET<br/>60 V class"]
@@ -143,8 +143,9 @@ of eight is used.
 
 48 V is supported by the PD chip (p.16 Figure 6) but **destroys the modules** - the XL1509
 is 40 V operating, 45 V absolute. 240 W would need every module respun onto a 60 V-class
-buck. Rating the controller's external parts for 48 V keeps that door open for a firmware
-change later.
+buck. The controller's external parts are rated **60 V class**, which does not leave room
+for 48 V — that would want 100 V parts. Since 48 V needs every module respun
+anyway, the door is closed by the modules, not by this board.
 
 ### Why not 28 V
 
@@ -385,7 +386,7 @@ What this gives up versus a real eFuse is *active* current limiting and fast
 overcurrent trip. Mitigated by, in order of speed:
 
 1. the PD source limiting at the negotiated level
-2. HUSB238A FAULT -> FLGIN cutting GATE on OVP/UVP/OTP
+2. HUSB238A FAULT -> FLGIN cutting GATE on OTP or an adapter-capability fault (OVP/UVP do not survive the clamp topology above 28 V)
 3. per-channel load switches isolating one chain
 4. software via the INA226
 
@@ -397,9 +398,15 @@ short to ground, and lifts the load ground by 50 mV at 5 A through 10 mOhm.
 
 **The Figure 6 "Voltage Regulator" is a BSS138 source follower.** Hynetek
 publishes it with values at [hynetek.com/2730.html](https://www.hynetek.com/2730.html)
-— it is not in the datasheet. Gate pulled up through 10 kΩ and clamped by a 28 V
-Zener, source feeding the VBUS pin; a 0 Ω link bypasses it for builds at 28 V or
-below.
+— it is not in the datasheet. Gate pulled up through 10 kΩ and clamped by a Zener, source feeding the VBUS pin; a 0 Ω link bypasses it for
+builds at 28 V or below.
+
+**We use 20 V (BZT52C20), not Hynetek's 28 V.** It puts the VBUS pin at roughly
+18.5 V, comfortably inside its 3.15-29.4 V window, where a 28-30 V part would sit
+at ~28.5 V against a 29.4 V recommended maximum. The functions we rely on —
+VBUS-present detection and supply backup — work anywhere in that range, and
+OVP/UVP are lost to the clamp topology regardless. A deliberate deviation from
+the vendor reference, worth validating.
 
 This replaces the earlier assumption of a resistor-plus-Zener shunt, and the
 difference matters: a follower holds the pin near (Vgate − Vth) with low output
@@ -424,8 +431,8 @@ VBUS-present detection, but **destroys OVP, UVP and the discharge path**. It is
 also why 48 V is I²C-only while GPIO mode stops at 28 V.
 
 Accepted, because it is inherent to the topology rather than a mistake — but it
-changes what protects the bus. The **SMAJ40CA TVS is now the only fast
-overvoltage protection**, with the 330 k/33 k ADC divider as a slow software
+changes what protects the bus. The **SMAJ36CA TVS is now the only fast
+overvoltage protection**, with the 470 k/27 k ADC divider as a slow software
 check. Those two were added for surge and brownout; they are now carrying OVP as
 well.
 
@@ -570,7 +577,7 @@ Active parts. Passives are listed below the table.
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
 | R1 | FRM252WFR010TN | C7419995 | 1 | 10 mOhm 1% shunt | 0.058 |
 | Y1 | K3A250002010G | C19076760 | 1 | 25 MHz for the W5500 | 0.068 |
-| J1 | HC-TYPE-C-16P-3M2S | C19274016 | 1 | USB-C, EPR rating unverified | 0.070 |
+| J1 | **REJECTED** — see open question 1 | — | 1 | USB-C: C19274016 is 3.0 A / 5.0 V, needs 5 A / 36 V | — |
 | J2 | HR911105A | C12074 | 1 | RJ45 with magnetics | 1.73 |
 | J3,J4 | Wago picoMAX 3.5 4-pole | — | 2 | module output, Reichelt/Mouser | — |
 | LED1-8 | SK6812MINI-E | C5149201 | 8 | status chain | 0.081 |
@@ -582,9 +589,9 @@ Passives, standard values, final selection at layout:
   current low
 - **10 MΩ** gate pull-up on Q1-Q3 (gate to source), against **1 MΩ** to the
   2N7002 drain. The ratio is load-bearing, not arbitrary — see Gate network
-- **R = 1 MΩ and C = 330 nF** on Q1's gate network, setting the 1-second inrush
-  ramp — see Inrush ramp. The same gate topology repeats on Q2 and Q3, which
-  switch into far less capacitance and are not ramp-critical
+- **Gate network values are UNRESOLVED** — see Gate network. The ramp belongs on
+  Q2/Q3 where the module capacitance is, and a passive pull-up cannot satisfy
+  ramp, turn-off and dV/dt immunity together
 - **10 kΩ** on the 2N7002 gates, **4.7 kΩ** I2C pull-ups, **10 kΩ** on INT_N
 - **100 nF 0402** per supply pin, plus bulk per rail
 
@@ -672,7 +679,7 @@ The four largest items are where any further shrink comes from:
 | ESP32-C6-WROOM-1-N8 | 459 | ESP32-C6-MINI-1 is 219 mm2 — saves 240 |
 | 3x TM40P06D + copper | 360 | fixed by thermals, see below |
 | HR911105A RJ45 | 336 | unavoidable if Ethernet stays |
-| 2x JK60-300 PPTC | 192 | **drop them** — see below |
+
 
 **Dropping the PPTCs is the easy win.** They were specified when the connector
 was 3 A; at the picoMAX's 10 A the worst case is 28% of rating and their job has
@@ -802,6 +809,27 @@ than guessing. **Unverified.**
 | GPIO15 | external resistor to define the strap | §3.3.4 p.14 — must not be high-Z |
 | 3V3 bulk | **22 µF + 0.1 µF** | Figure 7 p.28 |
 
+### HUSB238A (U1) — the PD controller
+
+Absent from this section until a review pointed out that the one IC the whole
+design is built around had no entry.
+
+| Part | Value | Source |
+|---|---|---|
+| VDD decoupling | **1 µF ceramic** | p.4, pin 5 — and an error-severity rule in the part's KB record |
+| ADDR, DEBUG_N | 900 kΩ each | p.4-5, keeps standby current low |
+| INT_N pull-up | 10 kΩ | p.5, open-drain |
+| GATE pull-up to 3V3 | **5.1 kΩ** | Hynetek's >28 V arrangement, hynetek.com/2730.html |
+| BSS138 gate pull-up | 10 kΩ | same source |
+| Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
+
+Pin 17 is the exposed pad and the **only** GND connection.
+
+**D+/D− (pins 1-2) are left unconnected.** The chip drives BC1.2 pull-ups onto
+that pair for legacy charger detection, and the pair belongs to the ESP32-C6's
+native USB — sharing them would break enumeration. We only want PD, which runs
+on CC1/CC2, so the legacy detection is given up deliberately.
+
 ### Tie-offs that are inputs, not options
 
 - **74AHCT541**: OE0 (pin 1) and OE1 (pin 19) are active-LOW enables and must go
@@ -822,13 +850,17 @@ than guessing. **Unverified.**
 - **SK6812 chain**: ~500 Ω series resistors on data in and out, plus 100 nF per
   LED (datasheet p.9). Note its VIH is **0.65 × VDD**, not the 0.7 × VDD that
   applies to the WS2812D-F8.
+- **INA226 ALERT** is open-drain (p.3) and needs a **10 kΩ pull-up**. ERC rule
+  E3 would fire on this.
+- **Q4, the main-path 2N7002**, needs a gate pull-down like Q5/Q6, so the
+  power path is defined through MCU reset.
 
 ### Still unresolved in this section
 
 - The W5500 crystal load-capacitance mismatch above.
 - The HR911105A centre-tap bias network.
-- **D1, the 28 V Zener on the BSS138 gate**, has no part number. The earlier
-  candidate (SMAJ33CA) is a TVS, not a Zener — a BZT52C28-class part is needed.
+- D1 is **selected**: BZT52C20 (C19077415). See the note below on why 20 V
+  rather than Hynetek's 28 V.
 - **The small-signal P-channel MOSFET** for the >28 V gate level shift is not in
   the BOM. Q4-Q7 are all N-channel; Hynetek's arrangement needs a PMOS too.
 
@@ -855,11 +887,11 @@ the status chain and the bus-voltage ADC:
 | USB D-/D+ (GPIO12/13, fixed) | 2 |
 | **total** | **19** |
 
-**Four pins are not freely assignable.** GPIO12/13 are the USB pair; GPIO8 must
-read high at reset; GPIO9 wants the BOOT button; GPIO15 needs an external
-resistor to define its strap. That leaves 18 unconstrained pins for 17 non-USB
-signals — and only if GPIO16/17 (UART0 console) are spent as ordinary IO. Keep a
-serial console and the pool is 16, which **does not fit**.
+**Five pins carry constraints**, though three of them can still carry signals.
+GPIO12/13 are the USB pair and are unavailable. GPIO8 must read high at reset and
+GPIO15 must not be high-Z — both usable if the signal's idle state matches the
+required strap, which the assignment below exploits. GPIO9 wants the BOOT button.
+It fits with **one spare**, but only because of those two strap-sharing tricks.
 
 A workable assignment, which also shows how tight it is:
 
@@ -909,12 +941,12 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | ESP32-C6 (TX peak) | 0.50 | |
 | W5500 | 0.50 | |
 | TPS54360B catch diode | 0.43 | conducts 86% of the cycle |
-| TPS54360B IC | 0.30 | conduction + switching at ~500 kHz |
+| TPS54360B IC | ~0.5 | conduction + switching at ~1 MHz |
 | TM40P06D ch1 + ch2 | 0.27 | 2.43 A each |
 | shunt 10 mΩ | 0.25 | at full 5 A |
 | SY8089 + inductor | 0.19 | |
 | 10 µH inductor DCR | 0.08 | |
-| BSS138 follower | 0.04 | ~8 V at 4.5 mA (IOP_VBUS, p.6) |
+| BSS138 follower + 10 kΩ | 0.11 | ~17.5 V at 4.5 mA with BZT52C20, plus 26 mW in the pull-up |
 | **total** | **3.13** | status LEDs excluded |
 
 **0.061 W/cm².** A bare PCB in free air sheds roughly 0.08–0.1 W/cm² for a 40 °C
@@ -955,16 +987,19 @@ TVS as surge-only. **Open.**
 3.0 A Rp that pulls CC toward 5 V ±5 % with no cable attached. A 6 V-class part
 is the usual choice. **Open.**
 
-**The I2C addresses would have clashed.** HUSB238A at 0x42 (ADDR to GND) sits
-inside the INA226's 0x40-0x4F range. Use **0x62** — ADDR tied to VDD through
-900 kΩ — and leave the INA226 at 0x40. Note this interacts with the cold-start
-sequence: ADDR latches at power-up, and with the rails now fed pre-FET the 3.3 V
-rail exists before the chip is enabled, so a VDD tie reads correctly.
+**ADDR to GND, 0x42.** An earlier note claimed 0x42 clashes with the INA226 and
+specified a VDD tie for 0x62 — both wrong. The INA226 occupies exactly **one**
+address (0x40 with A0/A1 to GND), so 0x42 is free. And a VDD tie is unsafe here:
+ADDR latches at power-up, and the chip self-powers from VBUS the instant it
+appears, while 3V3 only exists after two converters have started. GND is the only
+tie that is guaranteed valid at the moment of latching.
 
-**EN_N needs a hard pull-down**, not just a GPIO. Nothing in the passives list
-covered it. With the rails pre-FET the internal pull-up is the right default
-(disabled until firmware acts), but the pin must not be left to a high-Z GPIO
-alone — a 100 kΩ to GND with the GPIO able to override.
+**EN_N must stay HIGH at power-up**, which the internal pull-up already does —
+the cold-start sequence depends on the chip being idle until firmware enables it.
+An earlier note here specified a 100 kΩ **pull-down**, which would have enabled
+the chip before the MCU existed and contradicted step 3. No external pull is
+needed; the GPIO drives it low to enable. If a defined state during MCU reset is
+wanted, it must be a pull-**up** to 3V3, reinforcing the internal one.
 
 **The FAULT interlock must not fight the GPIOs.** Its 2N7002 drain sits on gates
 driven by push-pull MCU pins; asserting it would short a driven-high GPIO through
