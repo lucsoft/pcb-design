@@ -45,7 +45,8 @@
     "Octal, so it covers both data channels with six spare - the status LED chain uses one of those.",
     "Supply range 4.5-5.5 V. The 5 V rail reaches 4.60 V worst case, which is inside it.",
     "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground.",
-    "SETTLED as U9 in the BOM: it drives the status chain only, one channel of eight. Oversized but it is what the assembly catalogue offers."
+    "SETTLED as U9 in the BOM: it drives the status chain only, one channel of eight. Oversized but it is what the assembly catalogue offers.",
+    "CORRECTION: the earlier RECONSIDER verdict said \"the data path no longer needs it\", which was true of the module data path - that moved to MAX3485 differential - but not of the status-LED chain, which is why the README carries it as settled. The note about covering both data channels with spare capacity is also obsolete for the same reason."
   ],
-  "designVerdict": "RECONSIDER - the data path no longer needs it"
+  "designVerdict": "SELECTED as U9 - the SK6812 status chain needs 5 V logic from a 3.3 V GPIO. Oversized (octal, one channel used) but the cheapest available part that does the level shift."
 }

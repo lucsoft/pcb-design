@@ -267,7 +267,7 @@
         "work the ramp at the Miller plateau, not the clamped Zener point",
         "apply DC-bias derating to C_gs (50 V X7R at 36 V keeps 30-45%)",
         "rate C_gs at 100 V - 36 V on a 50 V part is 1.39x, under the design's own 1.5x bar",
-        "TM40P06D Figure 10 p.4 has only a DC SOA line, no pulse curves, so a linear-mode ramp of hundreds of ms is not verifiable from the datasheet"
+        "SOA is now verifiable: the channel switch is an NSS085N100S whose Fig. 12 p.4 publishes a full SOA family, and the LM5069 bounds ramp dissipation to 18 W for 132 ms, inside the DC curve. The TM40P06D it replaced had only a DC line, which is what made the old ramp unverifiable."
       ],
       "alternative": "A 60 V hot-swap controller (LM5069 class) does ramp, current limit, fast turn-off and dV/dt immunity in silicon. Three failed discrete attempts is reasonable evidence it is the right call."
     },

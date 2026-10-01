@@ -50,7 +50,8 @@
   "notes": [
     "Status LED chain: 8 on one GPIO, so the GPIO budget (17 of ~23-26 already used) is not a constraint. Level-shifted through a spare 74AHCT541 channel.",
     "RGB lets history be encoded as colour on one LED rather than one LED per time window: bright red = limiting now, orange = within 5 min, dim yellow = within 10 min.",
-    "Alternative if footprint matters: WS2812C-2020 (C2976072), 2x2 mm, stock 2245."
+    "Alternative if footprint matters: WS2812C-2020 (C2976072), 2x2 mm, stock 2245.",
+    "CORRECTION: an earlier note here gave the GPIO budget as \"17 of ~23-26 already used\". Both numbers were wrong. The ESP32-C6-WROOM-1 exposes exactly 23 usable pads, and the assignment now uses 20 signals plus BOOT and UART0, with no spare left once the shared LM5069 PGD line is counted."
   ],
   "designVerdict": "SELECTED - status indication"
 }

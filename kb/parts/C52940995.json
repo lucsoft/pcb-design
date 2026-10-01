@@ -1,0 +1,98 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C52940995",
+  "@type": "Component",
+  "lcscId": "C52940995",
+  "mpn": "LM5069MMX-2(TOKMAS)",
+  "manufacturer": "Tokmas",
+  "description": "9V~90V MSOP-10 Surge Protection Devices (SPDs) ",
+  "category": "unknown",
+  "package": "MSOP-10",
+  "stock": 105,
+  "priceUsd": 1.2327,
+  "parameters": {
+    "Number of Lines": "-",
+    "Operating temperature": "-40℃~+125℃",
+    "Trigger Current": "-",
+    "FET Type": "External FET",
+    "Voltage Rating": "9V~90V",
+    "Reset Voltage": "-",
+    "Peak Output Current(Sink)": "-",
+    "Features": "Overcurrent Protection;Short-Circuit  Protection;Under-voltage lockout"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/8e0e9446b8c89c2022fbca96729c15be.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "SENSE",
+      "type": "input"
+    },
+    {
+      "number": "2",
+      "name": "VIN",
+      "type": "power_in",
+      "vMax": 90.0
+    },
+    {
+      "number": "3",
+      "name": "UVLO",
+      "type": "input"
+    },
+    {
+      "number": "4",
+      "name": "OVLO",
+      "type": "input"
+    },
+    {
+      "number": "5",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "6",
+      "name": "TIMER",
+      "type": "passive"
+    },
+    {
+      "number": "7",
+      "name": "PWR",
+      "type": "passive"
+    },
+    {
+      "number": "8",
+      "name": "PGD",
+      "type": "open_collector"
+    },
+    {
+      "number": "9",
+      "name": "OUT",
+      "type": "input"
+    },
+    {
+      "number": "10",
+      "name": "GATE",
+      "type": "output"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "datasheet p.3 PIN table (MSOP-10); thermal pad is DFN-only"
+  },
+  "designVerdict": "SELECTED - hot-swap controller, one per channel (U10, U11). Replaces four failed discrete gate networks.",
+  "notes": [
+    "Tokmas second-source LM5069MMX-2, not TI silicon. Live stock 105 at the time of selection, where jlcsearch claimed 2952 - the exact staleness the workflow warns about. TI LM5069MM-1/NOPB (C486026, 89 units, $5.90) is the fallback but is the AUTO-RETRY variant where this is latch-off, which changes fault behaviour.",
+    "VIN absolute 108 V, operating 8-90 V (p.1, p.5). At 36 V that is 3x margin - the widest of any part on the bus. Below 8 V it holds the gate down, so the channels are off through the whole 5 V pre-negotiation phase with no firmware involvement.",
+    "Drives an N-channel FET with a charge pump holding GATE ~12 V above OUT (p.3, pin 10). This is what removes the high-side P-FET gate problem entirely: no level shifters, no Vgs clamp Zeners.",
+    "Design values, per channel: R_SENSE 12 mOhm (current limit 55 mV/Rs = 4.58 A typ, 4.0-5.42 A over the 48-65 mV spread), R_PWR 32.4 kOhm (P_LIM ~18 W via Eq. 14), C_TIMER 10 uF X7R 25 V (t_FLT 514 ms via Eq. 11, against t_start 132 ms via Eq. 10), UVLO/OVLO string 120 k / 5.11 k / 7.68 k.",
+    "OVLO gives back a hardware overvoltage trip that the HUSB238A lost to its clamp topology - but its +/-10% threshold tolerance is wider than the window between the 37.8 V maximum bus and the modules 45 V absolute, so it cannot be set to protect the modules. Set at 43.2 V nominal to protect the controller.",
+    "UVLO doubles as ENABLE: pulling it below 2.5 V disables the channel. A 2N7002 drain on UVLO with a 100 kOhm gate pull-up to 3V3 gives fail-safe-off through MCU reset, and lets the FAULT interlock act on the same node without contending with a driven GPIO.",
+    "MSOP-10 RthJA is 156 C/W (p.1), which sounds alarming and is not: IQ is 650 uA max at 37.8 V, about 25 mW."
+  ]
+}

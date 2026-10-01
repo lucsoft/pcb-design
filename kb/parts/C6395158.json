@@ -43,6 +43,7 @@
     "Data is one-way: tie DE high, RE is unused. Two needed, one per channel, since each chain carries different pixel data.",
     "Needs a matching receiver and 120 ohm termination on the first converter board of each chain. Populating only the controller end is useless.",
     "800 kbps WS2812 timing is far inside its 10 Mbps capability.",
-    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground."
+    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground.",
+    "CORRECTION: an earlier note said \"tie DE high, RE is unused\". RE is a CMOS input and \"unused\" is not a state - it must be tied to VCC. The README has this right; this record did not."
   ]
 }

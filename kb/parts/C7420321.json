@@ -42,6 +42,7 @@
     "2N7002, 60 V N-channel, SOT-23, 1.01M stock, $0.018.",
     "WHY IT IS NEEDED, and this was nearly missed: the HUSB238A GATE pin is rated 33 V absolute, but the P-FET gate node on a 36 V bus swings between roughly 24 V (clamped) and 36 V (off). GATE cannot be tied to that node directly - it would sit above its own rating. A small N-FET level shift sits between them.",
     "The same part drives the two channel load switches from 3.3 V GPIOs, which have the same problem in reverse: a 3.3 V output cannot pull a 36 V-referenced gate down.",
-    "THREE per board: two gate level shifts (one per channel switch) plus one for the FAULT hardware interlock, which pulls both channel control gates low when the HUSB238A flags a fault. One line on the BOM."
+    "THREE per board: two gate level shifts (one per channel switch) plus one for the FAULT hardware interlock, which pulls both channel control gates low when the HUSB238A flags a fault. One line on the BOM.",
+    "ROLE CHANGED: the \"WHY IT IS NEEDED\" note describes level-shifting into a high-side P-FET gate because the HUSB238A GATE pin is rated 33 V absolute. That job no longer exists. The 2N7002s now pull LM5069 UVLO pins to ground - Q3/Q4 one per channel for software enable (gate pulled up 100 kOhm to 3V3, so fail-safe off), Q5 for the FAULT interlock. All three switch a low-voltage divider node, not a 36 V gate."
   ]
 }

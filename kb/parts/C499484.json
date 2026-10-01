@@ -42,6 +42,7 @@
   "designVerdict": "REJECTED - correct rating, 10x the price of the selected part",
   "notes": [
     "SI7489DP, 100 V, 28 A, 41 mOhm P-channel, PowerPAK SO-8, $4.38. Correctly rated but found by keyword guessing before parametric search was available.",
-    "Rejected in favour of TM40P06D (C7422850): 60 V, 30 A, 23 mOhm, $0.40 - lower dissipation AND a tenth of the price. The parametric search that found it has since been run, so this part needs no further evaluation."
+    "Rejected in favour of TM40P06D (C7422850): 60 V, 30 A, 23 mOhm, $0.40 - lower dissipation AND a tenth of the price. The parametric search that found it has since been run, so this part needs no further evaluation.",
+    "CONTEXT: the comparison against TM40P06D is obsolete - both are P-channel and neither is used. The channel switches are N-channel NSS085N100S (C7427705) driven by an LM5069."
   ]
 }

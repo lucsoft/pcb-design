@@ -1,0 +1,69 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7427705",
+  "@type": "Component",
+  "lcscId": "C7427705",
+  "mpn": "NSS085N100S",
+  "manufacturer": "NH",
+  "description": "N-Channel 100V 100A Surface Mount TO-252",
+  "category": "transistor",
+  "package": "TO-252",
+  "stock": 17495,
+  "priceUsd": 0.3889,
+  "parameters": {
+    "Operating Temperature": "-55℃~+150℃",
+    "Drain to Source Voltage": "100V",
+    "Output Capacitance(Coss)": "820pF",
+    "Current - Continuous Drain(Id)": "100A",
+    "Ciss-Input Capacitance": "2nF",
+    "Pd - Power Dissipation": "150W",
+    "Reverse Transfer Capacitance (Crss)": "80pF",
+    "RDS(on)": "7.5mΩ@10V",
+    "Number": "1 N-channel",
+    "Gate Charge(Qg)": "43nC@10V",
+    "Vgs": "±20V",
+    "Gate Threshold Voltage (Vgs(th))": "3V",
+    "Type": "N-Channel"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/91bd5df97e4280236ef09b8a9e6504a7.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "G",
+      "type": "input",
+      "vMax": 20.0
+    },
+    {
+      "number": "2",
+      "name": "D",
+      "type": "passive",
+      "vMax": 100.0
+    },
+    {
+      "number": "3",
+      "name": "S",
+      "type": "passive",
+      "vMax": 100.0
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "datasheet p.1 Marking and Polarity drawing (TO-252: G left, D tab/centre, S right)"
+  },
+  "designVerdict": "SELECTED - the two channel switches (Q1, Q2), driven by the LM5069.",
+  "notes": [
+    "Replaces the P-channel TM40P06D (C7422850). N-channel because the LM5069 charge pump drives the gate above the source, which is what made the high-side gate network unnecessary.",
+    "100 V against the SMAJ36CA 58.1 V clamp is 1.72x, where the 60 V P-FET sat at 1.03x - a margin this design twice called uncomfortable and twice failed to fix.",
+    "Rds(on) 9.5 mOhm max at Vgs 10 V (p.1), roughly 13.3 mOhm at Tj 100 C, so 0.079 W at the 2.43 A channel current. Lower loss AND higher voltage than the 60 V P-FET, at $0.39 against $0.40.",
+    "Publishes a real SOA family (Fig. 12 p.4) with 10 us / 100 us / 1 ms / 10 ms / DC curves. There is no 100 ms curve, so the 132 ms ramp is bounded by the DC line: roughly 0.6 A at Vds 36 V, about 21 W, against the 18 W power limit. The TM40P06D had only a DC line and no family at all, which is why its SOA was unverifiable.",
+    "RthJA 50 C/W on 1 in2 of 2 oz copper (p.1 note 2), so about 2.5 W at 25 C ambient. Steady state is not the binding constraint; the 18 W ramp is, and that is transient.",
+    "Datasheet lists \"PD Charger V-BUS\" as a typical application."
+  ]
+}

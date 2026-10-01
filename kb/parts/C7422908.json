@@ -1,0 +1,44 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7422908",
+  "@type": "Component",
+  "lcscId": "C7422908",
+  "mpn": "TMN10015D",
+  "manufacturer": "Tritech-MOS",
+  "description": "N-Channel 100V 15A Surface Mount TO-252-3L",
+  "category": "transistor",
+  "package": "TO-252-3L",
+  "stock": 2495,
+  "priceUsd": 0.1337,
+  "parameters": {
+    "Operating Temperature": "-55℃~+175℃",
+    "Drain to Source Voltage": "100V",
+    "Output Capacitance(Coss)": "80pF",
+    "Current - Continuous Drain(Id)": "15A",
+    "Ciss-Input Capacitance": "940pF",
+    "Pd - Power Dissipation": "60W",
+    "Reverse Transfer Capacitance (Crss)": "50pF",
+    "RDS(on)": "75mΩ@10V",
+    "Number": "1 N-channel",
+    "Gate Charge(Qg)": "21nC@10V",
+    "Vgs": "20V",
+    "Gate Threshold Voltage (Vgs(th))": "1.5V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/9a0939579e8be2361fcba072a54aee24.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - evaluated against NSS085N100S (C7427705) and not chosen.",
+  "notes": [
+    "TMN10015D, 100 V / 75 mOhm. Rejected on on-resistance: 75 mOhm against the NSS085N100S 9.5 mOhm is 8x the conduction loss for the same job, and its datasheet has no Safe Operating Area figure at all - which was the single property that made the previous P-channel switch unverifiable."
+  ]
+}
