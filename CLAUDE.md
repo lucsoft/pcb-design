@@ -277,10 +277,38 @@ Written in English, including comments and documentation, regardless of the
 language the conversation happens in — matching the convention in the
 home-manager repository.
 
-This directory is not under version control yet. It probably should be: the
-whole premise of a text netlist plus a JSON knowledge base is that changes are
-diffable, and `git init` costs nothing. `.gitignore` already excludes the
-datasheet cache (large, re-fetchable) and any credentials file.
+## Version control
+
+**Commit after every meaningful change, without being asked.** The premise of a
+text netlist plus a JSON knowledge base is that changes are diffable; that is
+only worth anything if the history exists.
+
+This is not bookkeeping. A whole section of a design document was once silently
+deleted by a careless string replacement here, while two cross-references still
+pointed at it — and it took an external review to notice. `git diff` would have
+shown it in the same second it happened. The ERC checks netlists, not prose, so
+version control is the only thing watching the documents.
+
+Commit messages follow the nixpkgs convention used in the home-manager
+repository:
+
+    <scope>: <imperative summary>
+
+    <body explaining WHY, wrapped at 72 columns>
+
+`<scope>` is lowercase and names the thing changed — a part (`husb238a`), a tool
+(`erc`), an area (`docs`, `kb`), or a design (`led-matrix`). The summary is
+imperative and lowercase after the colon, no trailing period, under ~60
+characters. The body explains why; the diff already shows what.
+
+Good points to commit: after recording a part, after a design decision lands,
+after a review's findings are applied, before any large edit to a document.
+Especially before a large edit — that is the one that bites.
+
+`.gitignore` excludes the datasheet cache (large, re-fetchable with
+`ds.py fetch`), Python bytecode, and any credentials file. The `.epro2`
+reference exports are tracked: they are binaries that do not diff, but they are
+the only record of the module design.
 
 ## Reading an existing EasyEDA project
 
