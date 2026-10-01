@@ -260,15 +260,9 @@
     },
     "solution": "Resolved - see inrush.resolution. The RC on the Figure 6 P-FET gate ramps the bus. The TPS26630 that earlier carried this job was rejected at 36 V (40 V FET, only 1.11x margin).",
     "resolution": {
-      "decision": "1 second ramp. Gate network: R_pu = 10 MOhm gate-to-source, R_pd = 1 MOhm to the 2N7002 drain, BZT52C12 clamp, C = 1 uF gate-to-drain. CORRECTED from an earlier 100 kOhm / 1 MOhm / 330 nF, which formed a divider giving only 3.27 V Vgs - the FET would never have fully enhanced and would have run several watts at 5 A instead of 0.57 W.",
-      "sizedFor": "40 modules x 330 uF = 13,200 uF - more than the controller can power, so the actual case is always gentler.",
-      "keyPoint": "The FET absorbs 1/2*C*V^2 = 8.55 J regardless of ramp rate. A slower ramp reduces peak power, not energy, so the ramp is chosen on FET dissipation: 28.5 W at 0.3 s versus 8.6 W at 1 s.",
-      "inrushAchieved": {
-        "worst 13.2mF": "0.48 A",
-        "likely 2.2mF": "0.08 A"
-      },
-      "consequence": "No longer depends on reading the module bulk capacitor. Sizing generously cost only startup time.",
-      "unverified": "TM40P06D SOA during the ramp: linear mode for a full second, 17.1 W peak, 8.6 W average, no SOA curve in the datasheet. The 8.55 J also assumes no load current, but the module converters leave UVLO partway through and then draw MORE current as the bus falls, so real dissipation is higher."
+      "status": "UNRESOLVED - the gate network needs redesign, see the design README",
+      "whyTwoAttemptsFailed": "Attempt 1 (R_pu 100k / R_pd 1M) gave Vgs 3.27 V - the FET never enhanced. Attempt 2 (R_pu 10M / R_pd 1M / C 1uF) fixed the divider but put the ramp on Q1, which has no module capacitance behind it, left Q2/Q3 facing 3.3 mF each with no Miller cap (257 A, 4.6 kW), made Q1's turn-off take ~180 s, and let Q1 self-turn-on during the PD 5 V to 36 V step.",
+      "coreConstraint": "With a passive pull-up, a C_gd large enough to ramp 3.3 mF is also large enough to defeat turn-off and dV/dt immunity. Needs active turn-off, or a 60 V hot-swap controller."
     },
     "storedEnergyAt36V": {
       "10 modules": "0.86 J",

@@ -434,62 +434,77 @@ an active 0.42× ratiometric level shifter in a companion IC (TI TPD4S480,
 Kinetic KTU1133, Fortune FA2218), which *preserves* measurement where Hynetek's
 clamp does not. If a later revision wants real OVP back, that is the direction.
 
-## Gate network
+## Gate network — UNRESOLVED, needs redesign
 
-**The pull-up and pull-down form a divider, and getting the ratio backwards does
-not fail visibly — it cooks the FET.** With the 2N7002 on, the gate sits between
-the 36 V source through R_pu and ground through R_pd:
+**This section has been wrong twice and is not fixed by another patch.** Both
+attempts are recorded because the failure mode is instructive: each fix was
+correct about the thing it addressed and broke something it did not check.
 
-> |Vgs| = 36 x R_pu / (R_pu + R_pd)
+### Attempt 1: R_pu 100 kΩ, R_pd 1 MΩ
 
-An earlier draft specified R_pu = 100 kΩ against R_pd = 1 MΩ, giving **Vgs =
-3.27 V** where Vgs(th) is 1.6 V. The BZT52C12 would never conduct, the FET would
-sit barely enhanced at 5 A on a part characterised at 10 V, and dissipation would
-be several watts against the 0.57 W budgeted — with positive feedback into
-thermal runaway. The pull-up must dominate: **R_pd ≤ 2.6 × R_pu** for Vgs ≥ 10 V.
+The pull-up and pull-down form a divider, |Vgs| = 36 × R_pu/(R_pu + R_pd), which
+gave **3.27 V** against Vgs(th) 1.6 V. The FET would never fully enhance and
+would run several watts at 5 A instead of 0.57 W.
 
-| | Value | Why |
-|---|---|---|
-| R_pu, gate to source | **10 MΩ** | pull-up dominates, so Vgs reaches the clamp |
-| R_pd, gate to 2N7002 drain | **1 MΩ** | sets the plateau current |
-| Zener, gate to source | BZT52C12 (12 V) | above the 10 V where 23 mΩ is specified, 8 V below the ±20 V limit |
-| C, gate to drain | **1 µF** | Miller capacitor setting the ramp |
+### Attempt 2: R_pu 10 MΩ, R_pd 1 MΩ, C_gd 1 µF
 
-The capacitor grew from 330 nF because the plateau current fell with the corrected
-divider: 33 µA into 1 µF gives ~36 V/s, the 1-second ramp below.
+Correct for the divider (32.7 V unclamped, 12 V after the Zener) and the ramp
+(33 µA into 1 µF = 36 V/s ≈ 1.07 s). Three independent faults:
 
-## Inrush ramp
+1. **The ramp is on the wrong FET.** Q1 drains into the *local* bus node; the
+   13,200 µF of module capacitance sits behind Q2/Q3, and the cold-start
+   sequence closes Q1 before them. So Q1's 1 µF ramps a few µF of local
+   decoupling, and the whole ½CV² = 8.55 J / 8.6 W / 17.1 W analysis is attached
+   to a device that never sees it. Meanwhile **Q2 and Q3 each face 3.3 mF with
+   no Miller capacitor at all**: Qgd ≈ 15.6 nC against 33.8 µA gives a 0.46 ms
+   ramp = 78 kV/s, so C·dV/dt ≈ **257 A** and 2.14 J in 0.46 ms ≈ **4.6 kW** in
+   a TO-252.
+2. **Q1 cannot be turned off.** At turn-off the gate sits at the plateau, so a
+   10 MΩ pull-up delivers 12 V/10 MΩ = **0.2 µA**, and the drain must fall 36 V
+   through 1 µF: **~180 seconds**. The claim that FAULT sheds the load "in
+   microseconds regardless of what firmware is doing" is wrong by 10⁵, which
+   voids the FAULT interlock, the FLGIN path and any software shutdown.
+3. **Q1 self-turns-on during the PD 5 V → 36 V step.** The source rises ~31 V in
+   ~25-35 ms (≈1.24 kV/s). The 1 µF demands 1.24 mA; 10 MΩ cannot supply it, so
+   the gate is pinned by the capacitor, the Zener clamps Vsg at 12 V, and the
+   FET is **fully enhanced throughout the transition** — turning a deliberate
+   Miller capacitor into a dV/dt turn-on device.
 
-Sized for the worst case rather than blocked on the unknown module capacitance:
-**40 modules × 330 µF = 13,200 µF**, more than this controller can power anyway.
+### Why a third patch would also fail
 
-The FET absorbs **½ × C × V² = 8.55 J** at startup, and that does not change with
-ramp rate — a slower ramp lowers peak power, not energy. So the ramp is chosen on
-what the FET can dissipate:
+The three constraints fight each other with a passive pull-up:
 
-| Ramp | Inrush @13.2 mF | @2.2 mF (likely) | FET average |
-|---|---|---|---|
-| 0.3 s | 1.58 A | 0.26 A | 28.5 W |
-| **1.0 s** | **0.48 A** | **0.08 A** | **8.6 W** |
-| 2.0 s | 0.24 A | 0.04 A | 4.3 W |
+| Want | Needs |
+|---|---|
+| Slow ramp into 3.3 mF | large C_gd |
+| Fast turn-off | small R_pu, i.e. large pull-up current |
+| dV/dt immunity on the source step | pull-up current ≫ C_gd × dV/dt |
 
-At 28.5 W the 0.3 s option is uncomfortable for a TO-252 even transiently; at
-8.6 W over 1 s it is relaxed. Nobody notices a one-second power-up, and the values
-need no revision when the module capacitance is finally read — a smaller bulk just
-means gentler inrush.
+A C_gd large enough to ramp the modules is large enough to defeat any passive
+pull-up on both of the others. Raising R_pu to fix turn-off is what dropped the
+BZT52C12 to **22.8 µA against its 5 mA test current**, where the clamp is
+~9-11 V rather than 12 V and the FET's R_DS(on) is 29-38 mΩ rather than 23 mΩ —
+so even the 0.57 W dissipation figure is really ~1.0 W.
 
-**Unverified, and the largest single stress on the part:** the TM40P06D's SOA
-during that ramp. It sits in linear mode for a full second with 36 V across it —
-17.1 W peak, 8.6 W average, RθJC 1.9 °C/W, Tjmax 175 °C — and the datasheet has no
-SOA curve. The 8.55 J also assumes **no load current**, but the modules' XL1509s
-leave UVLO partway through the ramp and then behave as constant-power loads,
-drawing *more* current as the bus falls. Real dissipation is higher than the
-capacitive term alone.
+### The direction, not yet a design
 
-Worth checking on the bench: that the HUSB238A does not read a one-second ramp as
-a fault and pull GATE down through FLGIN.
+- **Active turn-off**, not a resistor: a complementary pair or a dedicated
+  load-switch/hot-swap controller, so turn-off current is not tied to the
+  pull-up that must also reject dV/dt.
+- **Ramps on Q2/Q3**, where the 3.3 mF per channel actually is. Q1 then only
+  needs to charge the local bus capacitance.
+- **Sequence matters**: Q1 fast into a small local load, then Q2/Q3 slowly into
+  the modules — but Q2/Q3 must then reject the dV/dt of Q1's own turn-on, which
+  is the same problem one level down.
+- A **60 V hot-swap controller** (LM5069 class) solves all three in silicon and
+  is why the TPS26630 was attractive before its 40 V FET ruled it out at 36 V.
+  Worth revisiting rather than hand-building this.
 
-## Why two channels
+**Nothing downstream of this is safe to build until it is resolved**: the inrush
+figures, the FAULT interlock timing, and the thermal budget for Q1 all depend on
+it.
+
+## Why two channels## Why two channels
 
 Checked rather than assumed. At the 20-module target:
 
