@@ -1,0 +1,37 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C6186",
+  "@type": "Component",
+  "lcscId": "C6186",
+  "mpn": "AMS1117-3.3",
+  "manufacturer": "Advanced Monolithic Systems",
+  "description": "3.3V Positive Fixed SOT-223 Voltage Regulators - Linear, Low Drop Out (LDO) Regulators RoHS",
+  "category": "regulator",
+  "package": "SOT-223",
+  "stock": 734035,
+  "priceUsd": 0.2093,
+  "parameters": {
+    "Output Voltage": "3.3V",
+    "Number of Outputs": "1",
+    "Operating Temperature": "-40℃~+125℃",
+    "Supply Current (Iq)": "5mA",
+    "Output Configuration": "Positive",
+    "Operating Voltage": "15V",
+    "Output Current": "1A",
+    "Features": "Short Circuit Protection;Thermal shutdown;Over Current Protection",
+    "Output Type": "Fixed"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/e6935943fc6b1bbf350a1a0f3e90dc4a.pdf",
+  "retrieved": "2026-10-01",
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "tier": null
+}

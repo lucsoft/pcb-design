@@ -1,0 +1,50 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C369094",
+  "@type": "Component",
+  "lcscId": "C369094",
+  "mpn": "JK60-300",
+  "manufacturer": "Jinrui",
+  "description": "Polymeric PTC Resettable Fuse 60V 3A Through Hole P=10.2mm",
+  "category": "fuse",
+  "package": "Through Hole,P=10.2mm",
+  "stock": 48710,
+  "priceUsd": 0.1555,
+  "parameters": {
+    "Operating Temperature": "-40℃~+85℃",
+    "Voltage - Max": "60V",
+    "Hold Current": "3A",
+    "Current - Max": "40A",
+    "Power Dissipation": "2.8W",
+    "Trip Current": "6A",
+    "Pitch": "-",
+    "Height": "-",
+    "Length": "21.3mm",
+    "Width": "-",
+    "Time to Trip(Max)": "8s",
+    "Resistance @ 25℃": "40mΩ",
+    "Resistance - Post Trip (R1) (Max)": "80mΩ"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/f9f45971639a6761eacc52533b303f25.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "DROPPED - superseded by the 10 A connector and the size target",
+  "notes": [
+    "DROPPED from the design. Specified when the module connector was 3 A (Wurth WR-PHD); the move to picoMAX at 10 A puts the worst case at 28% of rating and removes most of its job. It is also through-hole radial - 192 mm2 for the pair, and mass on leads in a vibration environment. Kept on record in case a later revision wants per-channel fusing.",
+    "60 V max, 3 A hold, 6 A trip, 8 s max time to trip, 40 mOhm at 25 C (80 mOhm post trip). 48k stock, $0.16.",
+    "Chosen over a fuse because a blown fuse means a dead channel until a spare is found, and PPTC trip time in seconds matches how a connector actually fails - thermally, slowly. It resets itself once the fault is removed.",
+    "WHAT IT PROTECTS AGAINST: gross overload - a shorted cable, a channel stuck at full output. Trip is 6 A against a 3 A hold, so behaviour between 3 A and 6 A is indeterminate and depends on ambient and duration. It will NOT reliably catch a marginal 3.2 A sustained overload, which is the realistic software-bug case; that stays the job of the predictive per-channel limit and the thermal cap.",
+    "Insertion loss at the balanced 2.43 A per channel: 0.24 W and 0.10 V, which is 0.27% of a 36 V bus. Negligible.",
+    "THROUGH-HOLE, 10.2 mm pitch. The 60 V SMD PPTCs top out near 0.5 A hold - voltage and current trade off directly in this technology, so there is no SMD option at 3 A/60 V. Two through-hole parts is either a small JLCPCB assembly surcharge or two joints by hand."
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C2286",
+  "@type": "Component",
+  "lcscId": "C2286",
+  "mpn": "KT-0603R",
+  "manufacturer": "Hubei KENTO Elec",
+  "description": "Red 645nm LED Indication - Discrete 2.4V 0603",
+  "category": "led",
+  "package": "0603",
+  "stock": 3064300,
+  "priceUsd": 0.0076,
+  "parameters": {
+    "Installation method": "-",
+    "Color Temperature": "-",
+    "Peak Wavelength": "645nm",
+    "Lens Color": "Water Clear",
+    "Luminous Intensity": "300mcd",
+    "Viewing Angle": "120°",
+    "Forward Current": "20mA",
+    "Illumination Color": "Red",
+    "Lamp Holder Type": "1.6mm x 0.8mm square LED",
+    "Voltage - Forward(Vf)": "1.8V~2.4V",
+    "Operating Temperature": "-40℃~+85℃",
+    "Wavelength": "615nm~630nm",
+    "Diode Configuration": "Discrete Diode"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/011ec3e8cb1e825f6961d29bc4db4c7a.pdf",
+  "retrieved": "2026-10-01",
+  "pins": [
+    {
+      "number": "1",
+      "name": "K",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "0603 LED, cathode marked"
+  },
+  "tier": null
+}

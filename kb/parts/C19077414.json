@@ -1,0 +1,42 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19077414",
+  "@type": "Component",
+  "lcscId": "C19077414",
+  "mpn": "BZT52C18",
+  "manufacturer": "R+O",
+  "description": "Zener Diode Independent 18V 350mW Surface Mount SOD-123",
+  "category": "diode",
+  "package": "SOD-123",
+  "stock": 783900,
+  "priceUsd": 0.0176,
+  "parameters": {
+    "Diode Configuration": "1 Independent",
+    "Tolerance": "-",
+    "Operating Junction Temperature Range": "-55℃~+150℃",
+    "Pd - Power Dissipation": "350mW",
+    "Reverse Leakage Current (Ir)": "100nA",
+    "Impedance(Zzt)": "45Ω",
+    "Zener Voltage(Range)": "17.1V~18.9V",
+    "Zener Voltage(Nom)": "18V",
+    "Impedance(Zzk)": "225Ω"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02a7f2c734d5d8407bcaa05ee2a504ab.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SUPERSEDED - the resistor+Zener clamp was replaced by the BSS138 follower",
+  "notes": [
+    "BZT52C18, 18 V Zener. Was specified as the shunt half of a resistor+Zener clamping the HUSB238A VBUS pin. That topology was an INFERENCE and turned out to be wrong: Hynetek's published Figure 6 uses a BSS138 source follower with a 28 V Zener on its gate (see C7420339 and C24833806).",
+    "Not in the BOM. The part the design actually needs there is a 28 V Zener (BZT52C28 class) on the BSS138 gate - still to be selected."
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C499484",
+  "@type": "Component",
+  "lcscId": "C499484",
+  "mpn": "SI7489DP-T1-GE3",
+  "manufacturer": "VISHAY",
+  "description": "P-Channel 100V 28A 53W Surface Mount PowerPAKSO-8",
+  "category": "transistor",
+  "package": "PowerPAKSO-8",
+  "stock": 2044,
+  "priceUsd": 4.3758,
+  "parameters": {
+    "Output Capacitance(Coss)": "230pF",
+    "Ciss-Input Capacitance": "4.6nF",
+    "Pd - Power Dissipation": "53W",
+    "Configuration": "-",
+    "Operating Temperature": "-55℃~+150℃",
+    "Drain to Source Voltage": "100V",
+    "Current - Continuous Drain(Id)": "28A",
+    "Reverse Transfer Capacitance (Crss)": "175pF",
+    "RDS(on)": "41mΩ@10V",
+    "Number": "1 P-Channel",
+    "Gate Charge(Qg)": "54nC",
+    "Vgs": "±20V",
+    "Gate Threshold Voltage (Vgs(th))": "1V",
+    "Type": "P-Channel"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/846be64e82486701771708448225d01f.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - correct rating, 10x the price of the selected part",
+  "notes": [
+    "SI7489DP, 100 V, 28 A, 41 mOhm P-channel, PowerPAK SO-8, $4.38. Correctly rated but found by keyword guessing before parametric search was available.",
+    "Rejected in favour of TM40P06D (C7422850): 60 V, 30 A, 23 mOhm, $0.40 - lower dissipation AND a tenth of the price. The parametric search that found it has since been run, so this part needs no further evaluation."
+  ]
+}

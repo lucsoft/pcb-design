@@ -1,0 +1,36 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C32843",
+  "@type": "Component",
+  "lcscId": "C32843",
+  "mpn": "W5500",
+  "manufacturer": "WIZNET",
+  "description": "LQFP-48(7x7) Controllers RoHS",
+  "category": "ic",
+  "package": "LQFP-48(7x7)",
+  "stock": 13131,
+  "priceUsd": 2.8546,
+  "parameters": {
+    "Features": "Low-power mode;Wake-up function;Programmable LED indication",
+    "MAC Interface": "SPI",
+    "Voltage - Supply": "3.3V",
+    "Integrated PHY": "Yes",
+    "Communication Interface": "SPI",
+    "Operating Temperature": "-40℃~+85℃",
+    "Memory Space": "32KB",
+    "Ethernet Speed Standards": "10BASE-T;100BASE-TX"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/30476b02c653bde72f85075618aea7c4.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  }
+}

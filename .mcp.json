@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "jlcpcb": {
+      "type": "stdio",
+      "command": "/home/lucsoft/pcb-design/tools/jlcpcb-mcp.sh",
+      "args": [],
+      "env": {}
+    }
+  }
+}

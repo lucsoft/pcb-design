@@ -1,0 +1,42 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7427126",
+  "@type": "Component",
+  "lcscId": "C7427126",
+  "mpn": "ANR5040T220M",
+  "manufacturer": "APV",
+  "description": "1.6A 22uH ±20% 1.9A Magnetic Shielded Inductor SMD,5x5mm Fixed Inductors RoHS",
+  "category": "inductor",
+  "package": "SMD,5x5mm",
+  "stock": 19150,
+  "priceUsd": 0.0537,
+  "parameters": {
+    "Current Rating": "1.6A",
+    "Inductance": "22uH",
+    "Tolerance": "±20%",
+    "Current - Saturation(Isat)": "1.9A",
+    "Type": "Magnetic Shielded Inductor"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/a15e54507aca7b688df779462a1a4487.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SUPERSEDED by ANR5040T100M (C7427121)",
+  "notes": [
+    "Isat is 1.62 A MAX (the 1.9 A quoted earlier was the typ column) against a 1.18 A peak - 1.38x, below the 1.5x bar. Replaced by a 10 uH part at 2.9 A Isat, with the converter moved to ~1 MHz to hold the same ripple.",
+    "22 uH, 1.6 A rated, 1.9 A saturation, magnetic shielded, 5x5 mm, 19k stock, $0.054.",
+    "Value from L = Vout(Vin-Vout)/(Vin x f x dIL) at 36 V in, 5 V out, ~500 kHz, giving ~39% ripple at 1 A. Confirm against the RT resistor once the switching frequency is fixed - the TPS54360B is adjustable 100-2500 kHz and 22 uH assumes ~500 kHz.",
+    "5 V rail budget: 491 mA feeding the SY8089 for the 3.3 V rail, plus up to 480 mA of status LEDs, plus ~10 mA of buffer = 0.98 A worst case, 1.13 A peak with ripple. Against 1.9 A saturation that is 1.7x margin worst case, 2.5x typical.",
+    "SHIELDED matters here, not just for EMI: an unshielded inductor on a vibrating soundwall is also a mechanical and acoustic concern.",
+    "The 480 mA worst case assumes all 8 status LEDs at full white. Capping status brightness in firmware would make this comfortably irrelevant - they are indicators, not illumination."
+  ]
+}

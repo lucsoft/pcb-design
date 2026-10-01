@@ -1,0 +1,44 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C2868250",
+  "@type": "Component",
+  "lcscId": "C2868250",
+  "mpn": "INA238AIDGSR",
+  "manufacturer": "TI",
+  "description": "10mA -300mV~85V VSSOP-10-0.5mm Power Supply Controllers, Monitors RoHS",
+  "category": "ic",
+  "package": "VSSOP-10-0.5mm",
+  "stock": 0,
+  "priceUsd": 4.5999,
+  "parameters": {
+    "Output Current": "10mA",
+    "Function": "Power monitoring;Integrated ADC;Digital output interface;High-side detection;Low-side detection;Bidirectional detection;Programmable threshold alarm;Enable/shutdown function;Input filter",
+    "Gain": "-",
+    "Vcm - Common Mode Voltage": "-300mV~85V",
+    "Bandwidth": "-",
+    "Quiescent Current": "640uA",
+    "Number of Channels": "-",
+    "Differential Voltage": "±163.84mV",
+    "Operating Temperature": "-40℃~+125℃",
+    "Operating Voltage": "2.7V~5.5V"
+  },
+  "datasheet": "https://www.ti.com/cn/lit/ds/symlink/ina238.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "notes": [
+    "85 V common-mode and bus range (datasheet p.3, p.5), which would have given 2.4x margin on a 36 V bus and allowed high-side sensing.",
+    "ZERO STOCK at LCSC as of 2026-10-01. The cached jlcsearch index claimed 2500 - always confirm against the live LCSC detail endpoint before selecting.",
+    "INA228 (C2887910) is the same story: 85 V, also zero stock."
+  ],
+  "designVerdict": "REJECTED - zero stock"
+}

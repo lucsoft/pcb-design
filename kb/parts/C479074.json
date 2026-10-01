@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C479074",
+  "@type": "Component",
+  "lcscId": "C479074",
+  "mpn": "SY8089A1AAC",
+  "manufacturer": "Silergy",
+  "description": "1.5MHz Step-down type Adjustable 2A SOT-23-5 Voltage Regulators - DC DC Switching Regulators ",
+  "category": "regulator",
+  "package": "SOT-23-5",
+  "stock": 100340,
+  "priceUsd": 0.0869,
+  "parameters": {
+    "Operating Temperature": "-40℃~+125℃@(TA/TJ)",
+    "Frequency - Switching": "1.5MHz",
+    "Function": "Step-down type",
+    "Number of Outputs": "1",
+    "Features": "Hiccup current limiting;Output discharge",
+    "Topology": "Buck",
+    "Output Type": "Adjustable",
+    "Operating Voltage": "2.5V~5.5V",
+    "Switch tube (built-in/external)": "Built-in",
+    "Output Voltage": "-",
+    "Output Current": "2A",
+    "Quiescent Current": "50uA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0ca32da5d5c125881791fee9f2de17c1.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "notes": [
+    "Synchronous buck, chosen over an LDO on thermal grounds. At 4.85 V in / 3.3 V out with the ESP32-C6's ~500 mA transmit peaks an LDO burns ~0.8 W; this burns under 0.1 W.",
+    "Input range 2.5-5.5 V, which suits the 4.60-5.00 V rail it runs from."
+  ],
+  "designVerdict": "SELECTED - 5 V rail to the 3.3 V rail"
+}

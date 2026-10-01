@@ -1,0 +1,50 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7422850",
+  "@type": "Component",
+  "lcscId": "C7422850",
+  "mpn": "TM40P06D",
+  "manufacturer": "Tritech-MOS",
+  "description": "P-Channel 60V Surface Mount TO-252-3L",
+  "category": "transistor",
+  "package": "TO-252-3L",
+  "stock": 2500,
+  "priceUsd": 0.3977,
+  "parameters": {
+    "Operating Temperature": "-",
+    "Drain to Source Voltage": "60V",
+    "Output Capacitance(Coss)": "134pF",
+    "Current - Continuous Drain(Id)": "30A",
+    "Ciss-Input Capacitance": "4.026nF",
+    "Pd - Power Dissipation": "-",
+    "Reverse Transfer Capacitance (Crss)": "98pF",
+    "RDS(on)": "23mΩ@10V",
+    "Number": "1 P-Channel",
+    "Gate Charge(Qg)": "68nC@10V",
+    "Gate Threshold Voltage (Vgs(th))": "1.6V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/14271a6cf7fe60c935334b5332b3dccb.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED and CONFIRMED - power path and both channel load switches",
+  "notes": [
+    "60 V, 30 A, 23 mOhm @10V Vgs, TO-252. At the full 5 A bus current that is 0.58 W, comfortable in a TO-252 with a copper pour.",
+    "Vgs(th) 1.6 V, Qg 68 nC @10V. The high Qg is helpful here rather than a drawback: the gate RC that sets the inrush ramp wants a slow turn-on.",
+    "Chosen over the alternatives on dissipation. AOD407 (C6396162) is 68 mOhm = 1.70 W and has far better stock (42k vs 2.5k) if this one runs out. MOT1793G (C7495206) is 100 V but 85 mOhm = 2.13 W. SI7489DP (C499484) is 100 V and 41 mOhm but $4.38.",
+    "60 V gives 1.67x margin on a 36 V bus. It does NOT leave room for a future 48 V/240 W bus - that would want the 100 V part. Judged acceptable because 48 V requires respinning every module anyway (the XL1509 is a 40 V part), so the door is not one this FET closes.",
+    "FOUND VIA the jlcpcb MCP parametric search. The keyword-only search had led to the $4.38 SI7489 - 10x the price and 3x the dissipation of this part.",
+    "USED IN THREE PLACES: the PD power path (5 A, 0.58 W) and both channel load switches (2.43 A each, 0.14 W). One part number, one gate-drive design (2N7002 + BZT52C12 + resistors), better volume pricing. At 3 per board the 2.5k stock covers ~830 boards.",
+    "Fallback if stock runs short: AOD407 (C6396162), 42k stock, 68 mOhm. Fine for the channel switches at 2.43 A (0.40 W); hotter but workable on the main path (1.70 W).",
+    "60 V vs 100 V RESOLVED in favour of this part, on thermals: 0.58 W against the 100 V MOT1793G's 2.13 W, which the iPhone-16 size target makes awkward. An earlier body-diode argument was also offered and is RETRACTED - it does not hold for input-side surges (Q1 off, bus discharged, diode reverse-biased). The TVS concern is instead removed by using SMAJ36CA (Vc 58.1 V) rather than SMAJ40CA (Vc ~64 V)."
+  ]
+}

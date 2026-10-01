@@ -1,0 +1,42 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C2903825",
+  "@type": "Component",
+  "lcscId": "C2903825",
+  "mpn": "SS36",
+  "manufacturer": "LGE",
+  "description": "Diode Independent 60V 3A Surface Mount DO-214AC(SMA)",
+  "category": "diode",
+  "package": "DO-214AC(SMA)",
+  "stock": 15080,
+  "priceUsd": 0.0629,
+  "parameters": {
+    "Operating Junction Temperature Range": "-55℃~+150℃",
+    "Voltage - DC Reverse (Vr) (Max)": "60V",
+    "Diode Configuration": "Standalone",
+    "Voltage - Forward(Vf@If)": "750mV@3A",
+    "Reverse Leakage Current (Ir)": "500uA@60V",
+    "Non-Repetitive Peak Forward Surge Current": "70A",
+    "Current - Rectified": "3A"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/e8a285a15b5ef18869dfc48bcc8570f5.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "notes": [
+    "USED ON THE CONTROLLER as the TPS54360B's catch diode. That part is non-synchronous and 'requires an external catch diode between the SW pin and GND' (TPS54360B datasheet p.26) - it was missing from the BOM until the thermal pass. 60 V blocks the 36 V input; average current is Iout x (1-D) = 0.86 A against a 3 A rating; it dissipates ~0.43 W, the fourth-largest heat source on the board.",
+    "CORRECTION: previously recorded as 'the catch diode in use on the V3 module'. That was an over-claim. C2903825 appears in the .epro2 project library but is NOT placed on any complete board in that archive. The boards that are fully specified there are the LED matrix PCB (36 WS2812 + 36 100nF + 3 connectors, no converter) and a v1 variant with an LT1085CT-5. The sheet that does carry a converter (L, D, COUT, U x4) has no LCSC parts assigned to those components.",
+    "The figures below are sound arithmetic on an ASSUMED part, not a reading of the built design. Treat them as conditional on the module actually using an SS36.",
+    "If it is the catch diode: 3.0 A average forward rectified, 60 V (datasheet p.1). At 36 V in / 5 V out the duty is 0.14, so it carries 2.16 x 0.86 = 1.86 A average at full white, 62% of rating. Dissipates roughly 1 W, the hottest part on the module, with no protection of its own."
+  ],
+  "designVerdict": "SELECTED - TPS54360B catch diode on the controller (module role still unconfirmed)"
+}

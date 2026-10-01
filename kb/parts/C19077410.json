@@ -1,0 +1,42 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19077410",
+  "@type": "Component",
+  "lcscId": "C19077410",
+  "mpn": "BZT52C12",
+  "manufacturer": "R+O",
+  "description": "Zener Diode Independent 12V 350mW Surface Mount SOD-123",
+  "category": "diode",
+  "package": "SOD-123",
+  "stock": 499815,
+  "priceUsd": 0.017,
+  "parameters": {
+    "Diode Configuration": "1 Independent",
+    "Tolerance": "-",
+    "Operating Junction Temperature Range": "-55℃~+150℃",
+    "Pd - Power Dissipation": "350mW",
+    "Reverse Leakage Current (Ir)": "100nA@8V",
+    "Impedance(Zzt)": "25Ω",
+    "Zener Voltage(Range)": "11.4V~12.6V",
+    "Zener Voltage(Nom)": "12V",
+    "Impedance(Zzk)": "150Ω"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02a7f2c734d5d8407bcaa05ee2a504ab.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - Vgs clamp on the power-path P-FET",
+  "notes": [
+    "BZT52C12, 12 V Zener, SOD-123, 552k stock, $0.017. Without it the P-FET gate would see the full 36 V source-to-gate, far beyond the TM40P06D's +/-20 V Vgs limit.",
+    "12 V is above the 10 V at which TM40P06D's 23 mOhm RDS(on) is specified, so the FET is fully enhanced, and 8 V below its 20 V limit."
+  ]
+}

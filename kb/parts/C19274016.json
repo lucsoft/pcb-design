@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19274016",
+  "@type": "Component",
+  "lcscId": "C19274016",
+  "mpn": "HC-TYPE-C-16P-3M2S",
+  "manufacturer": "Hong Cheng",
+  "description": "USB-C (USB TYPE-C) Receptacle Connector 16 Position Surface Mount, Right Angle",
+  "category": "connector",
+  "package": "SMD",
+  "stock": 7830,
+  "priceUsd": 0.0697,
+  "parameters": {
+    "Protocol Standard": "-",
+    "Number of Ports": "1",
+    "Supplementary Features": "-",
+    "Number of Contacts": "16P",
+    "Connector Type": "Type-C",
+    "Center Height": "1.68mm",
+    "Voltage Rating": "5V",
+    "Operating Temperature": "-25℃~+85℃",
+    "Length": "7.35mm",
+    "Gender": "Female",
+    "Mounting Type": "Surface Mount, Right Angle"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/96ebd0877c813c08e0b72d78ddb0cf2a.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - 3.0 A / 5.0 V rated, needs 5 A / 36 V",
+  "notes": [
+    "Datasheet note 4-1: CURRENT RATING 3.0 A, VOLTAGE RATING 5.0 V. The design needs 5 A at 36 V - 1.67x over on current, which was never flagged; only the voltage was. Highest-stress part on the board. A replacement must be explicitly qualified 5 A / 50 V for EPR.",
+    "16-pin Type-C, $0.070, 7.9k stock. 16 pins is the minimum that carries CC1/CC2 for PD AND D+/D- for the ESP32-C6's native USB. The 6-pin parts in the catalogue are power-only and will not work here.",
+    "UNVERIFIED: whether it is rated for EPR voltages. The USB-C spec allows 50 V on VBUS for EPR, but cheap receptacles are often qualified only to 20 V. At a 36 V bus this matters. Read the datasheet before committing."
+  ]
+}

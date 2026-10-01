@@ -1,0 +1,44 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C57928",
+  "@type": "Component",
+  "lcscId": "C57928",
+  "mpn": "SN65HVD75DR",
+  "manufacturer": "TI",
+  "description": "1/1 Transceiver Half RS422, RS485 SOIC-8",
+  "category": "ic",
+  "package": "SOIC-8",
+  "stock": 35270,
+  "priceUsd": 0.5864,
+  "parameters": {
+    "Voltage - Supply": "3V~3.6V",
+    "Type": "Transceiver",
+    "Data Rate": "20Mbps",
+    "Number of Nodes": "213",
+    "Operating Temperature": "-40℃~+125℃",
+    "ESD Protect": "±15kV",
+    "Communication Mode": "Half-Duplex",
+    "Number of Drivers": "1",
+    "Features": "Tx/Rx enable;Enable shutdown;Fail-safe;Low-power mode;Thermal shutdown protection",
+    "Number of Receivers": "1",
+    "Quiescent Supply Current": "950uA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/819838ee06654d4b8c9e76b0a4745f2b.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SUPERSEDED by MAX3485 (C6395158) - same job, $0.59 vs $0.35",
+  "notes": [
+    "SN65HVD75, 3.3 V differential transceiver, SOIC-8. Superseded: the MAX3485 (C6395158) does the same job at $0.35 against $0.59 and is in JLCPCB's assembly catalogue. Kept on record only so the comparison is not redone.",
+    "The interconnect method is NOT open - the design uses a differential pair."
+  ]
+}

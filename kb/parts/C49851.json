@@ -1,0 +1,48 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C49851",
+  "@type": "Component",
+  "lcscId": "C49851",
+  "mpn": "INA226AIDGSR",
+  "manufacturer": "TI",
+  "description": "0V~36V 2.5uV 100pA VSSOP-10 Current Regulation/Management RoHS",
+  "category": "ic",
+  "package": "VSSOP-10",
+  "stock": 43127,
+  "priceUsd": 0.7621,
+  "parameters": {
+    "Features": "High-side detection;Low-side detection;Bidirectional detection;Power monitoring;Digital output interface;Programmable threshold alarm;Enable/shutdown function",
+    "Vcm - Common Mode Voltage": "0V~36V",
+    "Output Current": "-",
+    "Bandwidth": "-",
+    "Input Voltage (Vin)": "2.7V~5.5V",
+    "Operating Temperature": "-40℃~+125℃",
+    "Gain": "-",
+    "Common Mode Rejection Ratio(CMRR)": "140dB",
+    "Quiescent Current": "330uA",
+    "Vos - Input Offset Voltage": "2.5uV",
+    "Ib - Input Bias Current": "100pA",
+    "Number of Channels": "-",
+    "Differential Voltage": "±40V",
+    "Input Offset Voltage Drift(Vos TC)": "0.1uV/℃"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/c67b965eb2a01e8d671b6f15d639e314.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "notes": [
+    "Common-mode and VBUS absolute max 40 V. On a 36 V bus that is only 1.11x margin, so it is NOT usable high-side here.",
+    "Used LOW SIDE instead - shunt in the ground return, common mode near 0 V, so the 40 V rating is irrelevant. Costs the ability to detect an output short to ground, and lifts the load ground by 50 mV at 5 A through a 10 mOhm shunt.",
+    "The 85 V parts that would have allowed high-side sensing (INA228, INA238) are both at zero stock at LCSC, which is what forced this. Low-side turned out to be the better answer anyway."
+  ],
+  "designVerdict": "SELECTED - current sense, LOW SIDE"
+}

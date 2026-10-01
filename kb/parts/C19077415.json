@@ -1,0 +1,43 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19077415",
+  "@type": "Component",
+  "lcscId": "C19077415",
+  "mpn": "BZT52C20",
+  "manufacturer": "R+O",
+  "description": "Zener Diode Independent 20V 350mW Surface Mount SOD-123",
+  "category": "diode",
+  "package": "SOD-123",
+  "stock": 184385,
+  "priceUsd": 0.0174,
+  "parameters": {
+    "Diode Configuration": "1 Independent",
+    "Tolerance": "-",
+    "Operating Junction Temperature Range": "-55℃~+150℃",
+    "Pd - Power Dissipation": "350mW",
+    "Reverse Leakage Current (Ir)": "100nA@14V",
+    "Impedance(Zzt)": "55Ω",
+    "Zener Voltage(Range)": "19V~21V",
+    "Zener Voltage(Nom)": "20V",
+    "Impedance(Zzk)": "225Ω"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02a7f2c734d5d8407bcaa05ee2a504ab.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - clamps the BSS138 follower gate",
+  "notes": [
+    "BZT52C20, 20 V Zener, SOD-123, 184k stock, $0.017.",
+    "Hynetek's reference specifies 28 V. 20 V is chosen deliberately for margin: it puts the VBUS pin at roughly 18.5 V, comfortably inside its 3.15-29.4 V window, where a 28-30 V Zener would place it at ~28.5 V against a 29.4 V recommended maximum. The chip functions we rely on - VBUS presence detection and supply backup - work anywhere in that range, and OVP/UVP are lost to the clamp topology regardless.",
+    "DEVIATION FROM THE VENDOR REFERENCE. Worth validating that nothing else depends on the pin tracking VBUS more closely."
+  ]
+}

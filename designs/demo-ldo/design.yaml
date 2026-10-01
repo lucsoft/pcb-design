@@ -1,0 +1,16 @@
+# 5 V USB input to a 3.3 V rail, with a power LED.
+# Declaring rail voltages is what lets the ERC check pins against their
+# absolute maximum ratings.
+name: demo-ldo
+description: XC6206 3.3V LDO with input/output caps and a power indicator LED
+
+rails:
+  GND:
+    type: ground
+  VBUS:
+    voltage: 5.0
+  VCC_3V3:
+    voltage: 3.3
+
+buses: []
+ignore: []

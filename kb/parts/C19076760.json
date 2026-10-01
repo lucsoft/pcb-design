@@ -1,0 +1,39 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19076760",
+  "@type": "Component",
+  "lcscId": "C19076760",
+  "mpn": "K3A250002010G",
+  "manufacturer": "KYX",
+  "description": "Crystal 25MHz ±10ppm 20pF SMD3225-4P",
+  "category": "crystal",
+  "package": "SMD3225-4P",
+  "stock": 23470,
+  "priceUsd": 0.0676,
+  "parameters": {
+    "Frequency Stability": "±20ppm",
+    "Operating Temperature": "-40℃~+85℃",
+    "Load Capacitance": "20pF",
+    "Equivalent Series Resistance(ESR)": "30Ω",
+    "Normal temperature Frequency Tolerance": "±10ppm",
+    "Frequency": "25MHz"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/d965d0cbf007007e8a83e30e91a2ba6e.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - W5500 reference clock",
+  "notes": [
+    "25 MHz, SMD3225-4P, $0.068, 23k stock. The W5500 needs an external 25 MHz crystal; the ESP32-C6 module has its own on board.",
+    "CONFIRM the load capacitance against the W5500 datasheet before committing the matching capacitors - it was not checked here."
+  ]
+}

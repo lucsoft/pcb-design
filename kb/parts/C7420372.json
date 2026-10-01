@@ -1,0 +1,43 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7420372",
+  "@type": "Component",
+  "lcscId": "C7420372",
+  "mpn": "H5VL10B",
+  "manufacturer": "R+O",
+  "description": "10VC Clamp 5A Ipp ESD DIODE DFN1006-2L",
+  "category": "diode",
+  "package": "DFN1006-2L",
+  "stock": 10483150,
+  "priceUsd": 0.0065,
+  "parameters": {
+    "Clamping Voltage": "10V",
+    "Operating Temperature": "-55℃~+125℃",
+    "Peak Pulse Current (Ipp)": "5A",
+    "Peak Pulse Power Dissipation (Ppp)": "50W",
+    "Number of Channels": "1",
+    "Voltage - Breakdown": "5.6V",
+    "type": "ESD",
+    "Reverse Leakage Current (Ir)": "100nA",
+    "Polarity": "Bidirectional",
+    "Reverse Stand-Off Voltage (Vrwm)": "5V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/595e68ef375462f0ed359f09f0579884.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - ESD on data lines",
+  "notes": [
+    "H5VL10B, DFN1006-2L, 12.9M stock, $0.0065. Low-capacitance ESD clamp for USB D+/D-, the CC lines, and the two WS2812 data outputs.",
+    "Low capacitance matters on D+/D- (USB 2.0 full speed) and on an 800 kbps WS2812 line driven down metres of cable. A general-purpose TVS would load both."
+  ]
+}

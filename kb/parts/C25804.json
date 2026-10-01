@@ -1,0 +1,46 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C25804",
+  "@type": "Component",
+  "lcscId": "C25804",
+  "mpn": "0603WAF1002T5E",
+  "manufacturer": "UNI-ROYAL",
+  "description": "10kΩ ±1% 100mW 0603 Thick Film Resistor",
+  "category": "resistor",
+  "package": "0603",
+  "stock": 0,
+  "priceUsd": 0.0019,
+  "parameters": {
+    "Power(Watts)": "100mW",
+    "Resistance": "10kΩ",
+    "Voltage Rating": "75V",
+    "Operating Temperature": "-55℃~+155℃",
+    "Type": "Thick Film Resistor",
+    "Temperature Coefficient": "±100ppm/℃",
+    "Tolerance": "±1%"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf",
+  "retrieved": "2026-10-01",
+  "pins": [
+    {
+      "number": "1",
+      "name": "1",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "2",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "0603 chip resistor, two-terminal passive"
+  },
+  "tier": null
+}

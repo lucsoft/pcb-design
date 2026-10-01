@@ -1,0 +1,80 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C5446",
+  "@type": "Component",
+  "lcscId": "C5446",
+  "mpn": "XC6206P332MR-G",
+  "manufacturer": "TOREX",
+  "description": "3.3V Positive Fixed SOT-23-3L Voltage Regulators - Linear, Low Drop Out (LDO) Regulators RoHS",
+  "category": "regulator",
+  "package": "SOT-23-3L",
+  "stock": 312325,
+  "priceUsd": 0.1441,
+  "parameters": {
+    "Output Voltage": "3.3V",
+    "Number of Outputs": "1",
+    "Operating Temperature": "-40℃~+85℃@(Ta)",
+    "Supply Current (Iq)": "1uA",
+    "Output Configuration": "Positive",
+    "Output Current": "200mA",
+    "Operating Voltage": "6V",
+    "Features": "Short Circuit Protection;Over Current Protection",
+    "Output Type": "Fixed"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/221c990eb3a74b8a8233f22168ce0d59.pdf",
+  "retrieved": "2026-10-01",
+  "tier": "basic",
+  "pins": [
+    {
+      "number": "1",
+      "name": "VSS",
+      "type": "power_in"
+    },
+    {
+      "number": "2",
+      "name": "VOUT",
+      "type": "power_out",
+      "vMax": 7.0
+    },
+    {
+      "number": "3",
+      "name": "VIN",
+      "type": "power_in",
+      "vMax": 7.0
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "datasheet p.2 PIN ASSIGNMENT (SOT-23 column); limits p.3 ABSOLUTE MAXIMUM RATINGS"
+  },
+  "rules": [
+    {
+      "id": "vin-cap",
+      "appliesTo": [
+        "VIN"
+      ],
+      "requires": "decoupling",
+      "value": "1uF",
+      "severity": "error",
+      "note": "datasheet p.1 TYPICAL APPLICATION: CIN 1uF ceramic at the input"
+    },
+    {
+      "id": "vout-cap",
+      "appliesTo": [
+        "VOUT"
+      ],
+      "requires": "decoupling",
+      "value": "1uF",
+      "severity": "error",
+      "note": "datasheet p.1: CL 1uF ceramic required for loop stability; the regulator can oscillate without it"
+    }
+  ],
+  "notes": [
+    "SOT-23 pin order is VSS/VOUT/VIN (1/2/3) — VIN is NOT pin 1."
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C524806",
+  "@type": "Component",
+  "lcscId": "C524806",
+  "mpn": "TPS54360BDDAR",
+  "manufacturer": "TI",
+  "description": "2.5MHz Step-down type Adjustable 800mV~58.8V 3.5A SOIC-8-EP Voltage Regulators - DC DC Switching Regulators RoHS",
+  "category": "regulator",
+  "package": "SOIC-8-EP",
+  "stock": 60000,
+  "priceUsd": 0.7605,
+  "parameters": {
+    "Operating Temperature": "-40℃~+150℃@(TJ)",
+    "Frequency - Switching": "2.5MHz",
+    "Function": "Step-down type",
+    "Number of Outputs": "1",
+    "Features": "Cycle-by-cycle current limiting;Light load efficient mode;Frequency synchronization;External compensation;Overcurrent Protection",
+    "Output Type": "Adjustable",
+    "Topology": "Buck",
+    "Operating Voltage": "4.5V~60V",
+    "Switch tube (built-in/external)": "Built-in",
+    "Output Voltage": "800mV~58.8V",
+    "Output Current": "3.5A",
+    "Quiescent Current": "146uA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/ae818327cbcf892222f6d1e99cbd6f65.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "notes": [
+    "Chosen specifically for 5 V bus operation. Its automatic BOOT recharge circuit allows 'duty cycles approaching 100%', so 'the maximum output voltage is near the minimum input supply voltage' (datasheet p.10). An ordinary buck cannot produce 5 V from a 5 V input; this one passes through.",
+    "4.5-60 V in, 3.5 A, internal UVLO 4.3 V rising.",
+    "Dropout formula, datasheet p.12: VINmin = (VOUT + VF + Rdc*IOUT)/0.99 + RDSon*IOUT - VF. At 0.7 A this gives a 4.60 V rail from a 4.75 V bus (USB-C low tolerance), 4.85 V from 5.00 V, and a clean 5.00 V at 5.25 V and above. All within the 74AHCT541's 4.5-5.5 V.",
+    "The sag at low bus voltage is self-correcting: the modules' XL1509 is also in pass-through at 5 V, so module VDD falls too, and WS2812 VIH is 0.7 x VDD. The level shifter and the modules track together."
+  ],
+  "designVerdict": "SELECTED - bus 5-36 V to the 5 V rail"
+}

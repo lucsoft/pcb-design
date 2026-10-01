@@ -1,0 +1,37 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C541406",
+  "@type": "Component",
+  "lcscId": "C541406",
+  "mpn": "CC0402KRX7R5BB104",
+  "manufacturer": "YAGEO",
+  "description": "100nF ±10% 6.3V Ceramic Capacitor X7R 0402",
+  "category": "capacitor",
+  "package": "0402",
+  "stock": 0,
+  "priceUsd": 0.0023,
+  "parameters": {
+    "Capacitance": "100nF",
+    "Temperature Coefficient": "X7R",
+    "Tolerance": "±10%",
+    "Voltage Rating": "6.3V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "notes": [
+    "Per-LED decoupling, 36 per module. This is the V3 improvement over V1/V2, which had no decoupling at all.",
+    "ZERO STOCK at LCSC as of 2026-10-01. An equivalent 100nF 0402 X7R is needed before the next module order. Affects the module, not the controller."
+  ],
+  "designVerdict": "IN USE on the V3 module - STOCK 0"
+}

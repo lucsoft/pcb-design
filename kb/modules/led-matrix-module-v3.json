@@ -1,0 +1,374 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "pcb:LedMatrixModuleV3",
+  "@type": "pcb:Assembly",
+  "name": "LED matrix module V3",
+  "description": "6x6 WS2812D-F8 behind an XL1509-5.0E1 buck, one 100nF per LED. Chained. NOTE: the EasyEDA project is titled 'V2' but is actually V3 - V2 used a different converter and had no decoupling capacitors.",
+  "retrieved": "2026-10-01",
+  "composedOf": [
+    {
+      "lcscId": "C139126",
+      "mpn": "WS2812D-F8",
+      "quantity": 36,
+      "role": "LED array"
+    },
+    {
+      "lcscId": "C61063",
+      "mpn": "XL1509-5.0E1",
+      "quantity": 1,
+      "role": "5 V buck"
+    },
+    {
+      "lcscId": "C541406",
+      "mpn": "CC0402KRX7R5BB104",
+      "quantity": 36,
+      "role": "per-LED decoupling, 100nF 0402",
+      "note": "STOCK 0 at LCSC as of 2026-10-01 - needs an alternative for the next order"
+    },
+    {
+      "lcscId": "C2903825",
+      "mpn": "SS36",
+      "quantity": 1,
+      "role": "catch diode",
+      "note": "3.0 A average forward rectified, 60 V. At 36 V in / 5 V out the duty is 0.14, so it carries 2.16 x 0.86 = 1.86 A average, 62% of rating. Properly specified. Still dissipates ~1 W and is the hottest part, but not the liability first assumed."
+    }
+  ],
+  "envelope": {
+    "busVoltageRange": {
+      "min": 4.5,
+      "max": 40,
+      "unit": "V",
+      "note": "set by the XL1509 input range"
+    },
+    "outputRail": {
+      "value": 5.0,
+      "tolerance": 0.2,
+      "unit": "V"
+    },
+    "fullWhiteCurrent": {
+      "value": 2.16,
+      "unit": "A",
+      "note": "36 LEDs x 60 mA; EXCEEDS the XL1509's 2.0 A rating by 8%"
+    },
+    "ratedOutputPower": {
+      "value": 10.0,
+      "unit": "W",
+      "note": "5 V x 2.0 A, the XL1509's hard cap"
+    },
+    "fullWhiteOutputPower": {
+      "value": 10.8,
+      "unit": "W"
+    },
+    "busPowerAtFullWhite": {
+      "value": 14.4,
+      "unit": "W",
+      "note": "estimated at ~75% efficiency on a 36 V bus; the datasheet only characterises 12 V in"
+    },
+    "sustainableBrightness": {
+      "value": 0.7,
+      "unit": "fraction",
+      "note": "ESTIMATE, thermally limited, not measured. See thermalLimit below."
+    }
+  },
+  "thermalLimit": {
+    "summary": "Sustained brightness is limited by heat, not by available power. Raising the PD budget cannot raise it.",
+    "catchDiodeDissipation": {
+      "value": 0.89,
+      "unit": "W",
+      "note": "0.5 V Vf x 2.16 A x (1 - 0.179). This is the hottest single part in the module and it has NO protection."
+    },
+    "freeAirBudget": {
+      "value": 1.0,
+      "unit": "W",
+      "note": "(125 C TJmax - 25 C ambient) / 100 C/W RthJA"
+    },
+    "transientBehaviour": "RthJA is a steady-state figure. A SOIC-8 with copper has a thermal time constant of tens of seconds, so sub-second full-white flashes barely move the junction. Only the time-average has to stay under the ceiling.",
+    "verification": "UNVERIFIED BY MEASUREMENT. Confirm by running one module at full white on a bench supply and measuring XL1509 case temperature; above ~85 C the junction is near its limit.",
+    "icDissipationAt36V": {
+      "value": 0.9,
+      "unit": "W",
+      "tolerance": 0.1,
+      "note": "modelled: VCE 1.2 V x 2.16 A x duty 0.179 = 0.46 W conduction, plus switching and quiescent"
+    }
+  },
+  "failureModes": [
+    {
+      "part": "XL1509",
+      "protected": true,
+      "mechanism": "thermal shutdown plus 4 A switch current limit plus frequency foldback",
+      "note": "the IC protects itself, but the thermal shutdown threshold is not specified in the datasheet"
+    },
+    {
+      "part": "catch diode (SS36)",
+      "protected": false,
+      "mechanism": "none",
+      "note": "~1 W at full white, 62% of its 3 A rating. Adequately specified; unprotected but not the weak point once identified."
+    },
+    {
+      "part": "inductor",
+      "protected": false,
+      "mechanism": "none",
+      "note": "saturation and core heating; rating unknown"
+    },
+    {
+      "part": "WS2812D-F8",
+      "protected": true,
+      "mechanism": "internal constant-current drive",
+      "note": "not at risk from overcurrent; VDD absolute max 5.3 V is the only electrical limit"
+    }
+  ],
+  "seeAlso": [
+    "../parts/C61063.json",
+    "../parts/C139126.json"
+  ],
+  "provenance": {
+    "composedOf": "LEDs and 100nF confirmed from the .epro2 via tools/epro.py; the converter and its parts are from the user's statement, NOT the file",
+    "fullWhiteCurrent": "datasheet C139126 p.3 (IF = 20 mA/channel, read via vision)",
+    "ratedOutputPower": "datasheet C61063 p.1",
+    "thermalLimit": "modelled from datasheet C61063 p.5 (RthJA) and p.7 (VCE); NOT measured",
+    "sustainableBrightness": "inferred",
+    "dataInterface": "datasheet C139126 p.1-2",
+    "systemLimits": "calculated; see assumptions",
+    "inrush": "calculated from XL1509 datasheet p.7 bulk cap and bus voltage",
+    "connector": "Wago picoMAX series data; selected for the vibration environment",
+    "cabling": "calculated; topology from the user",
+    "bulkCapacitorSwap": "calculated from XL1509 operating point and cable inductance estimates"
+  },
+  "dataInterface": {
+    "protocol": "WS2812 single-wire NRZ",
+    "bitRate": {
+      "value": 800,
+      "unit": "kbps",
+      "note": "datasheet C139126 p.1"
+    },
+    "timePerLed": {
+      "value": 30,
+      "unit": "us",
+      "note": "24 bits at 800 kbps"
+    },
+    "timePerModule": {
+      "value": 1.08,
+      "unit": "ms",
+      "note": "36 LEDs"
+    },
+    "maxCableBetweenPoints": {
+      "value": 2,
+      "unit": "m",
+      "note": "datasheet C139126 p.1: no extra circuitry needed below 2 m per hop"
+    },
+    "signalRegeneration": "Each pixel reshapes and retransmits, so chain length is not limited by signal degradation - only by the time it takes to clock a frame.",
+    "logicLevelWarning": "VIH minimum is 0.7 x VDD (datasheet C139126 p.2). On a 5 V module rail that is 3.5 V, and an ESP32-C6 GPIO drives only 3.3 V. THE CONTROLLER CANNOT DRIVE THESE DIRECTLY - a level shifter to 5 V is required on every data line.",
+    "datasheetClaimDiscrepancy": "Datasheet p.1 claims 'not less than 2048 cascaded points at 30 fps'. That is internally inconsistent: 2048 x 24 bits at 800 kbps is 61 ms, which is 16 fps, not 30. Use the first-principles figure, not the marketing claim."
+  },
+  "systemLimits": {
+    "assumptions": {
+      "busVoltage": 36,
+      "pdBudgetW": 180,
+      "controllerOverheadW": 5,
+      "moduleBudgetW": 175,
+      "xl1509EfficiencyAt36V": 0.75,
+      "thermalBrightnessCap": 0.7,
+      "channels": 2
+    },
+    "brightnessFormula": "min(0.70, 175 * 0.75 / (N * 10.8))",
+    "fpsFormula": "1e6 / ((N/2) * 36 * 30us + 280us), two data channels",
+    "crossovers": {
+      "thermalToPower": {
+        "value": 17.4,
+        "unit": "modules"
+      },
+      "fps100TwoChannels": {
+        "value": 18,
+        "unit": "modules"
+      },
+      "fps60TwoChannels": {
+        "value": 30,
+        "unit": "modules"
+      }
+    },
+    "table": [
+      {
+        "modules": 10,
+        "brightness": 0.7,
+        "perceived": 0.85,
+        "fps": 176,
+        "binds": "thermal"
+      },
+      {
+        "modules": 14,
+        "brightness": 0.7,
+        "perceived": 0.85,
+        "fps": 128,
+        "binds": "thermal"
+      },
+      {
+        "modules": 20,
+        "brightness": 0.61,
+        "perceived": 0.8,
+        "fps": 90,
+        "binds": "power"
+      },
+      {
+        "modules": 24,
+        "brightness": 0.51,
+        "perceived": 0.73,
+        "fps": 76,
+        "binds": "power"
+      }
+    ],
+    "perceivedBrightnessNote": "'perceived' applies a gamma of 2.2. Luminous output is linear with PWM duty, but human brightness perception is not, so halving the power looks like roughly 73% of the brightness rather than 50%. Degradation with module count is far gentler than the raw power numbers suggest.",
+    "mitigation": "Parallel data lines fix the refresh limit but NOT the power limit. Splitting the chain across 4 outputs multiplies the achievable frame rate by 4; available watts are unchanged. An ESP32-C6 has a small number of RMT TX channels, so 2-4 outputs is the realistic range.",
+    "verification": "Modelled. The 0.75 efficiency and 0.70 thermal cap are both estimates.",
+    "parallelLines": {
+      "decision": "2 channels, 10 modules each.",
+      "rationale": "Frame time is (modules/channels) x 1.08 ms. At 20 modules on 2 channels that is 90 fps, and 180 W caps the wall near 20 modules anyway - channels and power budget run out together. 10 per channel is also the even physical grouping wanted.",
+      "modulesAt100fps": {
+        "1 channel": 9,
+        "2 channels": 18,
+        "4 channels": 36
+      },
+      "frameRateTarget": {
+        "requirement": "~100 fps preferred for audio-reactive work; 60 fps is the hard floor.",
+        "withFourChannels": {
+          "10 modules": 336,
+          "20": 176,
+          "30": 119,
+          "36": 100,
+          "60": 60
+        },
+        "note": "Includes a 0.28 ms inter-frame latch. 4 channels hold 100 fps to 36 modules while power caps at ~30, so frame rate never becomes the binding constraint anywhere in the operating envelope.",
+        "nextBottleneck": "Network, not the LED chain. 30 modules at 100 fps is 1080 pixels x 3 bytes x 100 = 2.59 Mbps, roughly 7 Art-Net/sACN universes. The W5500 over SPI is the usual limiter in high-framerate LED projects.",
+        "inherentFlicker": "WS2812 internal PWM is ~400 Hz (datasheet C139126 p.1). Independent of frame rate, not changeable from the controller, and the reason these flicker on phone video."
+      },
+      "levelShifting": "NOT on the controller. The link is a differential pair, so the 3.3 V to 5 V shift for the WS2812s lives on the converter boards, after the receiver.",
+      "connectorCurrent": "2.43 A per channel balanced, 28% of the picoMAX's 10 A. The connector is not a binding constraint at 2 channels."
+    }
+  },
+  "inrush": {
+    "sourceOfCharge": "Each module carries an input bulk capacitor on its CONVERTER board. THE VALUE IS UNREAD: the project library holds 330 uF, 220 uF and 100 uF in 50 V and the placement data does not disambiguate them. Ripple-sizing calculations below use 220 uF; the inrush ramp is deliberately sized for 330 uF as the worst case, so the ambiguity does not affect the design.",
+    "bulkByCount": {
+      "1": "220uF",
+      "10": "2200uF",
+      "25": "5500uF",
+      "30": "6600uF"
+    },
+    "problem": "Connecting a 36 V bus to several mF with no limiting draws hundreds of amps for microseconds, limited only by wiring resistance and ESR. The PD source trips and cuts VBUS; connector contacts pit and weld.",
+    "slewRequired": {
+      "10 modules under 1 A": "62 ms ramp",
+      "10 modules under 2 A": "31 ms ramp",
+      "25 modules under 2 A": "77 ms ramp"
+    },
+    "solution": "Resolved - see inrush.resolution. The RC on the Figure 6 P-FET gate ramps the bus. The TPS26630 that earlier carried this job was rejected at 36 V (40 V FET, only 1.11x margin).",
+    "resolution": {
+      "decision": "1 second ramp. Gate network: R_pu = 10 MOhm gate-to-source, R_pd = 1 MOhm to the 2N7002 drain, BZT52C12 clamp, C = 1 uF gate-to-drain. CORRECTED from an earlier 100 kOhm / 1 MOhm / 330 nF, which formed a divider giving only 3.27 V Vgs - the FET would never have fully enhanced and would have run several watts at 5 A instead of 0.57 W.",
+      "sizedFor": "40 modules x 330 uF = 13,200 uF - more than the controller can power, so the actual case is always gentler.",
+      "keyPoint": "The FET absorbs 1/2*C*V^2 = 8.55 J regardless of ramp rate. A slower ramp reduces peak power, not energy, so the ramp is chosen on FET dissipation: 28.5 W at 0.3 s versus 8.6 W at 1 s.",
+      "inrushAchieved": {
+        "worst 13.2mF": "0.48 A",
+        "likely 2.2mF": "0.08 A"
+      },
+      "consequence": "No longer depends on reading the module bulk capacitor. Sizing generously cost only startup time.",
+      "unverified": "TM40P06D SOA during the ramp: linear mode for a full second, 17.1 W peak, 8.6 W average, no SOA curve in the datasheet. The 8.55 J also assumes no load current, but the module converters leave UVLO partway through and then draw MORE current as the bus falls, so real dissipation is higher."
+    },
+    "storedEnergyAt36V": {
+      "10 modules": "0.86 J",
+      "25 modules": "2.16 J"
+    }
+  },
+  "connector": {
+    "selected": "Wago picoMAX 3.5, 2091 series, 4-pole",
+    "rating": {
+      "current_A": 10,
+      "wire_max_mm2": 1.5,
+      "wire_max_awg": 14,
+      "pitch_mm": 3.5
+    },
+    "whyThisOne": "Push-in spring termination holds constant force, unlike a screw that backs out under vibration. Male headers carry an integrated locking latch, so the plug cannot walk out. Both vibration failure modes covered without a crimp tool.",
+    "sourcing": "Reichelt or Mouser, NOT LCSC - so JLCPCB cannot place it and the two controller-side headers are hand-soldered. Acceptable for two parts.",
+    "supersedes": "Wurth WR-PHD 2.54 mm (3 A, no keying, no latch) and the Molex Micro-Fit 3.0 / KF2EDG alternatives considered. Micro-Fit was equally vibration-sound (crimp + latch) but needs a 50-150 EUR crimp tool and is not field-repairable with a screwdriver.",
+    "pinout": [
+      "+36V",
+      "GND",
+      "A",
+      "B"
+    ],
+    "consequenceForLimits": "At 10 A the connector stops being a binding constraint: the 2.43 A balanced case is 24%, the 2.80 A worst case 28%, and a 4.0 A full-white flash 40%. The 3 A limit stack that drove the per-channel software cap and the PPTC no longer applies. The binding limit moves to the CABLE - 20 AWG is roughly 5 A chassis wiring, ~2.5 A bundled.",
+    "openPoint": "Exact 4-pole part numbers for header and plug still to be confirmed on Reichelt/Mouser.",
+    "orientationHandling": {
+      "status": "accepted - handled mechanically",
+      "detail": "picoMAX is polarised so the plug cannot go in backwards or offset by a pole. Each module also sits in a hard shell with all LEDs facing the same way, so physical arrangement enforces orientation before the connector matters.",
+      "residualRisk": "A mis-wired cable at assembly, not a mis-plugged one. A/B swapped is non-destructive (inverted data, chain does not light); power onto a data pole destroys the transceiver. Worth a continuity check on the first cable of a batch."
+    },
+    "pinoutRationale": "The differential pair takes two poles, power and ground the other two - exactly 4, which is why the 4-pole part works without going to 5."
+  },
+  "sourceOfTruth": {
+    "warning": "The .epro2 archive holds SEVERAL boards, and the converter is not resolved.",
+    "boardsFound": [
+      {
+        "name": "PCB_LED Matrix",
+        "contents": "36x WS2812D-F8 (C139126), 36x 100nF 0402 (C541406), 3x DS1024-1*4R2 connector",
+        "converter": "none"
+      },
+      {
+        "name": "PCB_LED Matrix v1",
+        "contents": "as above plus LT1085CT-5 (C661212)",
+        "converter": "LT1085 linear"
+      },
+      {
+        "name": "PCB6",
+        "contents": "has L, D, COUT and U x4 designators - a switching converter - but NO LCSC parts assigned to them",
+        "converter": "unidentified"
+      }
+    ],
+    "consequence": "The XL1509-5.0E1, SS36 and the electrolytics are in the project LIBRARY but are not placed on any complete board in the archive. The XL1509 is used because the user stated it directly, not because the file says so. Every thermal and inrush figure in this record is conditional on that.",
+    "openQuestion": "RESOLVED: the converter is a separate board from the LED matrix, mounted behind the wall, connected by wire. The input bulk capacitor is on that converter board and is still unread."
+  },
+  "cabling": {
+    "topology": "controller -> ONE long cable -> first converter board; modules then chain board-to-board like a snake, adjacent on the wall. Only the first cable has length.",
+    "firstCableCarries": {
+      "sustained_A": 2.43,
+      "flash_A": 4.0
+    },
+    "bindingLimit": "power, not data - the differential pair removed the data limit",
+    "maxLengthAt5pct": {
+      "18awg": 17.6,
+      "20awg": 11.1,
+      "22awg": 7.0,
+      "24awg": 4.4,
+      "unit": "m"
+    },
+    "recommendedGauge": {
+      "awg": 20,
+      "practicalLength_m": 11,
+      "note": "a differential pair at 800 kbps is good for tens of metres, so the 5% voltage-drop line is now the only constraint"
+    },
+    "signalIntegrity": [
+      "twist A and B together as a pair",
+      "120 ohm termination at the far end, on the first converter board",
+      "keep the pair away from the +36 V conductor and its converter switching noise"
+    ],
+    "cableLossAt20awg10m_W": 3.93
+  },
+  "environment": {
+    "context": "Mounted on a soundwall for tekno. Sustained high-amplitude vibration.",
+    "consequence": "Gates part selection. Screw terminations and mass-on-long-leads parts are both disfavoured.",
+    "affectedParts": [
+      "module bulk electrolytic (radial, mass on two leads) - the classic vibration solder-joint fatigue case; bond the body or move to SMD polymer / MLCC bank",
+      "JK60-300 PPTC (10.2 mm radial THT) - same geometry, lighter",
+      "converter board inductors - heavy and tall"
+    ],
+    "mechanical": [
+      "standoffs at several points, not two corners - an unsupported span resonates and amplifies acceleration at mid-board parts",
+      "cable strain relief near each connector so cable movement does not load contacts"
+    ]
+  },
+  "bulkCapacitorSwap": {
+    "status": "PARKED - module-side change, not blocking the controller",
+    "motivation": "Electrolytics are bulky, wear out as the electrolyte dries, and are mass on long leads in a vibration environment. The user wants them gone.",
+    "finding1_ripple": "The input cap only needs ~8 uF for ripple. At 36 V in / 5 V out / 2 A the duty is 0.139 and input RMS ripple current is 0.69 A at 150 kHz; 8 uF holds input ripple to 0.2 V. The existing 220-330 uF is roughly 40x oversized for this.",
+    "finding2_damping": "Damping is what the big cap is really doing, and it is the reason a straight swap to ceramic is unsafe. Cable inductance plus input capacitance forms a resonant tank: ~2 uH (2 m) with 20 uF rings at 25 kHz needing 0.32 ohm; 5 uH (5 m) at 15.9 kHz needing 0.50 ohm; 10 uH (10 m) at 11.3 kHz needing 0.71 ohm. A wet electrolytic's ESR supplies that naturally. LED flashes are exactly the load steps that excite a 15 kHz resonance.",
+    "finding3_inrush": "Shrinking the cap collapses the inrush problem: 10 modules x 330 uF = 3300 uF needing a 59 ms ramp, versus 10 x 20 uF = 200 uF needing 4 ms.",
+    "directionIfPursued": "Ceramic bank for ripple and HF, plus a deliberate damping element - either an SMD polymer/hybrid (long life, low profile, no long leads) or an explicit RC damping branch sized per Middlebrook (Cdamp ~4x Cin, R ~ sqrt(L/C)). Note only the FIRST module in each chain sees the long cable; downstream links are board-to-board with little inductance, so they could be all-ceramic.",
+    "caveat": "At a 36 V bus every candidate needs a >=50 V rating, which thins the polymer options considerably."
+  }
+}

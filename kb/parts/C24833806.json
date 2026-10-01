@@ -1,0 +1,191 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C24833806",
+  "@type": "Component",
+  "lcscId": "C24833806",
+  "mpn": "HUSB238A-BB001-QN16R",
+  "manufacturer": "Hynetek",
+  "description": "Power Receiver Controller 1C QFN-16L-EP(3x3) Power Management - Specialized ",
+  "category": "ic",
+  "package": "QFN-16L-EP(3x3)",
+  "stock": 3069,
+  "priceUsd": 0.6572,
+  "parameters": {
+    "Type": "Power Receiver Controller",
+    "Features": "Overvoltage protection;Undervoltage Protection;Thermal Protection;Under-voltage lockout;With enable",
+    "Number of Lines": "1C",
+    "Protocol": "PD 3.1;QC 2.0;BC 1.2",
+    "Operating Temperature": "-40℃~+125℃",
+    "Output Power": "-",
+    "Voltage - Supply": "3.15V~29.4V",
+    "Output Voltage": "5V;9V;12V;15V;20V;28V;48V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/4ea6514a52a5c41dd654270022eda65d.pdf",
+  "retrieved": "2026-10-01",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "D+",
+      "type": "bidirectional",
+      "vMax": 7.0
+    },
+    {
+      "number": "2",
+      "name": "D-",
+      "type": "bidirectional",
+      "vMax": 7.0
+    },
+    {
+      "number": "3",
+      "name": "CC1",
+      "type": "bidirectional",
+      "vMax": 33.0
+    },
+    {
+      "number": "4",
+      "name": "CC2",
+      "type": "bidirectional",
+      "vMax": 33.0
+    },
+    {
+      "number": "5",
+      "name": "VDD",
+      "type": "power_in",
+      "vMax": 7.0
+    },
+    {
+      "number": "6",
+      "name": "DEBUG_N",
+      "type": "bidirectional",
+      "vMax": 7.0
+    },
+    {
+      "number": "7",
+      "name": "EN_HVDCP/OUT1",
+      "type": "bidirectional",
+      "vMax": 7.0
+    },
+    {
+      "number": "8",
+      "name": "ADDR/ORIENT",
+      "type": "bidirectional",
+      "vMax": 7.0
+    },
+    {
+      "number": "9",
+      "name": "SDA/SNK_VSET",
+      "type": "bidirectional",
+      "vMax": 7.0
+    },
+    {
+      "number": "10",
+      "name": "SCL/SNK_ISET",
+      "type": "bidirectional",
+      "vMax": 7.0
+    },
+    {
+      "number": "11",
+      "name": "INT_N",
+      "type": "open_collector",
+      "vMax": 7.0
+    },
+    {
+      "number": "12",
+      "name": "EN_N",
+      "type": "input",
+      "vMax": 7.0
+    },
+    {
+      "number": "13",
+      "name": "FAULT/OUT2",
+      "type": "output",
+      "vMax": 7.0
+    },
+    {
+      "number": "14",
+      "name": "FLGIN",
+      "type": "input",
+      "vMax": 7.0
+    },
+    {
+      "number": "15",
+      "name": "GATE",
+      "type": "open_collector",
+      "vMax": 33.0
+    },
+    {
+      "number": "16",
+      "name": "VBUS",
+      "type": "power_in",
+      "vMax": 33.0
+    },
+    {
+      "number": "17",
+      "name": "GND",
+      "type": "power_in"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": "datasheet p.4-5 Table 1 Pin Function Descriptions; limits p.9 Table 4 ABSOLUTE MAXIMUM RATINGS"
+  },
+  "notes": [
+    "FIGURE 6 RESOLVED (source: https://www.hynetek.com/2730.html, found by research, NOT in the datasheet). The unlabelled 'Voltage Regulator' is a BSS138 source follower: gate via 10 kOhm pull-up clamped by a 28 V Zener, source to the VBUS pin. A 0 Ohm link bypasses it at 28 V and below.",
+    "THE GATE DRIVE NEEDS A SEPARATE FIX THAT FIGURE 6 DOES NOT SHOW. Figures 4, 5 and 6 all draw the SAME Zener gate network - it is not a 48 V feature. Above 28 V Hynetek replaces it: GATE pulled to the MCU's 3V3 through 5.1 kOhm, level-shifted through a PMOS-then-NMOS pair into the high-side P-FET, clamped by a 15 V Zener and 100 kOhm. Reading Figure 6 alone and copying its gate network would be wrong at 36 V.",
+    "NO OVERVOLTAGE PROTECTION ABOVE 28 V. Hynetek states it directly: '因为HUSB238A没有36V/48V OV保护'. The clamp preserves the supply function and VBUS-present detection but destroys OVP, UVP and the discharge path. This is also why 48 V is I2C-only while GPIO mode stops at 28 V. Accepted consequence of the topology, not a mistake to design around - but it means the bus TVS and our own ADC sense are the only overvoltage protection the system has.",
+    "INDUSTRY CONTEXT: this clamp approach is the outlier. The common solution is an active 0.42x ratiometric level shifter in a companion IC (TI TPD4S480, Kinetic KTU1133, Fortune FA2218), which PRESERVES measurement where Hynetek's clamp does not.",
+    "VBUS PIN LIMIT IS NOT THE SYSTEM LIMIT. The pin is 3.15-29.4 V recommended, 33 V absolute (p.6 Table 2, p.9 Table 4), but the chip supports up to 48 V/5 A at the SYSTEM level. Figure 6 on p.16, 'HUSB238A configured as I2C mode (Maximum 48V)', shows how: VBUS reaches the chip's VBUS pin through an external VOLTAGE REGULATOR that drops it into range, while the high-voltage bus passes through an external P-FET driven by GATE, with a Zener clamping the gate network to protect the 33 V GATE pin. Figures 4 and 5 on p.15 are the 28 V variants; p.16 is easy to miss because the schematic is a pure image with no extractable text.",
+    "EPR fixed PDOs are 28 V, 36 V and 48 V. Which one to request is a SYSTEM decision set by the load: the XL1509 on the LED modules is 4.5-40 V operating / 45 V absolute, so 48 V would destroy them. 36 V x 5 A = 180 W is the highest usable option.",
+    "Pin 17 is the exposed thermal pad and is GND. It must be connected.",
+    "ADDR pin 8 selects the mode at power-up: tied to VDD = I2C addr 0x62, to GND = I2C addr 0x42, floating = GPIO mode. Use a 900k resistor when tying, to keep standby current low.",
+    "GPIO mode caps at 28 V/3.25 A (91 W). I2C mode is required for 5 A.",
+    "VDD can be left unpowered: the chip self-powers from VBUS (pin 16) when VDD is absent, so it negotiates before any downstream rail exists.",
+    "D+/D- (pins 1-2) are for legacy protocol detection (BC1.2, QC2.0, HVDCP) only. PD itself runs on CC1/CC2, so they can be left unconnected if only PD is needed."
+  ],
+  "rules": [
+    {
+      "id": "vdd-cap",
+      "appliesTo": [
+        "VDD"
+      ],
+      "requires": "decoupling",
+      "value": "1uF",
+      "severity": "error",
+      "note": "datasheet p.4: place a 1uF ceramic across VDD and GND"
+    },
+    {
+      "id": "ep-ground",
+      "appliesTo": [
+        "17"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "pin 17 is the exposed pad and the only GND connection"
+    },
+    {
+      "id": "int-pullup",
+      "appliesTo": [
+        "INT_N"
+      ],
+      "requires": "pullup",
+      "severity": "error",
+      "note": "datasheet p.5: INT_N is open-drain and needs a pull-up to be readable"
+    },
+    {
+      "id": "hv-config",
+      "appliesTo": [
+        "VBUS",
+        "GATE"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "Above 28 V use the p.16 Figure 6 topology AND Hynetek's separate gate-drive fix from hynetek.com/2730.html - the gate network drawn in Figures 4/5/6 is the 28 V one and is NOT sufficient at 36 V. Do not tie VBUS or GATE straight to a 36 V bus."
+    }
+  ]
+}

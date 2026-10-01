@@ -1,0 +1,206 @@
+#!/usr/bin/env python3
+"""Regression tests for the ERC engine.
+
+Each case is a tiny netlist built to trip exactly one rule. The assertion is
+that the rule fires — and, for the negative cases, that it stays quiet when
+the design is correct, because a checker that always complains gets ignored.
+
+    nix-shell --run 'python3 tests/test_erc.py'
+"""
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+ERC = ROOT / "tools" / "erc.py"
+
+DESIGN = """
+rails:
+  GND: {type: ground}
+  VBUS: {voltage: 5.0}
+  VCC_3V3: {voltage: 3.3}
+  V12: {voltage: 12.0}
+buses: []
+"""
+
+I2C_DESIGN = """
+rails:
+  GND: {type: ground}
+  VCC_3V3: {voltage: 3.3}
+buses:
+  - {type: i2c, sda: SDA, scl: SCL}
+"""
+
+
+def comp(key, desig, lcsc, pins, **props):
+    return {key: {"props": {"Designator": desig, "Supplier Part": lcsc, **props},
+                  "pins": pins}}
+
+
+def run(netlist: dict, design: str = DESIGN) -> list:
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        (d / "netlist.json").write_text(json.dumps(netlist))
+        (d / "design.yaml").write_text(design)
+        out = subprocess.run(
+            [sys.executable, str(ERC), str(d / "netlist.json"), "--json"],
+            capture_output=True, text=True)
+        if out.returncode == 2:
+            raise RuntimeError(out.stderr)
+        return json.loads(out.stdout)
+
+
+def rules(findings) -> set:
+    return {f["rule"] for f in findings}
+
+
+# A correct LDO stage: both caps present, nothing floating.
+GOOD_LDO = {
+    **comp("gge1", "U1", "C5446", {"1": "GND", "2": "VCC_3V3", "3": "VBUS"}),
+    **comp("gge2", "C1", "C1525", {"1": "VBUS", "2": "GND"}),
+    **comp("gge3", "C2", "C1525", {"1": "VCC_3V3", "2": "GND"}),
+}
+
+CASES = []
+
+
+def case(name):
+    def deco(fn):
+        CASES.append((name, fn))
+        return fn
+    return deco
+
+
+@case("clean design produces no errors")
+def _():
+    found = run(GOOD_LDO)
+    errs = [f for f in found if f["severity"] == "error"]
+    assert not errs, f"unexpected errors: {[e['rule'] for e in errs]}"
+
+
+@case("C1 catches a net with a single pin")
+def _():
+    n = dict(GOOD_LDO)
+    n["gge3"]["pins"]["2"] = "ORPHAN"
+    assert "C1-single-pin-net" in rules(run(n))
+
+
+@case("C2 catches nets differing only in punctuation")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge3"]["pins"]["1"] = "VCC3V3"   # vs VCC_3V3
+    assert "C2-net-name-collision" in rules(run(n))
+
+
+@case("C3 suggests the intended net for a one-character typo")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge3"]["pins"]["2"] = "GN"
+    found = run(n)
+    assert "C3-probable-typo" in rules(found)
+    hint = next(f["hint"] for f in found if f["rule"] == "C3-probable-typo")
+    assert "GND" in hint, hint
+
+
+@case("K1 flags a part that is not in the knowledge base")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n.update(comp("gge4", "U2", "C999999999", {"1": "VBUS", "2": "GND"}))
+    assert "K1-unknown-part" in rules(run(n))
+
+
+@case("K3 flags a pin number the part does not have")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge1"]["pins"]["7"] = "GND"
+    assert "K3-unknown-pin" in rules(run(n))
+
+
+@case("K4 flags an unconnected supply pin as an error")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    del n["gge1"]["pins"]["3"]           # drop VIN
+    found = run(n)
+    assert "K4-unconnected-pin" in rules(found)
+    sev = next(f["severity"] for f in found if f["rule"] == "K4-unconnected-pin")
+    assert sev == "error", f"a floating supply pin should be an error, got {sev}"
+
+
+@case("P1 catches a pin driven above its absolute maximum")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge1"]["pins"]["3"] = "V12"       # VIN rated 7.0 V, rail is 12 V
+    n["gge2"]["pins"]["1"] = "V12"
+    found = run(n)
+    assert "P1-overvoltage" in rules(found), rules(found)
+
+
+@case("P2 catches a supply rail with no capacitor")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    del n["gge2"]                        # drop the input cap
+    n = {f"gge{i+1}": v for i, v in enumerate(n.values())}
+    assert "P2-no-decoupling" in rules(run(n))
+
+
+@case("R-vout-cap fires when the LDO loses its stability capacitor")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    del n["gge3"]
+    found = run(n)
+    assert "R-vout-cap" in rules(found), rules(found)
+
+
+@case("S1 catches non-sequential component keys")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge9"] = n.pop("gge3")
+    assert "S1-key-sequence" in rules(run(n))
+
+
+@case("S3 catches a reused designator")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge3"]["props"]["Designator"] = "C1"
+    assert "S3-duplicate-designator" in rules(run(n))
+
+
+@case("S4 catches a missing LCSC part number")
+def _():
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge3"]["props"]["Supplier Part"] = ""
+    assert "S4-missing-lcsc" in rules(run(n))
+
+
+@case("B2 catches an I2C bus with no pull-ups")
+def _():
+    n = {
+        **comp("gge1", "U1", "C5446", {"1": "GND", "2": "VCC_3V3", "3": "SDA"}),
+        **comp("gge2", "C1", "C1525", {"1": "VCC_3V3", "2": "GND"}),
+        **comp("gge3", "C2", "C1525", {"1": "SCL", "2": "GND"}),
+    }
+    assert "B2-i2c-no-pullup" in rules(run(n, I2C_DESIGN))
+
+
+def main() -> int:
+    passed = failed = 0
+    for name, fn in CASES:
+        try:
+            fn()
+        except AssertionError as exc:
+            print(f"  FAIL  {name}\n          {exc}")
+            failed += 1
+        except Exception as exc:
+            print(f"  ERROR {name}\n          {type(exc).__name__}: {exc}")
+            failed += 1
+        else:
+            print(f"  ok    {name}")
+            passed += 1
+    print(f"\n{passed} passed, {failed} failed\n")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

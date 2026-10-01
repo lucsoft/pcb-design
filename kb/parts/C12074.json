@@ -1,0 +1,40 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C12074",
+  "@type": "Component",
+  "lcscId": "C12074",
+  "mpn": "HR911105A",
+  "manufacturer": "HANRUN(Zhongshan HanRun Elec)",
+  "description": "Jack Modular Connector RJ45 Through Hole",
+  "category": "connector",
+  "package": "Through Hole",
+  "stock": 26861,
+  "priceUsd": 1.734,
+  "parameters": {
+    "Shielding": "Shielded",
+    "Number of Ports": "1",
+    "Mounting Type": "Right Angle",
+    "Contact Plating": "Gold",
+    "Contact Material": "Phosphor bronze",
+    "Operating Temperature": "0℃~+70℃",
+    "Connector Type": "RJ45 Jack"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0ad5e0c00dfc47fb8e582f15f877f290.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - Ethernet jack for the W5500",
+  "notes": [
+    "RJ45 with integrated magnetics, the standard pairing for a W5500. $1.73, stock 26k.",
+    "Through-hole. In a vibration environment it needs its shield tabs soldered and ideally a mechanical retention screw, not just the signal pins."
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19077551",
+  "@type": "Component",
+  "lcscId": "C19077551",
+  "mpn": "SMAJ36CA",
+  "manufacturer": "R+O",
+  "description": "58.1VC Clamp 6.9A@10/1000us Ipp TVS DIODE DO-214AC(SMA)",
+  "category": "diode",
+  "package": "DO-214AC(SMA)",
+  "stock": 6240,
+  "priceUsd": 0.0368,
+  "parameters": {
+    "Clamping Voltage": "58.1V",
+    "Operating Temperature": "-55℃~+150℃",
+    "Peak Pulse Current (Ipp)": "6.9A@10/1000us",
+    "Peak Pulse Power Dissipation (Ppp)": "400W@10/1000us",
+    "Number of Channels": "1",
+    "Voltage - Breakdown": "44.2V",
+    "type": "TVS",
+    "Reverse Leakage Current (Ir)": "1uA",
+    "Polarity": "Bidirectional",
+    "Reverse Stand-Off Voltage (Vrwm)": "36V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/f3d2c9df3269749880b305befd579c39.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  }
+}

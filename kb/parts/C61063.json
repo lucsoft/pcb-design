@@ -1,0 +1,61 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C61063",
+  "@type": "Component",
+  "lcscId": "C61063",
+  "mpn": "XL1509-5.0E1",
+  "manufacturer": "XLSEMI",
+  "description": "150kHz Step-down type Fixed 5V 2A SOIC-8 Voltage Regulators - DC DC Switching Regulators ",
+  "category": "regulator",
+  "package": "SOIC-8",
+  "stock": 381535,
+  "priceUsd": 0.2467,
+  "parameters": {
+    "Operating Temperature": "-40℃~+85℃",
+    "Frequency - Switching": "150kHz",
+    "Function": "Step-down type",
+    "Number of Outputs": "1",
+    "Features": "Overcurrent Protection",
+    "Output Type": "Fixed",
+    "Topology": "Buck",
+    "Operating Voltage": "4.5V~40V",
+    "Switch tube (built-in/external)": "Built-in",
+    "Output Voltage": "5V",
+    "Output Current": "2A",
+    "Quiescent Current": "2mA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/6764d4cba2504b189b593202c77b9bd6.pdf",
+  "retrieved": "2026-10-01",
+  "tier": "basic",
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "notes": [
+    "2 A max output, 4.5-40 V input. At 5 V out this caps one LED module at 10 W regardless of what the controller supplies.",
+    "PROTECTION (datasheet p.1 features, p.7 electrical characteristics): thermal shutdown, switch current limit IL = 4 A (p.7, at VFB=0), and a 'second current limit' that drops switching from 150 kHz to 50 kHz. The 4 A limit is well above the 2.16 A a full-white 6x6 module draws, so it never trips in normal use.",
+    "THERMAL SHUTDOWN THRESHOLD IS NOT SPECIFIED. It appears in the feature list but has no min/typ/max and no test condition anywhere in the electrical characteristics. Treat it as a last-resort backstop of unknown trip point, not as a design parameter.",
+    "Output stage is bipolar, not MOSFET: output saturation voltage VCE = 1.2 V typ / 1.4 V max at Iout = 2 A (p.7). Conduction loss is therefore VCE x Iout x D, which falls as input voltage rises because the duty cycle shortens.",
+    "Loss split at 28 V in, 2.16 A out (modelled from VCE and duty cycle, not measured): IC conduction 1.2 V x 2.16 A x 0.179 = 0.46 W, plus switching and quiescent, so the IC dissipates roughly 0.8-1.0 W. The EXTERNAL catch diode carries 0.5 V x 2.16 A x 0.821 = 0.89 W and is the hottest single part in the module.",
+    "RthJA = 100 C/W (SOIC-8, no heatsink, free air) and TJ max 125 C, so free-air dissipation is capped at 1.0 W at 25 C ambient. The 2 A rating is only reachable with real copper pour; a decent board reaches roughly 50-60 C/W.",
+    "Efficiency is specified only at Vin = 12 V (82% at 5 V out, 2 A). A 28 V bus is within the 40 V rating but well outside the characterised point, and efficiency falls there. Lower bus voltage is better for this part."
+  ],
+  "rules": [
+    {
+      "id": "input-bulk",
+      "appliesTo": [
+        "VIN"
+      ],
+      "requires": "decoupling",
+      "value": "220uF",
+      "severity": "error",
+      "note": "datasheet p.7 test conditions use a 220uF/50V bulk capacitor across Vin and GND"
+    }
+  ]
+}

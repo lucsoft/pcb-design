@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19077552",
+  "@type": "Component",
+  "lcscId": "C19077552",
+  "mpn": "SMAJ40CA",
+  "manufacturer": "R+O",
+  "description": "64.5VC Clamp 6.2A@10/1000us Ipp TVS DIODE DO-214AC(SMA)",
+  "category": "diode",
+  "package": "DO-214AC(SMA)",
+  "stock": 24100,
+  "priceUsd": 0.0366,
+  "parameters": {
+    "Clamping Voltage": "64.5V",
+    "Operating Temperature": "-55℃~+150℃",
+    "Peak Pulse Current (Ipp)": "6.2A@10/1000us",
+    "Peak Pulse Power Dissipation (Ppp)": "400W@10/1000us",
+    "Number of Channels": "1",
+    "Voltage - Breakdown": "49.1V",
+    "type": "TVS",
+    "Reverse Leakage Current (Ir)": "1uA",
+    "Polarity": "Bidirectional",
+    "Reverse Stand-Off Voltage (Vrwm)": "40V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/f3d2c9df3269749880b305befd579c39.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SUPERSEDED by SMAJ36CA (C19077551)",
+  "notes": [
+    "Clamps at ~64 V, above the TM40P06D's 60 V. SMAJ36CA clamps at 58.1 V while still staying off at the 36 V PDO's +5%. The earlier claim that no such part existed was never checked.",
+    "SMAJ40CA, 40 V bidirectional TVS, SMA, 24k stock, $0.037. One on USB-C VBUS and one on each output connector's +36 V pin.",
+    "40 V standoff is the lowest standard value that stays off at a 36 V bus. 36 V parts exist but would sit on the edge of conduction at the nominal bus voltage.",
+    "CLAMPS AT ROUGHLY 64 V, which is above the TM40P06D's 60 V rating. TVS clamping is inherently about 1.6x standoff, so no part both stays off at 36 V and clamps under 60 V - the squeeze is real and drove the 60 V versus 100 V FET question, now RESOLVED in favour of the 60 V part: in a P-channel high-side switch an output transient above the input forward-biases the body diode, which passes the surge back to the input where the VBUS-side TVS clamps it. With the 100 V MOT1793G there is no interaction at all."
+  ]
+}

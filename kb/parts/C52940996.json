@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C52940996",
+  "@type": "Component",
+  "lcscId": "C52940996",
+  "mpn": "TPS26630RGER(TOKMAS)",
+  "manufacturer": "Tokmas",
+  "description": "QFN-24(4x4) Power Distribution Switches, Load Drivers ",
+  "category": "ic",
+  "package": "QFN-24(4x4)",
+  "stock": 1524,
+  "priceUsd": 1.1637,
+  "parameters": {
+    "Operating Temperature": "-40℃~+85℃",
+    "Width": "4mm",
+    "Features": "Overcurrent Protection;Short-Circuit  Protection;Under-voltage lockout;Thermal Protection;Overload protection",
+    "FET Type": "Integrated FET",
+    "Length": "4mm",
+    "number of channels": "-",
+    "Current - Output High(IOH)": "-",
+    "Current - Output Low(IOL)": "-",
+    "RDS(on)": "30mΩ",
+    "Operating Voltage": "4.5V~40V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/e65e653cac18a8b249776050e864da54.pdf",
+  "retrieved": "2026-10-01",
+  "tier": "extended",
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "notes": [
+    "NOT the genuine TI part - Tokmas' pin-compatible clone of the TPS26630.",
+    "Integrated 40 V hot-swap FET. That is 1.43x margin on a 28 V bus but only 1.11x at 36 V, which is too thin for a bus feeding inductive cable runs. Rejected when the design moved to 36 V.",
+    "Would have been a good choice at 28 V: adjustable 0.6-5 A limit that holds in constant-current mode rather than merely tripping, dVdT inrush slew, OVP, reverse blocking in 0.2 us, IMON and PGOOD.",
+    "Its job is instead done by the p.16 Figure 6 P-FET with an RC gate network - see the design README. The topology 36 V forces on us already contains inrush control."
+  ],
+  "designVerdict": "REJECTED at 36 V - FET margin"
+}

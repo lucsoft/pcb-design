@@ -1,0 +1,53 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "schema": "https://schema.org/",
+    "lcsc": "https://www.lcsc.com/product-detail/",
+    "pcb": "https://lucsoft.local/ns/pcb#",
+
+    "Component": "pcb:Component",
+    "Pin": "pcb:Pin",
+    "Rule": "pcb:Rule",
+    "Datasheet": "pcb:Datasheet",
+
+    "name": "schema:name",
+    "description": "schema:description",
+    "manufacturer": "schema:manufacturer",
+    "mpn": "schema:mpn",
+    "category": "schema:category",
+    "url": "schema:url",
+
+    "lcscId": "pcb:lcscId",
+    "package": "pcb:package",
+    "tier": "pcb:jlcAssemblyTier",
+    "stock": "pcb:stock",
+    "priceUsd": "pcb:unitPriceUsd",
+
+    "datasheet": { "@id": "pcb:datasheet", "@type": "@id" },
+    "sha256": "pcb:sha256",
+    "localPdf": "pcb:localPdf",
+    "localText": "pcb:localText",
+    "pageCount": "pcb:pageCount",
+
+    "pins": { "@id": "pcb:hasPin", "@container": "@set" },
+    "number": "pcb:pinNumber",
+    "type": "pcb:pinType",
+    "vMax": "pcb:absoluteMaxVoltage",
+    "vMin": "pcb:absoluteMinVoltage",
+    "iMaxMa": "pcb:absoluteMaxCurrentMa",
+
+    "parameters": { "@id": "pcb:parameter", "@container": "@index" },
+    "value": "schema:value",
+    "unit": "schema:unitCode",
+
+    "rules": { "@id": "pcb:hasRule", "@container": "@set" },
+    "severity": "pcb:severity",
+    "requires": "pcb:requires",
+    "appliesTo": "pcb:appliesToPin",
+
+    "provenance": { "@id": "pcb:provenance", "@container": "@index" },
+    "retrieved": { "@id": "pcb:retrievedAt", "@type": "schema:Date" },
+    "verifiedBy": "pcb:verifiedBy",
+    "seeAlso": { "@id": "schema:subjectOf", "@type": "@id" }
+  }
+}

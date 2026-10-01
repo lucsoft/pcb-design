@@ -1,0 +1,39 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C8734",
+  "@type": "Component",
+  "lcscId": "C8734",
+  "mpn": "STM32F103C8T6",
+  "manufacturer": "ST",
+  "description": "ARM Cortex-M3 32 Bit 72MHz LQFP-48(7x7) Microcontrollers RoHS",
+  "category": "ic",
+  "package": "LQFP-48(7x7)",
+  "stock": 2304,
+  "priceUsd": 1.5587,
+  "parameters": {
+    "ADC (Bit)": "12bit",
+    "Number of I/O": "37",
+    "Operating Temperature": "-40℃~+85℃",
+    "Voltage - Supply": "2V~3.6V",
+    "Program Memory Type": "FLASH",
+    "EEPROM": "-",
+    "Program Storage Size": "64KB",
+    "CPU Core": "ARM Cortex-M3",
+    "Core Size": "32 Bit",
+    "CPU Maximum Speed": "72MHz",
+    "Oscillator Type": "Built-in"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/ac66debd4c13334db1d28037926f8881.pdf",
+  "retrieved": "2026-10-01",
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "pins": "",
+    "category": "lcsc-api"
+  },
+  "tier": null
+}

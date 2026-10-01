@@ -1,0 +1,41 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7419995",
+  "@type": "Component",
+  "lcscId": "C7419995",
+  "mpn": "FRM252WFR010TN",
+  "manufacturer": "FOJAN",
+  "description": "10mΩ 2W Current Sense Resistor ±50ppm/℃ ±1% 2512 Chip Resistor - Surface Mount ",
+  "category": "resistor",
+  "package": "2512",
+  "stock": 9430,
+  "priceUsd": 0.0577,
+  "parameters": {
+    "Resistance": "10mΩ",
+    "Power(Watts)": "2W",
+    "Type": "Current Sense Resistor",
+    "Temperature Coefficient": "±50ppm/℃",
+    "Tolerance": "±1%"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/a129741bf6e2c80df7be7029264e9e86.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - low-side current sense shunt for the INA226",
+  "notes": [
+    "10 mOhm, 1% (F suffix), 2512, 9.8k stock, $0.058.",
+    "Value set by the INA226's +/-81.92 mV maximum differential input. At the 5 A full-scale bus current, 10 mOhm gives 50 mV - inside the range with headroom, and good resolution (2.5 uV/LSB means ~20,000 counts). A 20 mOhm part would give 100 mV and clip.",
+    "Dissipates 0.25 W at 5 A, comfortable in a 2512.",
+    "1% tolerance matters: it sets current-measurement accuracy directly, and that feeds the software power budget. The cheaper 5% (J) parts in the same family would make the budget 5% uncertain.",
+    "Alternative with better stock if needed: FPM253WFR005TM (C7420019), 5 mOhm, 39.8k - halves the signal to 25 mV and the dissipation to 0.125 W."
+  ]
+}

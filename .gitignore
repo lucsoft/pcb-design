@@ -1,0 +1,13 @@
+# Cached datasheets: large, re-fetchable with tools/ds.py fetch.
+kb/datasheets/*.pdf
+kb/datasheets/*.txt
+
+# Never commit JLCPCB API credentials.
+.mcp.local.json
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Mermaid render check output
+/tmp-render/

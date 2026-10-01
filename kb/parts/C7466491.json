@@ -1,0 +1,46 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7466491",
+  "@type": "Component",
+  "lcscId": "C7466491",
+  "mpn": "SMAJ15CA",
+  "manufacturer": "HXY MOSFET",
+  "description": "24.4VC Clamp 16.4A Ipp TVS DIODE SMA(DO-214AC)",
+  "category": "diode",
+  "package": "SMA(DO-214AC)",
+  "stock": 24530,
+  "priceUsd": 0.0305,
+  "parameters": {
+    "Clamping Voltage": "24.4V",
+    "Operating Temperature": "-65℃~+150℃",
+    "Peak Pulse Current (Ipp)": "16.4A",
+    "Peak Pulse Power Dissipation (Ppp)": "400W",
+    "Number of Channels": "1",
+    "Voltage - Breakdown": "16.7V;18.5V",
+    "type": "TVS",
+    "Reverse Leakage Current (Ir)": "1uA",
+    "Polarity": "Bidirectional",
+    "Reverse Stand-Off Voltage (Vrwm)": "15V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/bb4b2a3b47f42aa091ce9494a1143a9d.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - RS-485 line protection, 4 off",
+  "notes": [
+    "SMAJ15CA, 15 V bidirectional TVS, SMA, 26k stock, $0.031. Two per output connector, one on each of A and B to ground.",
+    "CORRECTS AN EARLIER ERROR: the H5VL10B (5 V) picked for 'data lines' is wrong for RS-485. The standard defines a common-mode range of -7 V to +12 V, so a 5 V clamp would conduct during normal operation and corrupt the bus. 15 V standoff clears the +12 V limit with margin.",
+    "H5VL10B remains correct for the USB-C D+/D- and CC lines, which are genuine 5 V-class signals and need the low capacitance.",
+    "Bidirectional is required: RS-485 swings both polarities relative to ground.",
+    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground."
+  ]
+}

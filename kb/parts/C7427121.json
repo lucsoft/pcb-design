@@ -1,0 +1,40 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7427121",
+  "@type": "Component",
+  "lcscId": "C7427121",
+  "mpn": "ANR5040T100M",
+  "manufacturer": "APV",
+  "description": "2.4A 10uH ±20% 2.9A Magnetic Shielded Inductor SMD,5x5mm Fixed Inductors RoHS",
+  "category": "inductor",
+  "package": "SMD,5x5mm",
+  "stock": 31660,
+  "priceUsd": 0.0579,
+  "parameters": {
+    "Current Rating": "2.4A",
+    "Inductance": "10uH",
+    "Tolerance": "±20%",
+    "Current - Saturation(Isat)": "2.9A",
+    "Type": "Magnetic Shielded Inductor"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/a15e54507aca7b688df779462a1a4487.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - TPS54360B output inductor, replaces the 22 uH part",
+  "notes": [
+    "10 uH, 2.4 A rated, 2.9 A saturation, shielded, 5x5 mm, 31k stock, $0.058.",
+    "REPLACES ANR5040T220M (C7427126, 22 uH). That part's saturation is 1.62 A *max* - the 1.9 A figure quoted earlier was the typ column - against a 1.18 A peak, giving only 1.38x. This gives 2.4x at the same package size.",
+    "Needs the TPS54360B at ~1 MHz rather than 500 kHz to keep the same ripple: dIL = 5 x 31 / (36 x 1e6 x 10e-6) = 0.43 A. Set RT to ~100 kOhm, confirmed against the datasheet equation.",
+    "Still below the TPS54360B's 4.5 A minimum current limit, so a hard output short saturates the inductor before the cycle-by-cycle limit acts. TI's procedure sizes for the current limit; 2.4x operating margin is the accepted compromise, with the IC's thermal and hiccup protection as the backstop."
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C1525",
+  "@type": "Component",
+  "lcscId": "C1525",
+  "mpn": "CL05B104KO5NNNC",
+  "manufacturer": "Samsung Electro-Mechanics",
+  "description": "100nF ±10% 16V Ceramic Capacitor X7R 0402",
+  "category": "capacitor",
+  "package": "0402",
+  "stock": 410700,
+  "priceUsd": 0.0045,
+  "parameters": {
+    "Capacitance": "100nF",
+    "Temperature Coefficient": "X7R",
+    "Tolerance": "±10%",
+    "Voltage Rating": "16V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
+  "retrieved": "2026-10-01",
+  "pins": [
+    {
+      "number": "1",
+      "name": "1",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "2",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "0402 MLCC, two-terminal passive"
+  },
+  "tier": null
+}

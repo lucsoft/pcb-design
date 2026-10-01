@@ -1,0 +1,47 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7420321",
+  "@type": "Component",
+  "lcscId": "C7420321",
+  "mpn": "2N7002",
+  "manufacturer": "R+O",
+  "description": "N-Channel 60V 115mA 225mW Surface Mount SOT-23",
+  "category": "transistor",
+  "package": "SOT-23",
+  "stock": 1169450,
+  "priceUsd": 0.0179,
+  "parameters": {
+    "Drain to Source Voltage": "60V",
+    "Operating Temperature": "-55℃~+150℃",
+    "Output Capacitance(Coss)": "25pF",
+    "Current - Continuous Drain(Id)": "115mA",
+    "Ciss-Input Capacitance": "50pF",
+    "Pd - Power Dissipation": "225mW",
+    "Reverse Transfer Capacitance (Crss)": "5pF",
+    "RDS(on)": "900mΩ@10V",
+    "Number": "1 N-channel",
+    "Gate Charge(Qg)": "1.6nC@10V",
+    "Gate Threshold Voltage (Vgs(th))": "1.6V",
+    "Type": "N-Channel"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/ee9c3f6fbed80ffd70ecaec0eec4608b.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - gate-drive level shift x3, plus the FAULT interlock, 4 per board",
+  "notes": [
+    "2N7002, 60 V N-channel, SOT-23, 1.01M stock, $0.018.",
+    "WHY IT IS NEEDED, and this was nearly missed: the HUSB238A GATE pin is rated 33 V absolute, but the P-FET gate node on a 36 V bus swings between roughly 24 V (clamped) and 36 V (off). GATE cannot be tied to that node directly - it would sit above its own rating. A small N-FET level shift sits between them.",
+    "The same part drives the two channel load switches from 3.3 V GPIOs, which have the same problem in reverse: a 3.3 V output cannot pull a 36 V-referenced gate down.",
+    "FOUR per board: three gate level shifts (power path and two channel switches) plus one for the FAULT hardware interlock, which pulls both channel control gates low when the HUSB238A flags a fault. One line on the BOM."
+  ]
+}

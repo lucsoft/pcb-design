@@ -1,0 +1,48 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C6395158",
+  "@type": "Component",
+  "lcscId": "C6395158",
+  "mpn": "MAX3485CSA-JSM",
+  "manufacturer": "JSMSEMI",
+  "description": "3.3V Transceiver 12Mbps 32 SOP-8 Drivers, Receivers, Transceivers RoHS",
+  "category": "ic",
+  "package": "SOP-8",
+  "stock": 5790,
+  "priceUsd": 0.3495,
+  "parameters": {
+    "Voltage - Supply": "3.3V",
+    "Type": "Transceiver",
+    "Data Rate": "12Mbps",
+    "Number of Nodes": "32",
+    "Operating Temperature": "-40℃~+85℃",
+    "ESD Protect": "±8kV",
+    "Communication Mode": "Half-Duplex",
+    "Number of Drivers": "1",
+    "Features": "Tx/Rx enable;Enable shutdown;Overcurrent Protection;Thermal shutdown protection",
+    "Number of Receivers": "1",
+    "Quiescent Supply Current": "500uA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/10d2e02526bd4d057ac080b6dfcdb81f.pdf",
+  "retrieved": "2026-10-01",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "manual",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED - differential data link, 2 off (one per channel)",
+  "notes": [
+    "MAX3485, 3.3 V differential line transceiver (RS-485 levels), SOP-8, 6.6k stock, $0.35. Cheaper than the SN65HVD75 (C57928, $0.59) that was the earlier candidate, and in JLCPCB's assembly catalogue.",
+    "Runs from 3.3 V, so the ESP32-C6 drives DI directly - no level shifting on the data path at the controller end.",
+    "Data is one-way: tie DE high, RE is unused. Two needed, one per channel, since each chain carries different pixel data.",
+    "Needs a matching receiver and 120 ohm termination on the first converter board of each chain. Populating only the controller end is useless.",
+    "800 kbps WS2812 timing is far inside its 10 Mbps capability.",
+    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground."
+  ]
+}
