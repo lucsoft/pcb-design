@@ -48,6 +48,7 @@
     "TWO per board, not three. The master pass FET between VBUS and the bus was REMOVED: it was the source of all three gate-network faults (ramp on the wrong node, 180 s turn-off, dV/dt self-turn-on during the PD 5->36 V step), and the channel switches already shed every load it could. VBUS now connects straight to the bus.",
     "Gate network: topology settled (gate-to-source capacitor with a turn-off bypass diode), values NOT derived. Three earlier attempts using a gate-to-drain capacitor were all wrong.",
     "RETIRED. Four discrete gate networks built around this P-channel part all failed; the power path now switches through an LM5069 (C52940995) driving an N-channel NSS085N100S. The P-FET problems that drove those failures - high-side gate drive, Vgs clamping, dV/dt immunity, an SOA curve with only a DC line - are all absent from the replacement.",
-    "The 60 V rating also sat at 1.03x the SMAJ36CA 58.1 V clamp. The 100 V replacement sits at 1.72x."
+    "The 60 V rating also sat at 1.03x the SMAJ36CA 58.1 V clamp. The 100 V replacement sits at 1.72x.",
+    "SUPERSEDED NOTES: anything above describing this part as 'TWO per board, as the channel load switches', the '60 V vs 100 V RESOLVED in favour of this part' conclusion, and any 'gate network topology settled' statement are all obsolete. This part is not fitted. The channel switches are NSS085N100S (C7427705) at 100 V, chosen partly because 60 V sat at 1.03x the SMAJ36CA clamp."
   ]
 }

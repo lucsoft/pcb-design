@@ -46,7 +46,7 @@ fatigue. Affected, and still to be revisited:
 | PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind a BSS138 follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **LM5069** (C52940995) x2 + **NSS085N100S** | four discrete gate networks failed; ramp, current limit, power limit, fast turn-off and dV/dt immunity are integrated |
-| External part ratings | **60 V class** | enough for a 36 V bus at 1.67x margin. This does NOT leave room for a future 48 V/240 W bus — that would want 100 V parts, and would need every module respun anyway |
+| External part ratings | **mixed: 100 V on the switched path, 60 V on the bus** | the channel switch is 100 V (1.72x the TVS clamp) and the LM5069 is a 9-90 V part, but the TPS54360B and SS36 are 60 V and set the real limit at 1.03x the clamp. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
@@ -140,8 +140,9 @@ of eight is used.
 
 48 V is supported by the PD chip (p.16 Figure 6) but **destroys the modules** - the XL1509
 is 40 V operating, 45 V absolute. 240 W would need every module respun onto a 60 V-class
-buck. The controller's external parts are rated **60 V class**, which does not leave room
-for 48 V — that would want 100 V parts. Since 48 V needs every module respun
+buck. The controller's bus-side parts are rated **60 V class**, which does not leave room
+for 48 V — that would want 100 V throughout, where only the channel switch is
+100 V today. Since 48 V needs every module respun
 anyway, the door is closed by the modules, not by this board.
 
 ### Why not 28 V
@@ -152,7 +153,7 @@ so the extra front-end complexity is worth it.
 
 ## Power budget
 
-180 W, less ~5 W for the controller, leaves ~175 W for modules.
+180 W, less ~4 W for the controller, leaves ~175 W for modules.
 Perceived brightness applies a gamma of 2.2.
 
 | Modules | Power | Perceived | fps (2 ch) | Binds on |
@@ -286,9 +287,13 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
 6. Past ~28 V each LM5069 releases its own UVLO, and firmware enables the
-   channels by pulling the enable GPIOs low. Each ramps its own 3.3 mF under an
-   18 W power limit, taking **132 ms** (Eq. 10). The bus is already static at
-   36 V, so they ramp into a steady source.
+   channels by pulling the enable GPIOs low.
+7. **Nothing happens for several seconds.** Each controller holds its gate down
+   for its insertion time — 6.1 s typical, 3.6-13.6 s over the spread — counted
+   from when VBUS crossed ~5.5-7.5 V, and no firmware action shortens it.
+8. Each channel then ramps its own 3.3 mF under a 39.8 W power limit, taking
+   **61 ms** typical and 96 ms at the corners. The bus is already static at 36 V,
+   so they ramp into a steady source.
 
 There is no master pass FET — see Channel switching and inrush. A PD
 fault sheds the LED channels while the controller stays alive to report it, which
@@ -378,7 +383,7 @@ What protects the load, in order of speed:
 
 1. **LM5069 current limit**, 4.58 A typ per channel, autonomous — a shorted
    module on one chain trips that chain and leaves the other running
-2. **LM5069 OVLO**, a hardware overvoltage trip at 43.2 V typ, needing no firmware
+2. **LM5069 OVLO**, a hardware overvoltage trip at 45.3 V typ, needing no firmware
 3. the PD source limiting at the negotiated level
 4. HUSB238A FAULT into the interlock transistor, pulling both UVLO pins low on
    OTP or an adapter-capability fault (OVP/UVP do not survive the clamp topology
@@ -489,13 +494,13 @@ that caused four failures are not in the design any more.
 
 ```mermaid
 flowchart LR
-  VBUS[VBUS 36 V] ==> RS["R_SENSE<br/>12 mOhm"]
-  RS ==> Q["Q1 NSS085N100S<br/>100 V, 7.5 mOhm"]
+  VBUS[VBUS 36 V] ==> RS["R_SENSE<br/>10 mOhm"]
+  RS ==> Q["Q1 NSS085N100S<br/>100 V, 9.5 mOhm"]
   Q ==> OUTN[channel bus]
   U["LM5069<br/>SENSE / VIN / OUT / GATE"] -. gate drive .-> Q
   RS -.-> U
   OUTN -.-> U
-  DIV["divider<br/>120k / 5.11k / 7.68k"] --> U
+  DIV["divider<br/>120k / 5.36k / 7.32k"] --> U
   MCU[ESP32-C6 GPIO] --> QE["2N7002<br/>pulls UVLO low"]
   FLT[HUSB238A FAULT] --> QE
   QE --> U
@@ -504,7 +509,8 @@ flowchart LR
 
 Switching to an N-channel part also settles an argument the 60 V P-FET never
 won: at 100 V the FET sits at **1.72x the SMAJ36CA's 58.1 V clamp** instead of
-the 1.03x the document twice called uncomfortable. It is cheaper too — $0.39
+the 1.03x the document twice called uncomfortable — though that figure survives
+on the bus parts, see ESD and surge protection. It is cheaper too — $0.39
 against $0.40 — because N-channel silicon of the same on-resistance is smaller.
 
 ### Values, derived
@@ -515,35 +521,72 @@ bus maximum is **V_INMAX = 37.8 V** (36 V at the PDO's +5%) and the load is
 
 | Element | Value | Derivation |
 |---|---|---|
-| R_SENSE | **12 mOhm**, 1%, >=0.25 W | current limit is 55 mV / R_S (p.14) = **4.58 A typ**; over the 48-65 mV spread, 4.0-5.42 A. The low end is **1.65x** the 2.43 A nominal, which matters because 2.43 A is a floor. Dissipates 0.071 W |
-| R_PWR | **32.4 kOhm** 1% | Eq. 14: R_PWR = 180000 x R_S x (P_LIM - 1.0 mV x V_INMAX/R_S) = 2160 x (18 - 3.15) = 32.1 kOhm, so E96 32.4 kOhm sets **P_LIM ~ 18 W** |
-| C_TIMER | **10 uF** X7R 25 V | Eq. 11: t_FLT = C x 3.6 V / 70 uA = **514 ms**. Must exceed 1.5 x t_start = 198 ms; still 257 ms after 50% derating |
-| UVLO/OVLO string | **120 kOhm / 5.11 kOhm / 7.68 kOhm** 1% | VIN-UVLO-OVLO-GND. Thresholds 2.5 V typ, hysteresis current 18 uA typ (p.5) |
+| R_SENSE | **10 mOhm**, 1%, >=0.5 W | current limit is 55 mV / R_S (p.14) = **5.5 A typ**; over the 48-65 mV spread (p.5), 4.8-6.5 A. Sized against the **4.0 A white-flash peak**, not the 2.43 A sustained figure — 1.20x at the worst-case low end |
+| R_PWR | **64.9 kOhm** 1% | Eq. 14: R_PWR = 180000 x R_S x (P_LIM - 1.0 mV x V_INMAX/R_S), so 64.9 kOhm sets **P_LIM = 39.8 W** |
+| C_TIMER | **6.8 uF** X7R 25 V | sets insertion delay *and* fault timeout; see below — both constraints pull on this one part |
+| UVLO/OVLO string | **120 kOhm / 5.36 kOhm / 7.32 kOhm** 1% | VIN-UVLO-OVLO-GND. Thresholds 2.25/2.5/2.75 V, hysteresis current 12/18/24 uA (p.5) |
 | C_VIN | **100 nF** >=100 V | p.3: "a small ceramic bypass capacitor close to this pin is recommended" |
 
-**Start time.** Eq. 10, the power-limited case:
+**Start time.** Eq. 10, the power-limited case, at typicals and then at the
+corners that matter (P_LIM carries PWR_ILM 19/25/31 mV = +/-24%, and C_OUT is
+taken +20%):
 
-    t_start = (C_OUT/2) x (V_INMAX^2/P_LIM + P_LIM/I_LIM^2)
-            = 1.65 mF x (1428.8/18 + 18/20.98)
-            = 1.65 mF x 80.24 = 132 ms
+    typ:   t_start = 1.65 mF x (1428.8/39.8 + 39.8/30.25)  =  61 ms
+    worst: t_start = 1.98 mF x (1428.8/30.3 + 30.3/23.0)   =  96 ms
 
-**The SOA requirement is now checkable, and it passes.** The old P-FET failed
-here: its Figure 10 gave a DC line only, so a linear-mode ramp was unverifiable.
-The NSS085N100S publishes a real SOA family (Fig. 12 p.4). Reading the **DC**
-curve at Vds = 36 V gives roughly 0.6 A, about 21 W — and 18 W sits inside that
-with ~1.17x margin. Since the DC curve is the limit for *infinite* time, a 132 ms
-pulse is bounded by it with room to spare. Reading a log-log plot by eye is
-approximate, but the conclusion survives a generous error bar because the
-comparison is against the most conservative curve on the chart.
+**The TIMER pin has two jobs, and only one of them was derived at first.** p.3
+pin 6 sets "the insertion time delay **and** the fault timeout period", and p.13
+is explicit that "during insertion time the GATE pin is held low by a 2 mA
+pulldown current ... **regardless of the voltage at VIN or UVLO**". The two are
+locked together at 17.5:1 by the datasheet's own currents (4 uA insertion against
+70 uA fault detection), so this cannot be tuned away:
 
-**Thresholds.** The string sets when a channel is allowed to conduct:
+| | Formula | With 6.8 uF |
+|---|---|---|
+| Fault timeout | C x V_TMRH / 70 uA (Eq. 11) | **350 ms** typ, **183 ms** worst case after 20% derating |
+| Required | 1.5 x t_start | **144 ms** — so 1.27x margin at the corner |
+| **Insertion delay** | C x V_TMRH / 4 uA | **6.1 s** typ, **3.6-13.6 s** over the spread |
 
-| Threshold | Typ | Worst case | Against |
+**So the board waits several seconds at power-on before the LEDs can come on**,
+and nothing firmware does shortens it. That is a behaviour to know about, not a
+fault — it is a one-time delay after the PD transition — but it has to be
+documented or the first person to power the board will debug a dead output.
+Shrinking C_TIMER is not available: 4.7 uF drops the worst-case fault timeout to
+127 ms, under the 144 ms the ramp needs, and the start-up would time out.
+
+**P_LIM is set high deliberately, at 39.8 W.** It is what buys the short ramp,
+and the short ramp is what keeps C_TIMER small enough for a tolerable insertion
+delay. The SOA budget pays for it comfortably — see below.
+
+**SOA.** The NSS085N100S publishes a real SOA family (Fig. 12 p.4), which the
+P-FET it replaced did not. The **DC** curve runs at constant power — it passes
+through (100 V, 1 A) — so at V_DS = 36 V it allows roughly **100 W**. Against
+P_LIM = 39.8 W that is **2.5x**, and the 10 ms curve is twice as generous again,
+so a 61-96 ms pulse is bounded with room on both sides.
+
+**The remaining check is thermal, not SOA, and the datasheet cannot settle it.**
+The chart is annotated "RATED TC=25 C Single" — case held at 25 degrees. On this
+board R_thJA is 50 C/W, so 39.8 W sustained is not survivable for a moment; what
+makes it safe is that the pulse is ~100 ms, where transient thermal impedance is
+one to two orders below the steady-state figure. **The datasheet publishes no
+Z_thJA curve**, so the junction rise during the ramp is bounded by the SOA curve
+and by physics but is not verifiable from this part's documentation. It is a
+single event at power-on rather than a repetitive one, which is what makes that
+acceptable.
+
+**Thresholds**, with the 1% resistor tolerance carried through rather than the
+comparator spread alone:
+
+| Threshold | Typ | Worst case, incl. 1% resistors | Against |
 |---|---|---|---|
-| UVLO rising (enable) | 28.1 V | 31.4 V | must stay below the **34.2 V** minimum bus (-5% PDO) — 2.8 V of margin |
-| UVLO falling | 26.0 V | — | channels shed before the rails do |
-| OVLO rising (trip) | 43.2 V | 38.9 V low / 47.5 V high | must stay above the **37.8 V** maximum bus — 1.1 V of margin at the low end |
-| OVLO falling | 41.0 V | — | above 37.8 V, so a recovered bus re-enables rather than latching out |
+| UVLO rising (enable) | 28.3 V | **32.2 V** | must stay below the **34.2 V** minimum bus (-5% PDO) — 2.0 V of margin |
+| UVLO falling | 26.2 V | — | channels shed before the rails do |
+| OVLO rising (trip) | 45.3 V | **40.0 V** low / 50.8 V high | must stay above the **37.8 V** maximum bus — 2.0 V of margin at the low end |
+| OVLO falling | 43.1 V | — | above 37.8 V, so a recovered bus re-enables rather than latching out |
+
+An earlier version of this table quoted the comparator spread only and claimed
+1.1 V of OVLO margin; with 1% resistors at the adverse combination that was
+really 0.4 V. The divider above was re-centred to restore it.
 
 This hands back something the clamp topology took away: **the HUSB238A has no
 OVP above 28 V, and the LM5069's OVLO is a hardware overvoltage trip on the
@@ -555,6 +598,15 @@ Below 8 V the LM5069 is under its own VIN minimum and holds the gate down, so
 **the channels are off during the entire 5 V pre-negotiation phase with no
 firmware involvement.** That is the cold-start behaviour the old design had to
 sequence by hand.
+
+**This part auto-restarts; it does not latch off.** C52940995 is the **-2**
+suffix, and its datasheet p.13 describes the automatic restart sequence — the
+Timer pin cycling between 3.6 V and 0.8 V seven times after a fault timeout, at a
+0.5% duty cycle. With C_TIMER = 6.8 uF that is **~53 s** between retries on a
+persistent channel fault. Firmware can force an earlier retry by toggling the
+enable GPIO, since that resets the controller through UVLO. TI's LM5069MM-1
+(C486026) is the latch-off variant, not this one — an earlier note here had the
+two suffixes exactly backwards.
 
 ### Enable, and why the logic is inverted
 
@@ -580,9 +632,12 @@ that contention survivable are no longer required for this purpose.
 - **The Tokmas part is a second source.** C52940995 is a Tokmas LM5069MMX-2, not
   TI silicon, at **105 units** live stock — jlcsearch claimed 2952, which is
   exactly the staleness the workflow warns about. TI's own LM5069MM-1/NOPB
-  (C486026, 89 units, $5.90) is the fallback and is the **auto-retry** variant
-  where this is latch-off, which changes fault behaviour and would need the
-  restart path rethought.
+  (C486026, 89 units, $5.90) is the fallback and is the **latch-off** variant
+  where this one auto-restarts, so swapping to it means firmware must clear
+  every fault through the enable GPIO instead of waiting out a retry.
+- **The insertion delay is inherent, not tuned.** Several seconds at power-on
+  with no way to shorten it; see the derivation. If that turns out to matter, the
+  lever is a smaller C_OUT per channel, not a smaller C_TIMER.
 
 ## Why two channels
 
@@ -638,19 +693,19 @@ Active parts. Passives are listed below the table.
 | U7,U8 | MAX3485 | C6395158 | 2 | differential line driver, one per channel | 0.35 |
 | U9 | 74AHCT541 | C84548 | 1 | status-chain level shift (oversized, see KB) | 0.224 |
 | U10,U11 | LM5069MMX-2 | C52940995 | 2 | hot-swap controller, one per channel | 1.23 |
-| Q1,Q2 | NSS085N100S | C7427705 | 2 | channel switch, 100 V / 7.5 mΩ, 2.43 A each | 0.39 |
+| Q1,Q2 | NSS085N100S | C7427705 | 2 | channel switch, 100 V / 9.5 mΩ max, 2.43 A each | 0.39 |
 | Q3,Q4 | 2N7002 | C7420321 | 2 | pulls its channel's UVLO low to disable | 0.018 |
-| Q5 | 2N7002 | C7420321 | 1 | FAULT interlock, pulls both UVLO pins low | 0.018 |
-| Q6 | BSS138 | C7420339 | 1 | source follower feeding the VBUS pin | 0.027 |
+| Q5,Q6 | 2N7002 | C7420321 | 2 | FAULT interlock, **one per channel** | 0.018 |
+| Q7 | BSS138 | C7420339 | 1 | source follower feeding the VBUS pin | 0.027 |
 | D1 | BZT52C20 | C19077415 | 1 | clamps the BSS138 follower gate | 0.017 |
-| D5-D8 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
-| D9-D11 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — under the FET's 60 V | 0.037 |
-| D12-D15 | SMAJ15CA | C7466491 | 4 | 15 V TVS on the A/B pair, 2 per output | 0.031 |
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
+| D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
+| D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — 1.72x the 100 V FET, but only **1.03x** the 60 V bus parts | 0.037 |
+| D10-D13 | SMAJ15CA | C7466491 | 4 | 15 V TVS on the A/B pair, 2 per output | 0.031 |
 | L1 | ANR5040T100M | C7427121 | 1 | 10 uH, TPS54360B output, 2.9 A Isat | 0.058 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
 | R1 | FRM252WFR010TN | C7419995 | 1 | 10 mΩ 1% shunt, low-side | 0.058 |
-| R2,R3 | 12 mΩ 1% ≥0.25 W | — | 2 | LM5069 current-sense, selection at layout | — |
+| R2,R3 | 10 mΩ 1% ≥0.5 W | — | 2 | LM5069 current-sense. Rated for the **6.5 A worst-case trip** (0.42 W for up to one fault timeout), not the 0.059 W steady state | — |
 | R4 | 10 kΩ 0.25 W | — | 1 | bus bleeder, controller-side capacitance only | — |
 | Y1 | K3A250002010G | C19076760 | 1 | 25 MHz for the W5500 | 0.068 |
 | J1 | **REJECTED** — see open question 1 | — | 1 | USB-C: C19274016 is 3.0 A / 5.0 V, needs 5 A / 36 V | — |
@@ -734,22 +789,24 @@ But it is not comfortable either. A compliant PD fixed PDO is **±5%**, so a
 source may sit at **37.8 V indefinitely** against Vrwm = 36 V. Checking only
 Vbr(min) = 40 V was the wrong criterion: above Vrwm the leakage is unspecified
 and strongly temperature-dependent — µA at 25 °C, potentially mA at 85 °C — which
-means standby draw and self-heating on three parts. And 58.1 V against 60 V is
-**1.03x**, measured at 10/1000 µs; an 8/20 µs surge drives it higher.
+means standby draw and self-heating on three parts.
 
-**This is the same squeeze as before, moved to the other side of the window**,
-and it is not resolved. The honest options are a 100 V FET, or a TVS between the
-two standoffs that does not exist in this family.
+**The 58.1 V against 60 V squeeze did not go away with the FET — it moved.** The
+channel switch is now a 100 V part at 1.72x, but the clamp sits on the
+*unswitched* bus, where the **TPS54360B** (60 V absolute input) and the **SS36**
+catch diode (60 V) share the node. For those two it is still **1.03x**, measured
+at 10/1000 µs, and an 8/20 µs surge drives the clamp higher. Changing the FET
+fixed the part that was no longer the constraint. **Unresolved**, and the lever
+is a lower-clamping TVS or a 100 V-class buck, not another FET.
 
-**The body diode does not protect against input-side surges.** With Q1 off and
-the bus discharged — plugged in before negotiation, or after a FAULT — a surge on
-USB-C VBUS puts the source at the clamp voltage and the drain at 0 V, body diode
-reverse-biased, no help at all. It only helps for output-side transients, and
-there it defeats per-channel isolation by dumping the surge onto the live bus and
-into the TPS54360B input.
-
-With SMAJ36CA the FET is inside its rating in both directions and the body-diode
-argument is not needed.
+**The body diode does not protect against input-side surges**, and with the
+N-channel switch it points the other way than this section used to assume. Its
+anode is on the **channel** bus and its cathode on the VBUS side, so it conducts
+channel-to-VBUS: no help at all for a surge arriving on USB-C, and for an
+output-side transient it defeats per-channel isolation by dumping onto the live
+bus and into the TPS54360B input. The body diode is never part of the protection
+argument here — it is a liability, which is why it also drives the back-feed
+finding in Known electrical limits.
 
 ## Mechanical envelope
 
@@ -784,15 +841,15 @@ around it, and a small board has less of it.
 The NSS085N100S carries **2.43 A per channel**. Its Rds(on) is **9.5 mΩ max at
 25 °C** (p.1), roughly 13.3 mΩ at Tj ≈ 100 °C, so steady-state conduction is
 **0.079 W each** — better than the 60 V P-FET it replaces, because N-channel
-silicon of a given on-resistance is smaller. The 12 mΩ sense resistors add
-**0.071 W each**, so the whole switched power path is about **0.30 W**.
+silicon of a given on-resistance is smaller. The 10 mΩ sense resistors add
+**0.059 W each**, so the whole switched power path is about **0.28 W**.
 
 **The dissipation that matters is during the ramp**, and it is now bounded by
-design rather than by hope: the LM5069 holds the FET at **18 W** for the 132 ms
-ramp, and 18 W at Vds 36 V sits inside the NSS085N100S's published DC SOA line.
-The three discrete attempts produced 2.16 W, 5.9 W and 44 W for the same circuit
-— the spread is the clearest evidence that the topology, not the arithmetic, was
-the problem.
+design rather than by hope: the LM5069 holds the FET at **39.8 W** for the 61 ms
+ramp (96 ms at the corners), against a DC SOA line of roughly 100 W at Vds 36 V.
+Three of the four discrete attempts produced 2.16 W, 5.9 W and 44 W for the same
+circuit — the spread is the clearest evidence that the topology, not the
+arithmetic, was the problem.
 
 Steady state is not the binding constraint on this part. RθJA is **50 °C/W** on
 1 in² of 2 oz copper (p.1 note 2), so the package allows about 2.5 W at 25 °C
@@ -805,10 +862,20 @@ pulls pin 13 high "if the power adapter cannot supply the required voltage or
 current, or if an OVP/UVP/OTP event is detected" (datasheet p.5) — the chip
 senses this natively, so no software is needed to notice it.
 
-One extra 2N7002: its gate on FAULT, its drain on the gates of both channel
-control transistors, source to ground. FAULT high pulls those gates low, the
-control transistors turn off, both load-switch P-FETs release, and the LED load
-is shed in microseconds regardless of what firmware is doing.
+**Two** 2N7002, Q5 and Q6, gates both on FAULT, sources to ground, and each
+drain on **one channel's UVLO pin**. FAULT high turns them on, both UVLO pins go
+below 2.5 V, both LM5069s pull their gates down with a 2 mA sink, and the LED
+load is shed regardless of what firmware is doing.
+
+**It has to be two transistors.** A MOSFET drain is a single node, so one device
+tied to both UVLO pins would short the two dividers together and Q3 would then
+disable *both* channels — destroying the independent enable the GPIO budget and
+the per-channel shedding both depend on. Two devices, or a diode-OR into each
+UVLO pin; two 2N7002 at $0.018 is the cheaper of the two.
+
+An earlier version of this paragraph described the interlock pulling *gates* low
+to release *P-FETs*, which under the inverted enable logic would have **enabled**
+both channels on a fault. That text predates the hot-swap controllers.
 
 Supporting pieces:
 
@@ -824,9 +891,9 @@ Supporting pieces:
   slow check, not fast protection, which matters because it is carrying the OVP
   role the HUSB238A lost.
 - **100 uF hold-up on the rail input, behind a series Schottky.** Two things
-  broke the earlier version. Topologically, Q1's body diode conducts bus to VBUS,
-  so a capacitor on the bus discharges backwards into a collapsed source —
-  exactly the case it was meant to cover. Arithmetically, the 29 ms figure
+  broke the earlier version. Topologically there is no switch between VBUS and
+  the bus at all, so a capacitor there discharges backwards into a collapsed
+  source the moment VBUS falls — exactly the case it was meant to cover. Arithmetically, the 29 ms figure
   assumed only the 2.2 W rail load; sharing the bus with 5 A of LEDs drains
   36 V to 5 V in **0.62 ms**. A series Schottky between VBUS and the rail input,
   with the capacitor on the rail side, isolates it from both.
@@ -922,13 +989,34 @@ Pin 17 is the exposed pad and the **only** GND connection.
 
 **GATE (pin 15) is left unconnected.** Its job is driving an external VBUS
 switch, and there is no longer one — see Channel switching and inrush. FAULT into
-the interlock transistor covers load shedding instead, by pulling both LM5069
-UVLO pins low.
+the interlock transistor pair covers load shedding instead, by pulling both
+LM5069 UVLO pins low.
 
 **D+/D− (pins 1-2) are left unconnected.** The chip drives BC1.2 pull-ups onto
 that pair for legacy charger detection, and the pair belongs to the ESP32-C6's
 native USB — sharing them would break enumeration. We only want PD, which runs
 on CC1/CC2, so the legacy detection is given up deliberately.
+
+### LM5069 (U10, U11) — the channel hot-swap controllers
+
+Two identical instances. Derivations are in Channel switching and inrush; this
+table is the schematic checklist.
+
+| Part | Value | Source |
+|---|---|---|
+| R_SENSE, VIN→SENSE | **10 mΩ** 1%, ≥0.5 W | p.14 — current limit at 55 mV across it. **Kelvin-connect it**; p.14 also caps R_S at 100 mΩ |
+| R_PWR, PWR→GND | **64.9 kΩ** 1% | p.14 Eq. 14 — sets the 39.8 W MOSFET power limit |
+| C_TIMER, Timer→GND | **6.8 µF** X7R 25 V | p.14 Eq. 11 for the fault timeout, and p.13 for the insertion delay it also sets |
+| UVLO/OVLO string | **120 kΩ / 5.36 kΩ / 7.32 kΩ** 1% | VIN→UVLO→OVLO→GND, thresholds 2.5 V typ (p.5) |
+| C_VIN, VIN→GND | **100 nF** ≥100 V | p.3 pin 2 — "a small ceramic bypass capacitor close to this pin" |
+| PGD pull-up | **10 kΩ** to 3V3, shared | p.3 pin 8 — open drain |
+| OUT (pin 9) | to the **MOSFET source**, i.e. the channel bus | p.3 — this is the V_DS sense for power limiting, not a supply |
+
+**GATE (pin 10) goes only to the MOSFET gate**; it swings ~12 V above OUT, so it
+is not a logic-level node and must not be loaded. The MSOP-10 package has **no
+exposed pad** — the pad shown in the datasheet's package drawings belongs to the
+DFN3×3 variant, and GND (pin 5) is the only ground connection on the part fitted
+here.
 
 ### Tie-offs that are inputs, not options
 
@@ -1051,7 +1139,7 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | TPS54360B catch diode | 0.30 | 0.60 A average at 0.7 A out, conducts 86% of the cycle |
 | TPS54360B IC | ~0.5 | conduction + switching at ~1 MHz |
 | Q1 + Q2 NSS085N100S | 0.16 | 13.3 mΩ hot, 2.43 A each |
-| 2x 12 mΩ sense resistor | 0.14 | 2.43 A each |
+| 2x 10 mΩ sense resistor | 0.12 | 2.43 A each |
 | 2x LM5069 + dividers | 0.07 | 650 µA max IQ at 37.8 V, plus the 133 kΩ strings |
 | shunt 10 mΩ | 0.25 | at full 5 A |
 | SY8089 + inductor | 0.19 | |
@@ -1059,10 +1147,11 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | BSS138 follower + 10 kΩ | 0.11 | ~17.5 V at 4.5 mA with BZT52C20, plus 26 mW in the pull-up |
 | 2x MAX3485 driving 120 Ω | 0.06 | DE tied high, line never idle |
 | 74AHCT541 | 0.02 | |
-| **total** | **3.64** | status LEDs excluded; TVS leakage not counted |
+| R4 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
+| **total** | **3.75** | status LEDs excluded; TVS leakage not counted |
 
-The rows sum to 3.64 W against roughly **4.6 W** of capacity at 0.09 W/cm² over
-51 cm², so **1.26x headroom** — and that is at **25 °C ambient**. Inside an
+The rows sum to 3.75 W against roughly **4.6 W** of capacity at 0.09 W/cm² over
+51 cm², so **1.22x headroom** — and that is at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
 switching to the LM5069 and an N-channel FET moved the whole switched path to
@@ -1088,7 +1177,8 @@ replaced.
 
 **The TPS54360B needs an external catch diode** (datasheet p.26) — this was
 missing from the BOM until the thermal pass. SS36 covers it: 60 V blocks the
-36 V input, 3 A against 0.86 A average.
+36 V input, 3 A against **0.60 A** average at the 0.7 A rail load used
+everywhere else in this document.
 
 ## Known electrical limits
 
@@ -1135,9 +1225,11 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the 1.5x headroom assume
-a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall that is
-optimistic; at 45 °C ambient the headroom is roughly 1.0x.
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.22x** headroom
+assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
+that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
+roughly 2.3 W, and the board is at **0.6x** — over budget, not merely tight.
+This is the largest unquantified risk left in the thermal section.
 
 **The hold-up Schottky breaks the 5 V cold start — and the recommendation is to
 delete the hold-up.** The dropout table is computed with the bus feeding VIN
@@ -1233,10 +1325,14 @@ would do without this cost.
 ### Verification, not design
 
 5. **The SOA reading is by eye off a log-log plot.** The NSS085N100S's Fig. 12
-   p.4 has no 100 ms curve, so the 132 ms ramp is bounded by the **DC** line,
-   read at roughly 0.6 A at Vds 36 V — about 21 W against the 18 W power limit.
-   The conclusion is robust because DC is the most conservative curve on the
-   chart, but the specific number is a graphical reading, not a quoted figure.
+   p.4 has no 100 ms curve, so the 61-96 ms ramp is bounded by the **DC** line.
+   That line runs at constant power through (100 V, 1 A), giving roughly **100 W**
+   at Vds 36 V against the 39.8 W power limit — 2.5x. An earlier reading here put
+   it at 0.6 A / 21 W, which was wrong by 4.5x and made the margin look like
+   1.17x. The number is still a graphical reading rather than a quoted figure.
+   Separately, the chart is a **Tc = 25 °C** rating and the datasheet publishes no
+   Z_thJA curve, so the board-level junction rise during the ramp is bounded by
+   physics and by the SOA curve but is not verifiable from this datasheet.
 
 6. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
    not observed. Testable for free using the XL1509's own thermal shutdown: run
@@ -1265,14 +1361,15 @@ would do without this cost.
     the failure modes are asymmetric: A/B swapped is non-destructive, power onto
     a data pole destroys the transceiver.
 
-11. **The OVLO cannot be set to protect the modules.** The LM5069's threshold
-    tolerance is ±10%, so an OVLO above the 37.8 V maximum bus at its *low*
-    extreme (needs ≥42.0 V nominal) and below the modules' 45 V absolute at its
-    *high* extreme (needs ≤40.9 V nominal) are **mutually exclusive**. It is set
-    at 43.2 V nominal to protect the controller, which leaves a 45-47.5 V window
-    where a worst-case part passes voltage the modules are not rated for. Above
-    that the SMAJ36CA clamps. Accepted; closing it needs a tighter comparator
-    than this part offers.
+11. **The OVLO cannot be set to protect the modules.** Carrying both the ±10%
+    comparator spread and the 1% resistors, an OVLO that stays above the 37.8 V
+    maximum bus at its *low* extreme needs **≥42.8 V** nominal, and one that stays
+    below the modules' 45 V absolute at its *high* extreme needs **≤40.1 V**.
+    Those are **mutually exclusive**. It is set at 45.3 V nominal to protect the
+    controller with 2.0 V of margin, which leaves a **45-50.8 V** window where a
+    worst-case part passes voltage the modules are not rated for; above that the
+    SMAJ36CA clamps. Accepted — closing it needs a tighter comparator than this
+    part has.
 
 ## Resolved
 

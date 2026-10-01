@@ -258,18 +258,15 @@
       "10 modules under 2 A": "31 ms ramp",
       "25 modules under 2 A": "77 ms ramp"
     },
-    "solution": "Each channel load switch ramps into its own module bank. The gate TOPOLOGY is settled - gate-to-source capacitor with a turn-off bypass diode - but the VALUES are not derived. See the design README's Gate network section.",
+    "solution": "Each channel is switched by its own LM5069 hot-swap controller (C52940995) driving an NSS085N100S N-channel MOSFET. Ramp, current limit, power limit, fast turn-off and dV/dt immunity are integrated. See the design README's 'Channel switching and inrush' section.",
     "resolution": {
-      "status": "TOPOLOGY settled, VALUES not derived",
-      "history": "Three attempts, all wrong, all rooted in using a gate-to-DRAIN (Miller) capacitor: (1) R_pu 100k/R_pd 1M gave Vgs 3.27 V; (2) 10M/1M/1uF put the ramp on a node with no capacitance, made turn-off 180 s and let the PD step self-turn-on the FET; (3) dropping the master FET moved the same faults onto channel switches with 27x more load capacitance - 8.2 A during the PD step against a 5 A contract.",
-      "correctTopology": "Gate-to-SOURCE capacitor, with a diode bypassing the pull-up for turn-off. C_gs couples gate to source so Vgs stays near zero during a source dV/dt; the diode returns turn-off to the FET's own gate charge.",
-      "derivationConditions": [
-        "work the ramp at the Miller plateau, not the clamped Zener point",
-        "apply DC-bias derating to C_gs (50 V X7R at 36 V keeps 30-45%)",
-        "rate C_gs at 100 V - 36 V on a 50 V part is 1.39x, under the design's own 1.5x bar",
-        "SOA is now verifiable: the channel switch is an NSS085N100S whose Fig. 12 p.4 publishes a full SOA family, and the LM5069 bounds ramp dissipation to 18 W for 132 ms, inside the DC curve. The TM40P06D it replaced had only a DC line, which is what made the old ramp unverifiable."
-      ],
-      "alternative": "A 60 V hot-swap controller (LM5069 class) does ramp, current limit, fast turn-off and dV/dt immunity in silicon. Three failed discrete attempts is reasonable evidence it is the right call."
+      "status": "RESOLVED - discrete gate networks abandoned after four failures; replaced by an integrated hot-swap controller.",
+      "history": "FOUR attempts, all wrong. The first three were rooted in a gate-to-DRAIN (Miller) capacitor: (1) R_pu 100k/R_pd 1M gave Vgs 3.27 V; (2) 10M/1M/1uF put the ramp on a node with no capacitance, made turn-off 180 s and let the PD step self-turn-on the FET; (3) dropping the master FET moved the same faults onto channel switches with 27x more load capacitance - 8.2 A during the PD step against a 5 A contract. The fourth moved to a gate-to-SOURCE capacitor with a diode bypassing the pull-up, and was written up as settled before review found two independent fatal errors: a diode across a gate-source pull-up cannot discriminate direction, because the resistor carries current the same way when turning off and when the pull-down drags the gate low, so it clamps Vgs and the FET never enhances; and a gate-to-source capacitor cannot set a ramp in a common-source switch, because the drain transition happens inside the Miller plateau where Vgs is constant and C_gs therefore carries no current at all.",
+      "whyIntegrated": "A discrete network has to deliver ramp, current limit, turn-off and dV/dt immunity from one capacitor and two resistors, and those requirements pull against each other. No value set reconciles them.",
+      "designPoint": "Per channel: R_SENSE 10 mOhm (current limit 5.5 A typ, 4.8-6.5 A, sized against the 4.0 A white-flash peak), R_PWR 64.9 kOhm (P_LIM 39.8 W), C_TIMER 6.8 uF, UVLO/OVLO string 120k/5.36k/7.32k. Ramp 61 ms typ, 96 ms at the corners.",
+      "sideEffects": "The N-channel switch removed the high-side gate drive, the level shifters and the Vgs clamps entirely, and moved the FET from 60 V (1.03x the TVS clamp) to 100 V (1.72x). The LM5069's OVLO also hands back a hardware overvoltage trip the HUSB238A loses above 28 V.",
+      "cost": "The TIMER pin sets the insertion delay as well as the fault timeout, locked at 17.5:1 by the datasheet's own currents, so 6.8 uF buys a 6.1 s typical (3.6-13.6 s) hold-off at power-on that no firmware action shortens. Documented rather than designed away.",
+      "soa": "Verifiable for the first time: the NSS085N100S Fig. 12 p.4 publishes a full SOA family whose DC curve runs at constant power through (100 V, 1 A), so ~100 W at Vds 36 V against a 39.8 W power limit - 2.5x. The TM40P06D it replaced had only a DC line. Note the chart is a Tc=25 C rating; the board-level transient rise is not verifiable because the datasheet publishes no Z_thJA curve."
     },
     "storedEnergyAt36V": {
       "10 modules": "0.86 J",

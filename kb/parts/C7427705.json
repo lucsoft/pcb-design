@@ -62,8 +62,10 @@
     "Replaces the P-channel TM40P06D (C7422850). N-channel because the LM5069 charge pump drives the gate above the source, which is what made the high-side gate network unnecessary.",
     "100 V against the SMAJ36CA 58.1 V clamp is 1.72x, where the 60 V P-FET sat at 1.03x - a margin this design twice called uncomfortable and twice failed to fix.",
     "Rds(on) 9.5 mOhm max at Vgs 10 V (p.1), roughly 13.3 mOhm at Tj 100 C, so 0.079 W at the 2.43 A channel current. Lower loss AND higher voltage than the 60 V P-FET, at $0.39 against $0.40.",
-    "Publishes a real SOA family (Fig. 12 p.4) with 10 us / 100 us / 1 ms / 10 ms / DC curves. There is no 100 ms curve, so the 132 ms ramp is bounded by the DC line: roughly 0.6 A at Vds 36 V, about 21 W, against the 18 W power limit. The TM40P06D had only a DC line and no family at all, which is why its SOA was unverifiable.",
+    "Publishes a real SOA family (Fig. 12 p.4) with 10 us / 100 us / 1 ms / 10 ms / DC curves. CORRECTION: the DC curve runs at CONSTANT POWER, passing through (100 V, 1 A), so at Vds 36 V it allows roughly 100 W - not the 0.6 A / 21 W a first reading claimed, which was out by 4.5x. Against the 39.8 W power limit that is 2.5x. The TM40P06D had only a DC line and no family, which is why its SOA was unverifiable.",
     "RthJA 50 C/W on 1 in2 of 2 oz copper (p.1 note 2), so about 2.5 W at 25 C ambient. Steady state is not the binding constraint; the 18 W ramp is, and that is transient.",
-    "Datasheet lists \"PD Charger V-BUS\" as a typical application."
+    "Datasheet lists \"PD Charger V-BUS\" as a typical application.",
+    "The SOA chart is annotated 'RATED TC=25 C Single' - a case-temperature rating. On this board R_thJA is 50 C/W, so 39.8 W is only survivable because the ramp is ~100 ms. The datasheet publishes no Z_thJA curve, so the junction rise during the ramp is bounded by the SOA curve but is NOT verifiable from this datasheet.",
+    "Quote 9.5 mOhm (the p.1 max at Vgs 10 V), not LCSC's 7.5 mOhm typical, in anything load-bearing."
   ]
 }
