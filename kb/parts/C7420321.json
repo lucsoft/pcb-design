@@ -37,14 +37,11 @@
     "category": "manual",
     "pins": ""
   },
-  "designVerdict": "SELECTED - four per board: Q3/Q4 channel enable (one per channel), Q5/Q6 FAULT interlock (one per channel). All four switch a low-voltage divider node, not a 36 V gate.",
+  "designVerdict": "SELECTED - FOUR per board: Q3/Q4 channel enable (one per channel), Q5/Q6 FAULT interlock (one per channel). All four switch a low-voltage divider node, not a 36 V gate.",
   "notes": [
-    "2N7002, 60 V N-channel, SOT-23, 1.01M stock, $0.018.",
-    "WHY IT IS NEEDED, and this was nearly missed: the HUSB238A GATE pin is rated 33 V absolute, but the P-FET gate node on a 36 V bus swings between roughly 24 V (clamped) and 36 V (off). GATE cannot be tied to that node directly - it would sit above its own rating. A small N-FET level shift sits between them.",
-    "The same part drives the two channel load switches from 3.3 V GPIOs, which have the same problem in reverse: a 3.3 V output cannot pull a 36 V-referenced gate down.",
-    "THREE per board: two gate level shifts (one per channel switch) plus one for the FAULT hardware interlock, which pulls both channel control gates low when the HUSB238A flags a fault. One line on the BOM.",
-    "ROLE CHANGED: the \"WHY IT IS NEEDED\" note describes level-shifting into a high-side P-FET gate because the HUSB238A GATE pin is rated 33 V absolute. That job no longer exists. The 2N7002s now pull LM5069 UVLO pins to ground - Q3/Q4 one per channel for software enable (gate pulled up 100 kOhm to 3V3, so fail-safe off), Q5 for the FAULT interlock. All three switch a low-voltage divider node, not a 36 V gate.",
-    "CORRECTION: earlier notes here described level-shifting a 36 V P-FET gate, and an interlock that 'pulls both channel control gates low'. Neither is the circuit. Each device now pulls one LM5069 UVLO pin below 2.5 V. Q3/Q4 carry a 100 kOhm gate pull-up to 3V3 so the channels are off through MCU reset, and firmware drives the GPIO LOW to enable - the inverted sense is the fail-safe direction.",
-    "The FAULT interlock needs TWO devices, not one. A MOSFET drain is a single node, so one device tied to both UVLO pins would short the two dividers together and each enable transistor would then disable both channels."
+    "Each device pulls one LM5069 UVLO pin below 2.5 V. Q3/Q4 carry a 100 kOhm gate pull-up to 3V3 so the channels are off through MCU reset, and firmware drives the GPIO LOW to enable - the inverted sense is the fail-safe direction.",
+    "THE FAULT INTERLOCK NEEDS TWO DEVICES, NOT ONE. A MOSFET drain is a single node, so one device tied to both UVLO pins would short the two dividers together and each enable transistor would then disable both channels, destroying independent per-channel shedding.",
+    "GATE DRIVE IS MARGINAL on Q5/Q6. HUSB238A FAULT/OUT2 is push-pull at Voh >= 0.8 x VDD (p.8) = 2.64 V on a 3.3 V rail, against this part's Vgs(th) 2.5 V MAX at 250 uA - about 0.14 V of worst-case overdrive to sink the ~97 uA needed. A logic-level MOSFET would remove the question. Q3/Q4 driven from a 3.3 V GPIO are fine.",
+    "SUPERSEDED: earlier notes here described level-shifting a 36 V P-FET gate off the HUSB238A GATE pin, and gave a count of three. Neither is the circuit; that topology does not exist in the design."
   ]
 }

@@ -268,6 +268,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── erc.py             electrical rule check
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets)
     │   ├── plot.py            chart helper: palette and house style
+    │   ├── stale.py           find superseded values after a numeric change
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
     └── tests/test_erc.py      regression tests
 
@@ -288,6 +289,28 @@ deleted by a careless string replacement here, while two cross-references still
 pointed at it — and it took an external review to notice. `git diff` would have
 shown it in the same second it happened. The ERC checks netlists, not prose, so
 version control is the only thing watching the documents.
+
+**After changing any number, hunt the old one before committing.**
+
+    ./tools/stale.py '32.4 k' '4.58 A' '18 W'
+
+Six consecutive reviews of `designs/led-matrix-controller` caught the same
+failure and nothing else: a value corrected in the section that derives it and
+left standing in the BOM, the thermal table, an open question, or a KB record.
+The worst instance put a superseded resistor and capacitor set in the **bill of
+materials** -- the artefact you order from -- pointing at the section that
+disagreed with it.
+
+Prose has no type checker, so this is the substitute. It greps `designs/`,
+`kb/` and `rules/` and prints every hit with context. A hit is not automatically a bug:
+the same digits appear legitimately elsewhere, and
+
+> An earlier version of this section said 100 W, which was wrong by 1.4x because
+> it mistook the BV_DSS wall for the power line.
+
+is the *correct* way to retire a value -- it teaches the next reader why the
+obvious reading is wrong. What the tool buys is that no occurrence goes unseen.
+Adjudicate each one; require zero unexplained hits.
 
 Commit messages follow the nixpkgs convention used in the home-manager
 repository:

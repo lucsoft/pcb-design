@@ -46,7 +46,7 @@ fatigue. Affected, and still to be revisited:
 | PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind a BSS138 follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **LM5069** (C52940995) x2 + **NSS085N100S** | four discrete gate networks failed; ramp, current limit, power limit, fast turn-off and dV/dt immunity are integrated |
-| External part ratings | **mixed: 100 V on the switched path, 60 V on the bus** | the channel switch is 100 V (1.72x the TVS clamp) and the LM5069 is a 9-90 V part, but the TPS54360B and SS36 are 60 V and set the real limit at 1.03x the clamp. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
+| External part ratings | **mixed: 100 V on the switched path, 60 V on the bus** | the channel switch is 100 V (1.72x the TVS clamp) and the LM5069 operates from 8 V (p.5) to 90 V, but the TPS54360B and SS36 are 60 V and set the real limit at 1.03x the clamp. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
@@ -381,8 +381,10 @@ fill, **per channel** rather than once for the bus.
 
 What protects the load, in order of speed:
 
-1. **LM5069 current limit**, 4.58 A typ per channel, autonomous — a shorted
-   module on one chain trips that chain and leaves the other running
+1. **LM5069 current limit**, 5.5 A typ per channel (4.8-6.5 A). Autonomous, but
+   see Known electrical limits: against a 5.0 A *total* contract the PD source
+   acts first on a hard short, so "one chain sheds, the other keeps running" is
+   **not reliably obtainable**
 2. **LM5069 OVLO**, a hardware overvoltage trip at 45.3 V typ, needing no firmware
 3. the PD source limiting at the negotiated level
 4. HUSB238A FAULT into the interlock transistor, pulling both UVLO pins low on
@@ -501,9 +503,10 @@ flowchart LR
   RS -.-> U
   OUTN -.-> U
   DIV["divider<br/>120k / 5.36k / 7.32k"] --> U
-  MCU[ESP32-C6 GPIO] --> QE["2N7002<br/>pulls UVLO low"]
-  FLT[HUSB238A FAULT] --> QE
+  MCU[ESP32-C6 GPIO] --> QE["Q3 2N7002<br/>channel enable"]
+  FLT[HUSB238A FAULT] --> QF["Q5 2N7002<br/>FAULT interlock"]
   QE --> U
+  QF --> U
   U -. PGD .-> MCU
 ```
 
@@ -559,36 +562,67 @@ and the short ramp is what keeps C_TIMER small enough for a tolerable insertion
 delay. The SOA budget pays for it comfortably — see below.
 
 **SOA.** The NSS085N100S publishes a real SOA family (Fig. 12 p.4), which the
-P-FET it replaced did not. The **DC** curve runs at constant power — it passes
-through (100 V, 1 A) — so at V_DS = 36 V it allows roughly **100 W**. Against
-P_LIM = 39.8 W that is **2.5x**, and the 10 ms curve is twice as generous again,
-so a 61-96 ms pulse is bounded with room on both sides.
+P-FET it replaced did not. **This figure has to be read by pixel, not by eye** —
+two earlier readings here were wrong, once by 4.5x and once by 1.4x. Extracting
+the DC trace and calibrating against its own low-V_DS segment, which must fall on
+the R_DS(on) line and does (0.1 V, 13.3 A = 7.5 mΩ, the datasheet typical):
 
-**The remaining check is thermal, not SOA, and the datasheet cannot settle it.**
-The chart is annotated "RATED TC=25 C Single" — case held at 25 degrees. On this
-board R_thJA is 50 C/W, so 39.8 W sustained is not survivable for a moment; what
-makes it safe is that the pulse is ~100 ms, where transient thermal impedance is
-one to two orders below the steady-state figure. **The datasheet publishes no
-Z_thJA curve**, so the junction rise during the ramp is bounded by the SOA curve
-and by physics but is not verifiable from this part's documentation. It is a
-single event at power-on rather than a repetitive one, which is what makes that
-acceptable.
+| V_DS | 1 V | 10 V | 20 V | **36 V** | 50 V | 70 V |
+|---|---|---|---|---|---|---|
+| I_D | 82 A | 7.6 A | 3.7 A | **2.0 A** | 1.4 A | 1.0 A |
+| P | 82 W | 76 W | 73 W | **72 W** | 71 W | 70 W |
+
+So the constant-power asymptote is **~70-75 W**, the 1 A point sits at **70 V**
+— the vertical segment at 100 V is the BV_DSS wall, not a power line, and
+mistaking it for one is what produced the earlier 100 W figure. At V_DS = 36 V
+the DC SOA allows **~72 W**, so P_LIM = 39.8 W clears it by **1.8x**, falling to
+**1.46x** at the PWR_ILM max corner (31 mV → 49.4 W). The 10 ms curve gives
+171 W at 36 V. The design passes; it does not pass comfortably.
+
+**The junction rise IS verifiable — an earlier version of this section said it
+was not.** The SOA chart is annotated "RATED TC=25 C Single", a case-temperature
+rating, and on this board R_thJA is 50 C/W, so 39.8 W sustained would be fatal.
+But **Fig. 13 p.6** publishes normalised transient thermal impedance against
+pulse width, single-pulse plus six duty cycles, with its own formula
+`T_J,PK = T_C + P_DM x Z_TH-JC x R_TH-JC`. At the 96 ms worst-case ramp the
+single-pulse curve reads **Z ≈ 0.45**, and the figure annotates R_TH-JC =
+4.5 C/W:
+
+    dT = 39.8 W x 0.45 x 4.5 C/W = 81 C
+
+Case temperature is essentially ambient here, since steady-state dissipation is
+0.079 W. So T_J ≈ **106 °C** at 25 °C ambient and **126 °C** at 45 °C, both under
+the 150 °C limit. Note the datasheet contradicts itself — the p.1 thermal table
+gives R_θJC = 0.84 C/W against Fig. 13's 4.5 C/W — and the figure above uses the
+**pessimistic** one, so the real margin is wider.
 
 **The two channels must be ramped one at a time.** Under power limit the current
 *rises* as the output charges — it is P_LIM/V_DS — so it starts at 1.05 A and
 reaches the 5.5 A current limit once V_out passes **30.6 V**, after which the
-channel charges at a flat 5.5 A for the last **4.3 ms**. Per channel the average
-over the ramp is only ~1.0 A (2.36 J in 61 ms), but two channels released
-together would put **11 A** against a 5.0 A contract.
+channel charges at a flat 5.5 A for the last **4.3 ms**. The average over the
+ramp is charge over time:
+
+    I_avg = C x V / t_start = 3.3 mF x 37.8 V / 61.4 ms = 2.03 A
+
+An earlier version of this paragraph said ~1.0 A, computed from ½CV² = 2.36 J.
+That is the energy stored **in the capacitor**; under power limit the FET burns
+an equal amount, so the source delivers twice it, and the current is exactly 2x
+what that figure implied. Two channels released together would put **11 A**
+against a 5.0 A contract.
 
 Staggering is a firmware requirement, not a hardware property: both insertion
 timers run from the moment VBUS crossed ~5.5-7.5 V regardless of UVLO, so they
 expire together, and what separates the two ramps is firmware releasing one
-enable GPIO at a time. Even staggered, the 4.3 ms peak and a lit neighbouring
-channel sum to ~7.9 A, so **the channels have to be ramped before pixel data
-starts**, while the modules draw only quiescent current. That ordering is already
-what the cold-start sequence does; it is recorded here because it is now a
-constraint rather than an accident.
+enable GPIO at a time. Even staggered, a ramping channel averages 2.03 A beside a
+neighbour at the sustained 2.43 A — **~4.5 A against a 5.0 A contract** — and its
+4.3 ms plateau pushes the instantaneous total to ~7.9 A. So **the channels have
+to be ramped before pixel data starts**, while the modules draw only quiescent
+current. That ordering is what the cold-start sequence already does; it is
+recorded here because it is now a constraint rather than an accident.
+
+**Staggering does not bring the ramp inside the contract on its own.** One
+channel alone holds a flat **5.5 A typ (4.8-6.5 A)** for those 4.3 ms, which is
+over 5.0 A before any neighbour current is counted. See Known electrical limits.
 
 **Thresholds**, with the 1% resistor tolerance carried through rather than the
 comparator spread alone:
@@ -618,8 +652,16 @@ sequence by hand.
 **This part auto-restarts; it does not latch off.** C52940995 is the **-2**
 suffix, and its datasheet p.13 describes the automatic restart sequence — the
 Timer pin cycling between 3.6 V and 0.8 V seven times after a fault timeout, at a
-0.5% duty cycle. With C_TIMER = 6.8 uF that is **~53 s** between retries on a
-persistent channel fault. Firmware can force an earlier retry by toggling the
+0.5% duty cycle. The full period is seven *complete* cycles plus the eighth
+ramp, not seven discharges — p.13 ends the sequence when the Timer pin reaches
+0.3 V on the eighth high-to-low ramp:
+
+    7 x (2.8 V x C / 2.5 uA  +  2.8 V x C / 70 uA)  +  3.3 V x C / 2.5 uA
+    = 7 x (7.62 s + 0.27 s) + 8.98 s = 64 s
+
+With C_TIMER = 6.8 uF that is **~64 s** between retries on a persistent channel
+fault, which the datasheet's own 0.5% duty figure corroborates (350 ms / 64.5 s =
+0.54%; the ~53 s an earlier version gave here would have been 0.66%). Firmware can force an earlier retry by toggling the
 enable GPIO, since that resets the controller through UVLO. TI's LM5069MM-1
 (C486026) is the latch-off variant, not this one — an earlier note here had the
 two suffixes exactly backwards.
@@ -642,8 +684,8 @@ that contention survivable are no longer required for this purpose.
 - **PGD wiring.** Both LM5069 PGD pins are open-drain; wiring them together into
   one GPIO with a pull-up reports "both channels good" and costs the single spare
   pin. Which channel failed is then inferred from which one firmware enabled.
-- **R_SENSE package and layout.** A 12 mOhm sense resistor wants Kelvin
-  connection; at 0.071 W the part is thermally trivial but the sense traces are
+- **R_SENSE package and layout.** A 10 mOhm sense resistor wants Kelvin
+  connection; at 0.059 W steady state the part is thermally trivial but the sense traces are
   not a routing afterthought.
 - **The Tokmas part is a second source.** C52940995 is a Tokmas LM5069MMX-2, not
   TI silicon, at **105 units** live stock — jlcsearch claimed 2952, which is
@@ -716,7 +758,7 @@ Active parts. Passives are listed below the table.
 | D1 | BZT52C20 | C19077415 | 1 | clamps the BSS138 follower gate | 0.017 |
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
-| D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — 1.72x the 100 V FET, but only **1.03x** the 60 V bus parts | 0.037 |
+| D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the 100 V FET is 1.72x that, but the 60 V bus parts are only **1.03x** | 0.037 |
 | D10-D13 | SMAJ15CA | C7466491 | 4 | 15 V TVS on the A/B pair, 2 per output | 0.031 |
 | L1 | ANR5040T100M | C7427121 | 1 | 10 uH, TPS54360B output, 2.9 A Isat | 0.058 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
@@ -734,8 +776,8 @@ Passives, standard values, final selection at layout:
 - **120 Ω** differential termination (far end, on the converter board — not here)
 - **900 kΩ** on HUSB238A ADDR and DEBUG_N, per datasheet p.4-5, to keep standby
   current low
-- **LM5069 support, per channel**: R_PWR **32.4 kΩ** 1%, C_TIMER **10 µF** X7R
-  25 V, UVLO/OVLO string **120 kΩ / 5.11 kΩ / 7.68 kΩ** 1%, C_VIN **100 nF**
+- **LM5069 support, per channel**: R_PWR **64.9 kΩ** 1%, C_TIMER **6.8 µF** X7R
+  25 V, UVLO/OVLO string **120 kΩ / 5.36 kΩ / 7.32 kΩ** 1%, C_VIN **100 nF**
   ≥100 V. All derived in Channel switching and inrush
 - **100 kΩ** pull-up to 3V3 on each channel-enable 2N7002 gate, so both channels
   are off whenever the MCU is in reset
@@ -862,7 +904,8 @@ silicon of a given on-resistance is smaller. The 10 mΩ sense resistors add
 
 **The dissipation that matters is during the ramp**, and it is now bounded by
 design rather than by hope: the LM5069 holds the FET at **39.8 W** for the 61 ms
-ramp (96 ms at the corners), against a DC SOA line of roughly 100 W at Vds 36 V.
+ramp (96 ms at the corners), against a DC SOA line of roughly 72 W at Vds 36 V—
+1.8x, falling to 1.46x at the power-limit tolerance corner.
 Three of the four discrete attempts produced 2.16 W, 5.9 W and 44 W for the same
 circuit — the spread is the clearest evidence that the topology, not the
 arithmetic, was the problem.
@@ -1114,7 +1157,7 @@ A workable assignment, which also shows how tight it is:
 | 23, 10 | HUSB238A INT_N, EN_N | |
 | 11 | INA226 ALERT | |
 | 4, 5 | MAX3485 ch1/ch2 DI | |
-| 0, 1 | channel enables | each with a pull-down; costs the 32.768 kHz crystal option |
+| 0, 1 | channel enables | each with a **pull-up to 3V3** — high holds UVLO low, so the channel is OFF through MCU reset. A pull-down here would enable both 36 V channels during reset. Costs the 32.768 kHz crystal option |
 | 15 | SK6812 chain | a pull-down gives both the required strap level and the right idle state |
 | 3 | bus-voltage ADC | GPIO2/3 are the **only** ADC pins free of strap, JTAG or 32 kHz conflicts |
 | 12, 13 | USB D-/D+ | fixed |
@@ -1289,6 +1332,45 @@ add 2× 10 m of 20 AWG at 3.93 W per channel (0.22 A) and 0.14 A of controller
 draw and the total is **≈5.2 A against a 5.0 A contract**. The 5 % drop line is
 described as an efficiency choice; at the 20-module target it is an overrun.
 
+**The current limit cannot fit between the flash peak and the PD contract.** It
+has to sit above the **4.0 A** white-flash peak so a flash does not trip it, and
+below the **5.0 A** contract so the LM5069 sheds a faulted channel before the PD
+source gives up on the whole bus. With a ±18% comparator spread (48-65 mV) there
+is no sense-resistor value that does both: 10 mΩ gives 4.8-6.5 A, clearing the
+flash by 1.20x but sitting at or above the contract across the whole range.
+
+The consequence is that on a hard short the source's own protection acts first,
+in a few milliseconds, against the LM5069's 350 ms fault timeout — so the whole
+wall goes dark rather than one chain. **Per-channel autonomous isolation is
+therefore not reliably obtainable**, and the protection list has been corrected
+to say so. Closing this needs either a tighter-tolerance controller or a lower
+flash peak, i.e. fewer modules per channel.
+
+**The ramp plateau itself exceeds the contract.** Independently of the above, a
+single channel ramping draws a flat 5.5 A typ for 4.3 ms, over the 5.0 A
+contract, and staggering only removes the *second* channel's contribution. The
+levers are a smaller C_OUT per channel or a lower P_LIM, and the second one
+trades directly against the insertion delay. Whether a compliant source tolerates
+4.3 ms of 1.1x is not something this design can assert.
+
+**OVLO now trips above the TVS breakdown, which inverts the intended ordering.**
+The SMAJ36CA's V_BR is **40.0-44.2 V**, and OVLO was re-centred to 45.3 V nominal
+to win margin over the 37.8 V maximum bus. So on a *sustained* overvoltage the
+TVS enters breakdown first and must dissipate continuously — an SMA part rated
+400 W at 10/1000 µs, i.e. a surge device, not a sustained one. Open question 11
+previously said "above that the SMAJ36CA clamps", which has the order backwards.
+
+Note OVLO could not fix this even if it tripped first: it sheds the **channels**,
+while the TVS, the rails and the PD front end all sit **upstream** of the
+switches. Nothing on this board disconnects them from a sustained overvoltage.
+
+**The FAULT interlock gate drive is marginal.** HUSB238A FAULT/OUT2 is push-pull
+with V_OH ≥ 0.8 × VDD (p.8), so **2.64 V** on a 3.3 V rail, against the 2N7002's
+V_GS(th) of **2.5 V max** (at 250 µA). A worst-case pair leaves ~0.14 V of
+overdrive to sink the ~97 µA needed to pull the UVLO node below 2.5 V. It
+probably works and should not be assumed to. A logic-level MOSFET, or a small
+pull-up on the FAULT line, would remove the question. **Open.**
+
 **The bus bypass capacitance is over the Type-C limit.** USB Type-C bounds a
 sink's VBUS bypass capacitance to **10 µF** so that attach inrush stays within
 what a source tolerates. With the pass FET gone, CIN, three SMAJ36CA and the
@@ -1340,15 +1422,16 @@ would do without this cost.
 
 ### Verification, not design
 
-5. **The SOA reading is by eye off a log-log plot.** The NSS085N100S's Fig. 12
-   p.4 has no 100 ms curve, so the 61-96 ms ramp is bounded by the **DC** line.
-   That line runs at constant power through (100 V, 1 A), giving roughly **100 W**
-   at Vds 36 V against the 39.8 W power limit — 2.5x. An earlier reading here put
-   it at 0.6 A / 21 W, which was wrong by 4.5x and made the margin look like
-   1.17x. The number is still a graphical reading rather than a quoted figure.
-   Separately, the chart is a **Tc = 25 °C** rating and the datasheet publishes no
-   Z_thJA curve, so the board-level junction rise during the ramp is bounded by
-   physics and by the SOA curve but is not verifiable from this datasheet.
+5. **The SOA margin rests on a graphical reading, now taken by pixel.** The
+   NSS085N100S's Fig. 12 p.4 has no 100 ms curve, so the 61-96 ms ramp is bounded
+   by the **DC** line: a constant-power asymptote at ~72 W at Vds 36 V, giving
+   **1.8x** over the 39.8 W power limit and **1.46x** at the PWR_ILM max corner.
+   Two earlier readings here were wrong — 21 W (by 4.5x) and then 100 W (by 1.4x),
+   the second from mistaking the vertical BV_DSS wall at 100 V for the power line.
+   The calibration is cross-checked against the curve's own R_DS(on) segment, so
+   it is better founded than either, but it is still a reading off a plot.
+   The thermal half of this is no longer open: Fig. 13 p.6 gives single-pulse
+   transient thermal impedance, and at 96 ms it puts the junction rise at ~81 °C.
 
 6. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
    not observed. Testable for free using the XL1509's own thermal shutdown: run
@@ -1383,9 +1466,11 @@ would do without this cost.
     below the modules' 45 V absolute at its *high* extreme needs **≤40.1 V**.
     Those are **mutually exclusive**. It is set at 45.3 V nominal to protect the
     controller with 2.0 V of margin, which leaves a **45-50.8 V** window where a
-    worst-case part passes voltage the modules are not rated for; above that the
-    SMAJ36CA clamps. Accepted — closing it needs a tighter comparator than this
-    part has.
+    worst-case part passes voltage the modules are not rated for. The SMAJ36CA
+    does not cover that window the way an earlier version of this entry claimed:
+    its breakdown is 40.0-44.2 V, i.e. **below** the OVLO trip, so on a sustained
+    overvoltage the TVS conducts first and cooks. See Known electrical limits.
+    Accepted — closing it needs a tighter comparator than this part has.
 
 ## Resolved
 
