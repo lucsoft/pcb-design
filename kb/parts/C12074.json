@@ -32,9 +32,10 @@
     "category": "manual",
     "pins": ""
   },
-  "designVerdict": "SELECTED - Ethernet jack for the W5500",
+  "designVerdict": "REJECTED - the RJ45 and its magnetics are on the W5500 module (see C134462).",
   "notes": [
     "RJ45 with integrated magnetics, the standard pairing for a W5500. $1.73, stock 26k.",
-    "Through-hole. In a vibration environment it needs its shield tabs soldered and ideally a mechanical retention screw, not just the signal pins."
+    "Through-hole. In a vibration environment it needs its shield tabs soldered and ideally a mechanical retention screw, not just the signal pins.",
+    "RETIRED with the bare W5500. The undocumented TCT/RCT centre-tap bias that made this a blocking open question is inside the module now."
   ]
 }

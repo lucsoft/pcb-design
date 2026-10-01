@@ -1,0 +1,105 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C134462",
+  "@type": "Component",
+  "lcscId": "C134462",
+  "mpn": "WIZ850io",
+  "manufacturer": "WIZNET",
+  "description": "Through Hole,25x23mm Modules RoHS",
+  "category": "ic",
+  "package": "Through Hole,25x23mm",
+  "stock": 136,
+  "priceUsd": 22.8926,
+  "parameters": {
+    "Voltage - Supply": "2.97V~3.63V",
+    "Features": "Thermal Protection;Short-Circuit  Protection;Overvoltage protection;Data encryption;Built-in signature detection",
+    "Data Rate": "10Mbps;100Mbps",
+    "Supply Current": "132mA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/df50d20be2a9cb914a8aa834ee1cec31.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [
+    {
+      "number": "J1-1",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "J1-2",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "J1-3",
+      "name": "MOSI",
+      "type": "input"
+    },
+    {
+      "number": "J1-4",
+      "name": "SCLK",
+      "type": "input"
+    },
+    {
+      "number": "J1-5",
+      "name": "SCSn",
+      "type": "input"
+    },
+    {
+      "number": "J1-6",
+      "name": "INTn",
+      "type": "open_collector"
+    },
+    {
+      "number": "J2-1",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "J2-2",
+      "name": "3V3",
+      "type": "power_in",
+      "vMax": 3.6
+    },
+    {
+      "number": "J2-3",
+      "name": "3V3",
+      "type": "power_in",
+      "vMax": 3.6
+    },
+    {
+      "number": "J2-4",
+      "name": "NC",
+      "type": "nc"
+    },
+    {
+      "number": "J2-5",
+      "name": "RSTn",
+      "type": "input"
+    },
+    {
+      "number": "J2-6",
+      "name": "MISO",
+      "type": "output"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "datasheet p.2 Pin Description, J1 and J2 tables (WIZ850io)"
+  },
+  "designVerdict": "REFERENCE - the documented module the design is drawn against (U3). A cheaper \"W5500 Lite\" clone is the intended buy, but its pad order must be confirmed against the seller before the netlist.",
+  "notes": [
+    "The design switched from a bare W5500 (C32843) to a soldered-down module. That retired two blocking open questions outright: the 25 MHz crystal's CL mismatch (18 pF required, 20 pF on hand) and the HR911105A centre-tap bias network that the W5500 datasheet does not document. Both are the module vendor's problem now.",
+    "PAD ORDER IS THE ONE REMAINING RISK. This record's pin map is the OFFICIAL WIZ850io, read from its datasheet p.2. Clone 'W5500 Lite' boards often copy the footprint and sometimes do not. Assuming a clone matches is the same class of error as inventing an LCSC part number - the board returns from fab wrong and no property field fixes it. Confirm against the product page of the module actually bought.",
+    "PRICE: $22.89 at LCSC against roughly $3-6 for a clone and $4.65 for the discrete chip + crystal + jack it replaces. Buying official costs about five times the discrete BOM for this block, which is why the clone is the intended purchase and this record exists as the documented reference.",
+    "INTn (J1-6) is typed 'I' in the datasheet's own pin table, which is wrong - it is the W5500's open-drain interrupt OUTPUT. Recorded here as open_collector.",
+    "RSTn needs LOW for at least 500 us, and firmware must wait 50 ms after it returns HIGH before talking to the module (p.2). The controller keeps the pull-down that holds the PHY in reset while the MCU boots.",
+    "AREA IS NOT A WIN: 25 x 23 mm = 575 mm2 against roughly 496 mm2 for the parts it replaces, so the board gets slightly bigger. The win is the retired open questions, six retired exact values and the differential routing.",
+    "Not a JLCPCB assembly part - fitted by hand like the picoMAX connectors. Soldered down rather than socketed, because this is a soundwall and a stacked daughterboard on a receptacle is the connection that works loose."
+  ]
+}

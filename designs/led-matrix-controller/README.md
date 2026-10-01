@@ -51,7 +51,7 @@ fatigue. Affected, and still to be revisited:
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
 | MCU | ESP32-C6-WROOM-1-N8 (C5366877) | from brief |
-| Ethernet | W5500 (C32843) | from brief |
+| Ethernet | **W5500 module** (W5500 Lite / WIZ850io class), soldered down | the brief said W5500; this design first read that as the bare chip. A finished module carries the PHY front end, the crystal and the magnetics, which retires two blocking open questions and the hardest routing on the board |
 | Current sense | **INA226** (C49851), **low-side** | specified 0-36 V operating (40 V absolute), so on a 36 V bus there is no operating margin at all; the shunt goes in the ground return where common mode is ~0 V |
 | Module connector | **Wago picoMAX 3.5** (2091 series), 4-pole: **+36V / GND / A / B** | 10 A, push-in spring, integrated locking latch. Spring force does not relax like a screw; the latch stops it walking out. Sourced from Reichelt/Mouser, not LCSC |
 | Data link | **differential pair**, MAX3485 (C6395158) x2 | one per channel. Removes the single-ended distance limit and the level shifting at this end |
@@ -108,7 +108,7 @@ flowchart LR
 
     PD["HUSB238A<br/>PD status + control"]
     INA["INA226<br/>low-side current"]
-    ETH["W5500<br/>10/100 Ethernet"]
+    ETH["W5500 module<br/>10/100 Ethernet"]
     USBD["USB-C D+/D-<br/>native USB Serial/JTAG"]
 
     subgraph OUTS["outputs"]
@@ -313,7 +313,7 @@ flowchart LR
     B2 --> R3["3.3 V rail"]
     R5 --> LS["74AHCT541<br/>level shifter"]
     R3 --> MCU["ESP32-C6"]
-    R3 --> ETH["W5500"]
+    R3 --> ETH["W5500 module"]
     R3 --> SENSE["INA226"]
     R3 --> PD["HUSB238A VDD"]
 ```
@@ -342,7 +342,7 @@ synchronous buck burns under 0.1 W and avoids a thermal problem in a small packa
 
 ### Why two conversion stages
 
-The board needs **both** rails: 3.3 V for the MCU, W5500, INA226 and the
+The board needs **both** rails: 3.3 V for the MCU, Ethernet module, INA226 and the
 HUSB238A's VDD, and 5 V for the 74AHCT541, because WS2812 VIH is 0.7 x VDD =
 3.5 V on a 5 V module rail and a 3.3 V GPIO cannot reach it.
 
@@ -744,7 +744,7 @@ Active parts. Passives are listed below the table.
 |---|---|---|---|---|---|
 | U1 | HUSB238A-BB001-QN16R | C24833806 | 1 | USB PD sink, I2C mode | 0.66 |
 | U2 | ESP32-C6-WROOM-1-N8 | C5366877 | 1 | MCU, native USB | 4.25 |
-| U3 | W5500 | C32843 | 1 | 10/100 Ethernet | 2.85 |
+| U3 | W5500 module, WIZ850io-class | — | 1 | 10/100 Ethernet, **soldered down**, see Ethernet module | — |
 | U4 | TPS54360B | C524806 | 1 | bus to 5 V, ~100% duty | 0.760 |
 | U5 | SY8089A1AAC | C479074 | 1 | 5 V to 3.3 V | 0.087 |
 | U6 | INA226 | C49851 | 1 | low-side current sense | 0.76 |
@@ -765,10 +765,8 @@ Active parts. Passives are listed below the table.
 | R1 | FRM252WFR010TN | C7419995 | 1 | 10 mΩ 1% shunt, low-side | 0.058 |
 | R2,R3 | 10 mΩ 1% ≥0.5 W | — | 2 | LM5069 current-sense. Rated for the **6.5 A worst-case trip** (0.42 W for up to one fault timeout), not the 0.059 W steady state | — |
 | R4 | 10 kΩ 0.25 W | — | 1 | bus bleeder, controller-side capacitance only | — |
-| Y1 | K3A250002010G | C19076760 | 1 | 25 MHz for the W5500 | 0.068 |
 | J1 | **REJECTED** — see open question 1 | — | 1 | USB-C: C19274016 is 3.0 A / 5.0 V, needs 5 A / 36 V | — |
-| J2 | HR911105A | C12074 | 1 | RJ45 with magnetics | 1.73 |
-| J3,J4 | Wago picoMAX 3.5 4-pole | — | 2 | module output, Reichelt/Mouser | — |
+| J2,J3 | Wago picoMAX 3.5 4-pole | — | 2 | module output, Reichelt/Mouser | — |
 | LED1-8 | SK6812MINI-E | C5149201 | 8 | status chain | 0.081 |
 
 Passives, standard values, final selection at layout:
@@ -831,9 +829,10 @@ common-mode range of −7 V to +12 V, so a 5 V clamp would conduct during normal
 operation and corrupt the bus. 15 V clears the +12 V limit with margin, and
 bidirectional is required because the lines swing both polarities.
 
-**Ethernet needs nothing extra.** The HR911105A has integrated magnetics, so the
-cable side is galvanically isolated. (Bob Smith termination is worth adding for
-EMI, but that is a different problem from ESD.)
+**Ethernet needs nothing extra.** The module's RJ45 has integrated magnetics, so
+the cable side is galvanically isolated, and Bob Smith termination is inside the
+jack rather than something to add. Shield-to-GND bonding is the module's
+arrangement, not ours.
 
 **This was an error, now corrected.** The earlier text claimed "no part both
 stays off at 36 V and clamps below 60 V" and leaned on the P-FET's body diode to
@@ -882,7 +881,7 @@ The largest items are where any further shrink comes from:
 | ESP32-C6-WROOM-1-N8 | 459 | ESP32-C6-MINI-1 is 219 mm2 — saves 240 |
 | 2x NSS085N100S + copper | 240 | the master FET is gone |
 | 2x LM5069 + sense resistors | 130 | the price of integrated protection |
-| HR911105A RJ45 | 336 | unavoidable if Ethernet stays |
+| W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
 
 
 **Dropping the PPTCs is the easy win.** They were specified when the connector
@@ -991,34 +990,53 @@ No soft-start or PWRGD pin exists on the DDA package.
 | COUT | **≥22 µF** | p.1 selection table, validated against the 2.2 µH L2 |
 | EN pull-up | 100 kΩ to 5 V | p.2 "Do not leave it floating" |
 
-### W5500 (U3) — Ethernet
+### Ethernet module (U3) — W5500 on a daughterboard
 
-| Part | Value | Source |
-|---|---|---|
-| EXRES1 (pin 10) to AGND | **12.4 kΩ 1%** | p.8, Figure 2 p.11 — sets PHY bias current |
-| TOCAP (pin 20) | 4.7 µF | p.8 "must be connected" |
-| 1V2O (pin 22) | 10 nF | p.9 "must be connected" |
-| RSVD (pin 23) | tie to GND | p.9 |
-| LED series resistors | 4 × ~330 Ω | §5.3 p.59 — outputs are unlimited push-pull |
+**The board carries a finished W5500 module, not a bare W5500.** The brief said
+"W5500" and this design first read that as the chip, which put the PHY front end,
+a 25 MHz crystal and an RJ45 with magnetics on the controller board. A module
+removes all three.
 
-Pin 18 VBG **must be left floating**; pin 7 is DNC. Both are easy to get wrong
-writing a netlist from a pin list. **PMODE0-2 (pins 37-39) and RSVD (pins 38-42)
-are also left unwired deliberately** — the PMODE pins have internal pull-ups, so
-floating selects 111, all-capable auto-negotiation, and the RSVD pins have
-internal pull-downs (p.10). Both are relying on internal pulls, which is legal
-but worth stating rather than leaving as an apparent omission.
+What that retires, and this is the point rather than the cost saving:
 
-**Crystal mismatch:** the W5500 requires **CL = 18 pF** (§5.5.3 p.60), and Y1
-(K3A250002010G) is a **20 pF** part. Either swap for a true 18 pF-CL crystal with
-27 pF load caps, or keep Y1 with 30 pF caps and accept an uncharacterised
-negative-resistance margin. Figure 3 p.11 also shows a 1 MΩ feedback resistor and
-a 0 Ω series resistor in the XO leg. **Not yet resolved.**
+| Gone | Why it mattered |
+|---|---|
+| EXRES1 12.4 kΩ 1%, TOCAP 4.7 µF, 1V2O 10 nF, RSVD tie, 4 × LED resistors | six values that all had to be exactly right |
+| 25 MHz crystal | **CL mismatch was a blocking open question** — the part on hand was 20 pF against a required 18 pF |
+| HR911105A and its centre taps | **the TCT/RCT bias network is undocumented** in the W5500 datasheet — the second blocking open question |
+| Differential pair routing to the jack | the only controlled-impedance work on an otherwise forgiving board |
 
-**Bob Smith termination is already inside the HR911105A** — 4 × 75 Ω + 1000 pF/2 kV
-plus both common-mode chokes. Adding it externally would be a mistake. The
-chip-side centre taps (P4 TCT, P5 RCT) need a bias network that the W5500
-datasheet does not document; take it from WIZnet's reference schematic rather
-than guessing. **Unverified.**
+Both of those open questions were unresolvable here without WIZnet's reference
+schematic. On a module they are the module vendor's problem, already solved in
+volume.
+
+**Interface: six signals plus power**, which is exactly what the controller
+already budgets — the GPIO assignment does not change.
+
+| Signal | Note |
+|---|---|
+| SCLK, MOSI, MISO, SCSn | SPI, mode 0, up to 80 MHz |
+| RSTn | active low, **≥ 500 µs**; keep the pull-down that holds the PHY in reset while the MCU boots |
+| INTn | open-drain interrupt |
+| 3V3, GND | the module regulates its own 1.2 V core internally |
+
+**Soldered down, not socketed.** This is a soundwall: the same vibration argument
+that chose picoMAX with a latch over screw terminals applies to a stacked
+daughterboard. Pin headers soldered through both boards, no receptacle.
+
+**The pin map is NOT yet recorded, deliberately.** The official WIZnet WIZ850io
+(C134462, LCSC, **$22.89**) publishes two 1×6 headers — J1 as GND/GND/MOSI/SCLK/
+SCSn/INTn and J2 as GND/3V3/3V3/NC/RSTn/MISO. Many "W5500 Lite" clones copy that
+footprint; some do not. **Assuming it would be the same class of error as
+inventing an LCSC part number** — the board comes back from fab wrong — so the
+order of the pads goes into the knowledge base only once it comes from the
+product page of the module actually bought. Until then the netlist cannot be
+written for this block. See Open questions.
+
+**Area is not the reason to do this.** The module is ~25 × 23 mm = 575 mm²
+against roughly 496 mm² for the chip, crystal, jack and support passives, so the
+board gets slightly *bigger*. The win is the two retired open questions, the six
+retired exact values and the routing.
 
 ### ESP32-C6-WROOM-1 (U2)
 
@@ -1105,8 +1123,8 @@ here.
 
 ### Still unresolved in this section
 
-- The W5500 crystal load-capacitance mismatch above.
-- The HR911105A centre-tap bias network.
+- The Ethernet module's pad order, which must come from the product page of the
+  module actually bought — see Ethernet module.
 - D1 is **selected**: BZT52C20 (C19077415). See the note below on why 20 V
   rather than Hynetek's 28 V.
 - **The hold-up capacitor's series element.** See Known electrical limits: the
@@ -1185,7 +1203,7 @@ pads.**
 
 Also not yet specified as parts rather than prose: four M3 mounting holes and
 three fiducials (the vibration section argues for standoffs at several points),
-the HR911105A shield-tab soldering, and a decision on shield-to-GND bonding.
+and the module's header footprint and mechanical retention.
 
 ## Thermal budget
 
@@ -1194,7 +1212,7 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | Source | W | Note |
 |---|---|---|
 | ESP32-C6 (TX peak) | 1.26 | 382 mA at 3.3 V, module datasheet |
-| W5500 | 0.50 | |
+| W5500 module | 0.50 | module draws the same as the bare PHY |
 | TPS54360B catch diode | 0.30 | 0.60 A average at 0.7 A out, conducts 86% of the cycle |
 | TPS54360B IC | ~0.5 | conduction + switching at ~1 MHz |
 | Q1 + Q2 NSS085N100S | 0.16 | 13.3 mΩ hot, 2.43 A each |
@@ -1224,7 +1242,7 @@ second reason to cap them — the first was L1's saturation margin, which is why
 the 22 µH part was dropped for a 10 µH one in the first place.
 
 Hot spots need local copper rather than relying on the board average: the
-ESP32-C6 (1.26 W), the W5500 and the TPS54360B (0.50 W each), the catch diode
+ESP32-C6 (1.26 W), the Ethernet module and the TPS54360B (0.50 W each), the catch diode
 (0.30 W) and the shunt (0.25 W). The channel FETs are **no longer hot spots** at
 0.079 W each. The two bucks should not share a thermal zone with the module or
 the Ethernet controller.
@@ -1403,15 +1421,20 @@ would do without this cost.
    netlist must parallel **all four VBUS and all four GND contacts** (a Type-C
    contact is 1.25 A) and tie DP1/DN1 to DP2/DN2 for flip support.
 
-2. **The W5500 crystal is the wrong load capacitance.** The W5500 requires
-   **CL = 18 pF** (§5.5.3 p.60); Y1 (K3A250002010G) is a **20 pF** part. Either
-   swap for a true 18 pF-CL crystal with 27 pF load caps, or keep Y1 with 30 pF
-   caps and accept an uncharacterised negative-resistance margin. Figure 3 p.11
-   also shows a 1 MΩ feedback resistor and a 0 Ω series resistor in the XO leg.
+2. **The Ethernet module's pad order is not recorded.** The design switched from
+   a bare W5500 to a soldered-down module, which retired the crystal-CL and
+   magnetics-bias questions that used to sit here. What replaces them is smaller
+   but blocking all the same: the official WIZ850io publishes J1 as
+   GND/GND/MOSI/SCLK/SCSn/INTn and J2 as GND/3V3/3V3/NC/RSTn/MISO, and clone
+   "W5500 Lite" boards may or may not match. The pad order must come from the
+   product page of the module actually bought before the netlist is written —
+   guessing it is the same class of error as inventing an LCSC part number.
 
-3. **The HR911105A centre-tap bias (P4 TCT, P5 RCT) is undocumented** in the
-   W5500 datasheet. Take it from WIZnet's reference schematic rather than
-   guessing; leaving them unconnected is a dead link.
+3. **The module is not an LCSC/JLCPCB assembly part.** Like the picoMAX
+   connectors it is sourced and fitted by hand, so the board is no longer fully
+   JLCPCB-assemblable. The official WIZ850io (C134462) *is* on LCSC at **$22.89**
+   against roughly $3-6 for a clone and $4.65 for the discrete parts it replaces,
+   so buying official costs about five times the discrete BOM for this block.
 
 4. **The BSS138 follower may not clear the HUSB238A's UVLO at vSafe5V.** With VDD
    unavailable the chip needs VBUS ≥ 3.67-4.4 V and draws 4.5 mA; at 5 V in, the

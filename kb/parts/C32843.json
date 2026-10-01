@@ -32,5 +32,9 @@
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
     "pins": ""
-  }
+  },
+  "designVerdict": "REJECTED - replaced by a W5500 module (see C134462). The bare chip is not fitted.",
+  "notes": [
+    "RETIRED. The design read the brief's \"W5500\" as the bare chip and placed the PHY front end, crystal and RJ45 on the controller board. A finished module carries all three, which retired the crystal-CL and magnetics-bias open questions and the only controlled-impedance routing on the board. The six support values recorded here (EXRES1 12.4k, TOCAP, 1V2O, RSVD, LED resistors) are no longer the controller's responsibility."
+  ]
 }
