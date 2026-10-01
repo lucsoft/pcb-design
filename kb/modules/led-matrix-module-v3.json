@@ -260,9 +260,18 @@
     },
     "solution": "Resolved - see inrush.resolution. The RC on the Figure 6 P-FET gate ramps the bus. The TPS26630 that earlier carried this job was rejected at 36 V (40 V FET, only 1.11x margin).",
     "resolution": {
-      "status": "UNRESOLVED - the gate network needs redesign, see the design README",
-      "whyTwoAttemptsFailed": "Attempt 1 (R_pu 100k / R_pd 1M) gave Vgs 3.27 V - the FET never enhanced. Attempt 2 (R_pu 10M / R_pd 1M / C 1uF) fixed the divider but put the ramp on Q1, which has no module capacitance behind it, left Q2/Q3 facing 3.3 mF each with no Miller cap (257 A, 4.6 kW), made Q1's turn-off take ~180 s, and let Q1 self-turn-on during the PD 5 V to 36 V step.",
-      "coreConstraint": "With a passive pull-up, a C_gd large enough to ramp 3.3 mF is also large enough to defeat turn-off and dV/dt immunity. Needs active turn-off, or a 60 V hot-swap controller."
+      "status": "RESOLVED by removing the master pass FET",
+      "architecture": "VBUS connects straight to the bus; the two channel load switches are the only switches, and they close after the bus is static at 36 V. That removes the source dV/dt they would otherwise have to reject, which was the constraint no passive gate network could satisfy alongside ramp rate and turn-off speed.",
+      "values": "Per switch: R_pu 100k gate-to-source, R_pd 100k to the 2N7002 drain, BZT52C12 clamp, 3.3 uF gate-to-drain.",
+      "achieved": {
+        "ramp_s": 0.99,
+        "inrush_A": 0.12,
+        "turnOff_us": 567,
+        "fetAverage_W": 2.16,
+        "standby_mW_per_switch": 13
+      },
+      "caveat": "The Zener runs at 120 uA against its 5 mA test current, so the clamp is nearer 10-11 V than 12 V. That still clears the 10 V at which the TM40P06D's 23 mOhm is specified, but it is an extrapolation. Dropping both resistors to 10 kOhm would put the Zener at 1.2 mA and turn-off at 57 us, costing 130 mW standby per switch and a 10 uF Miller capacitor.",
+      "whatItCosts": "The HUSB238A's GATE pin goes unused. FAULT -> the interlock transistor -> both channel gates covers load shedding instead, in 567 us. A short on the bus node itself is left to the PD source's current limit and the input TVS; the node is short, entirely on-board, and carries no connector."
     },
     "storedEnergyAt36V": {
       "10 modules": "0.86 J",

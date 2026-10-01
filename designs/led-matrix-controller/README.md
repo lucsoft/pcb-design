@@ -290,15 +290,13 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
    (p.5, pin 16), so it needs nothing from us to do this.
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
-6. Firmware closes the P-FET via GATE, with the 1-second inrush ramp.
-7. Channel load switches close, each with their own ramp.
+6. Firmware closes the channel load switches, each with its own 1-second ramp
+   into its own 3.3 mF. The bus is already static at 36 V, so they switch into a
+   steady source.
 
-A consequence worth stating: **the P-FET is a load switch for the LED output,
-not a master power switch.** A PD fault disconnects the LEDs while the controller
-stays alive to report it — which is the behaviour we want, and is why the FAULT
-interlock gates the channel switches rather than cutting everything.
-
-The gate drive gets its bias from the 3.3 V rail, which by step 6 exists.
+There is no master pass FET — see Gate network for why it was removed. A PD
+fault sheds the LED channels while the controller stays alive to report it, which
+is the behaviour we want.
 
 ## Rail architecture
 
@@ -441,77 +439,70 @@ an active 0.42× ratiometric level shifter in a companion IC (TI TPD4S480,
 Kinetic KTU1133, Fortune FA2218), which *preserves* measurement where Hynetek's
 clamp does not. If a later revision wants real OVP back, that is the direction.
 
-## Gate network — UNRESOLVED, needs redesign
+## Gate network
 
-**This section has been wrong twice and is not fixed by another patch.** Both
-attempts are recorded because the failure mode is instructive: each fix was
-correct about the thing it addressed and broke something it did not check.
+**Resolved by removing Q1, not by a third set of values.** The master pass FET
+was the source of all three faults, and the two channel switches already shed
+every load it could.
 
-### Attempt 1: R_pu 100 kΩ, R_pd 1 MΩ
+### What Q1 was costing
 
-The pull-up and pull-down form a divider, |Vgs| = 36 × R_pu/(R_pu + R_pd), which
-gave **3.27 V** against Vgs(th) 1.6 V. The FET would never fully enhance and
-would run several watts at 5 A instead of 0.57 W.
+Three constraints fought each other while a FET sat between VBUS and the bus:
 
-### Attempt 2: R_pu 10 MΩ, R_pd 1 MΩ, C_gd 1 µF
+| Want | Needs | Conflict |
+|---|---|---|
+| Slow ramp into 3.3 mF | large C_gd | — |
+| Fast turn-off | large pull-up current | large C_gd makes it impossibly slow |
+| Survive the PD 5→36 V step | pull-up current ≫ C_gd × dV/dt | large C_gd self-turns-on the FET |
 
-Correct for the divider (32.7 V unclamped, 12 V after the Zener) and the ramp
-(33 µA into 1 µF = 36 V/s ≈ 1.07 s). Three independent faults:
+No passive network satisfies all three. The second attempt here failed all three
+at once: the ramp sat on the FET with no capacitance behind it, turn-off took
+~180 s, and the Miller capacitor turned the PD voltage step into a turn-on event.
 
-1. **The ramp is on the wrong FET.** Q1 drains into the *local* bus node; the
-   13,200 µF of module capacitance sits behind Q2/Q3, and the cold-start
-   sequence closes Q1 before them. So Q1's 1 µF ramps a few µF of local
-   decoupling, and the whole ½CV² = 8.55 J / 8.6 W / 17.1 W analysis is attached
-   to a device that never sees it. Meanwhile **Q2 and Q3 each face 3.3 mF with
-   no Miller capacitor at all**: Qgd ≈ 15.6 nC against 33.8 µA gives a 0.46 ms
-   ramp = 78 kV/s, so C·dV/dt ≈ **257 A** and 2.14 J in 0.46 ms ≈ **4.6 kW** in
-   a TO-252.
-2. **Q1 cannot be turned off.** At turn-off the gate sits at the plateau, so a
-   10 MΩ pull-up delivers 12 V/10 MΩ = **0.2 µA**, and the drain must fall 36 V
-   through 1 µF: **~180 seconds**. The claim that FAULT sheds the load "in
-   microseconds regardless of what firmware is doing" is wrong by 10⁵, which
-   voids the FAULT interlock, the FLGIN path and any software shutdown.
-3. **Q1 self-turns-on during the PD 5 V → 36 V step.** The source rises ~31 V in
-   ~25-35 ms (≈1.24 kV/s). The 1 µF demands 1.24 mA; 10 MΩ cannot supply it, so
-   the gate is pinned by the capacitor, the Zener clamps Vsg at 12 V, and the
-   FET is **fully enhanced throughout the transition** — turning a deliberate
-   Miller capacitor into a dV/dt turn-on device.
+### The architecture that removes them
 
-### Why a third patch would also fail
+**VBUS connects straight to the bus. Q2 and Q3 are the only switches**, and they
+close *after* the bus is static at 36 V — so they never see a source dV/dt, and
+the third constraint disappears entirely.
 
-The three constraints fight each other with a passive pull-up:
+During the PD transition the source charges only the local capacitance:
+100 µF × 1.24 kV/s = **124 mA**, trivial for it, and slew-rate controlled by the
+PD specification rather than by us.
 
-| Want | Needs |
+| | Value |
 |---|---|
-| Slow ramp into 3.3 mF | large C_gd |
-| Fast turn-off | small R_pu, i.e. large pull-up current |
-| dV/dt immunity on the source step | pull-up current ≫ C_gd × dV/dt |
+| R_pu, gate to source | **100 kΩ** |
+| R_pd, gate to 2N7002 drain | **100 kΩ** |
+| Zener, gate to source | BZT52C12 |
+| C, gate to drain | **3.3 µF**, ≥50 V |
 
-A C_gd large enough to ramp the modules is large enough to defeat any passive
-pull-up on both of the others. Raising R_pu to fix turn-off is what dropped the
-BZT52C12 to **22.8 µA against its 5 mA test current**, where the clamp is
-~9-11 V rather than 12 V and the FET's R_DS(on) is 29-38 mΩ rather than 23 mΩ —
-so even the 0.57 W dissipation figure is really ~1.0 W.
+Which gives, per channel:
 
-### The direction, not yet a design
+- **Ramp 0.99 s** — 120 µA plateau into 3.3 µF = 36 V/s
+- **Inrush 0.12 A** into 3.3 mF of module capacitance
+- **Turn-off 567 µs** — fast enough that the FAULT interlock means something
+- **2.16 W average** in the FET over the ramp, against 4.6 kW in the broken version
+- **13 mW standby** per switch
 
-- **Active turn-off**, not a resistor: a complementary pair or a dedicated
-  load-switch/hot-swap controller, so turn-off current is not tied to the
-  pull-up that must also reject dV/dt.
-- **Ramps on Q2/Q3**, where the 3.3 mF per channel actually is. Q1 then only
-  needs to charge the local bus capacitance.
-- **Sequence matters**: Q1 fast into a small local load, then Q2/Q3 slowly into
-  the modules — but Q2/Q3 must then reject the dV/dt of Q1's own turn-on, which
-  is the same problem one level down.
-- A **60 V hot-swap controller** (LM5069 class) solves all three in silicon and
-  is why the TPS26630 was attractive before its 40 V FET ruled it out at 36 V.
-  Worth revisiting rather than hand-building this.
+One honest caveat: the Zener runs at 120 µA against its 5 mA test current, so the
+clamp is nearer 10-11 V than 12 V. That still clears the 10 V at which the
+TM40P06D's 23 mΩ is specified, but it is an extrapolation, not a datasheet point.
+Dropping both resistors to 10 kΩ would put the Zener at 1.2 mA and turn-off at
+57 µs, at the cost of 130 mW standby per switch and a 10 µF Miller capacitor.
 
-**Nothing downstream of this is safe to build until it is resolved**: the inrush
-figures, the FAULT interlock timing, and the thermal budget for Q1 all depend on
-it.
+### What dropping Q1 costs
 
-## Why two channels## Why two channels
+The HUSB238A's GATE pin goes unused. Its documented job is driving an external
+VBUS switch for fault disconnect, and we give that up — **FAULT → the interlock
+transistor → both channel gates** covers load shedding instead, now in 567 µs
+rather than never.
+
+What remains unprotected is a short on the bus node itself, upstream of the
+channel switches. That is the PD source's current limit and the input TVS, not
+ours. Accepted: the bus node is short, entirely on-board, and carries no
+connector.
+
+## Why two channels## Why two channels## Why two channels
 
 Checked rather than assumed. At the 20-module target:
 
@@ -564,11 +555,11 @@ Active parts. Passives are listed below the table.
 | U6 | INA226 | C49851 | 1 | low-side current sense | 0.76 |
 | U7,U8 | MAX3485 | C6395158 | 2 | differential line driver, one per channel | 0.35 |
 | U9 | 74AHCT541 | C84548 | 1 | status-chain level shift (oversized, see KB) | 0.224 |
-| Q1-Q3 | TM40P06D | C7422850 | 3 | power path + 2 load switches | 0.40 |
-| Q4-Q7 | 2N7002 | C7420321 | 4 | gate level shift x3, FAULT interlock x1 | 0.018 |
+| Q1,Q2 | TM40P06D | C7422850 | 2 | channel load switches | 0.40 |
+| Q3-Q5 | 2N7002 | C7420321 | 3 | gate level shift x2, FAULT interlock x1 | 0.018 |
 | Q8 | BSS138 | C7420339 | 1 | source follower feeding the VBUS pin | 0.027 |
 | D1 | BZT52C20 | C19077415 | 1 | clamps the BSS138 follower gate | 0.017 |
-| D2-D4 | BZT52C12 | C19077410 | 3 | 12 V, Vgs clamp | 0.017 |
+| D2,D3 | BZT52C12 | C19077410 | 2 | 12 V, Vgs clamp | 0.017 |
 | D5-D8 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
 | D9-D11 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — under the FET's 60 V | 0.037 |
 | D12-D15 | SMAJ15CA | C7466491 | 4 | 15 V TVS on the A/B pair, 2 per output | 0.031 |
