@@ -48,7 +48,6 @@ fatigue. Affected, and still to be revisited:
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind a BSS138 follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **TPS16630** (C1849461) x2 | 60 V / 6 A eFuse with an integrated FET. Works from **4.5 V**, so the LED output follows the rails down instead of dying below a 12 V contract |
 | External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute (1.15x the 58.1 V TVS clamp), and the TPS54360B and SS36 are 60 V, which sets the real limit at 1.03x. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
-electrical table, 9-90 V in the recommended-operating block and 9-80 V in the body text, and the 8 V figure is the one the pre-negotiation argument leans on, but the TPS54360B and SS36 are 60 V and set the real limit at 1.03x the clamp. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
@@ -359,13 +358,12 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
    and simply leaves pass-through.
 6. Past ~4.5 V each TPS16630 is above its own operating minimum, and firmware
    enables the channels by driving the enable GPIOs **high**. Both may be
-   released together: the dV/dt-controlled inrush is 0.99 A per channel, so
-   1.98 A against a 5.0 A contract.
-7. **Nothing happens for several seconds.** Each controller holds its gate down
-   for its insertion time — 6.1 s typical, 2.9-13.6 s over the spread — counted
-   from when VBUS crossed ~5.5-7.5 V, and no firmware action shortens it.
-7. Each channel ramps its own 3.3 mF at a dV/dt-controlled **0.99 A**, taking
-   **120 ms**. The bus is already static, so they ramp into a steady source.
+   released together: the dV/dt-controlled inrush is 0.72 A per channel, so
+   1.44 A against a 5.0 A contract.
+7. Each eFuse turns on after **11.6 ms** (742 µs + 49.5 × C_dVdT in nF) and ramps
+   its own 3.3 mF at a dV/dt-controlled **0.72 A**, taking **165 ms**. The bus is
+   already static, so they ramp into a steady source. The multi-second insertion
+   delay the LM5069 imposed is gone with it.
 
 There is no master pass FET — see Channel switching and inrush. A PD
 fault sheds the LED channels while the controller stays alive to report it, which
@@ -522,9 +520,9 @@ What protects the load, in order of speed:
    electrical limits: against a 5.0 A *total* contract the PD source acts first
    on a hard short, so "one chain sheds, the other keeps running" is **not
    reliably obtainable**
-2. **TPS16630 OVP**, a hardware overvoltage cut-off at 43.8 V typ, needing no firmware
+2. **TPS16630 OVP**, a hardware overvoltage cut-off at 40.9 V typ, needing no firmware
 3. the PD source limiting at the negotiated level
-4. HUSB238A FAULT into the interlock transistor, pulling both UVLO pins low on
+4. HUSB238A FAULT into the interlock transistors, pulling both SHDN pins low on
    OTP or an adapter-capability fault (OVP/UVP do not survive the clamp topology
    above 28 V)
 5. software via the INA226, as a slow safety net
@@ -694,9 +692,8 @@ flowchart LR
   DIV["divider<br/>723k / 249k / 27.4k"] --> U
   RIL["R_ILIM 3.24k"] --> U
   CDV["C_dVdT 220 nF"] --> U
-  MCU[ESP32-C6 GPIO] --> QE["2N7002<br/>pulls SHDN low"]
-  FLT[HUSB238A FAULT] --> QF["2N7002<br/>FAULT interlock"]
-  QE --> U
+  MCU[ESP32-C6 GPIO] -->|"1k series"| U
+  FLT[HUSB238A FAULT] --> QF["Q1 BSS138<br/>FAULT interlock"]
   QF --> U
   U -. PGOOD .-> MCU
 ```
@@ -712,8 +709,8 @@ port. The TPS16630 works from **4.5 V**.
 | absolute max | 108 V | 67 V, 75 V for 10 ms |
 | parts per channel | IC + FET + sense resistor | **IC only** |
 | stock | 105 | 1141 |
-| inrush | 1.05 A rising to a 5.5 A plateau | **constant 0.99 A** |
-| two channels at once | 11 A — needed staggering | **1.98 A** |
+| inrush | 1.05 A rising to a 5.5 A plateau | **constant 0.72 A** |
+| two channels at once | 11 A — needed staggering | **1.44 A** |
 | ramp vs module count | capacitance-limited at 12.7/channel | **independent** |
 | dissipation | 0.35 W | 0.66 W |
 
@@ -729,29 +726,37 @@ on how much capacitance is hanging on it.
 
 ### Values, derived
 
-Per channel. The dV/dt gain is calibrated from the datasheet's own worked example
-(§10.2.2.3: C_dVdT = 22 nF gives 300 mA into 100 µF at 50 V, so the output slew
-is 33x the dVdT pin's own 2 µA/C slew).
+Per channel, from the datasheet's own equations rather than from its worked
+example. **An earlier version of this section back-solved a gain of 33x from the
+rounded example in §10.2.2.3 and was wrong**: the datasheet specifies
+`GAIN(dVdT) = 23.5 / 25 / 26 V/V` directly (p.7), and Equations 1 and 2 give it
+independently as `1/(20.8e3 × 2 µA) = 24.0`.
+
+    t(dVdT)   = 20.8e3 × V_IN × C_dVdT          (2)
+    I(INRUSH) = C_OUT × V_IN / t(dVdT)          (1)
 
 | Element | Value | Derivation |
 |---|---|---|
 | R_ILIM | **3.24 kΩ** 1% | the datasheet tabulates 3 kΩ → 6 A and 4.02 kΩ → 4.5 A, i.e. I·R ≈ 18 kΩ·A, so 3.24 kΩ gives **5.56 A**. Clears the 4.0 A white-flash peak by 1.29x at the low end of its ±7% spread |
-| C_dVdT | **220 nF** | dV/dt = 33 × 2 µA / C = **300 V/s**, so inrush = C_OUT × dV/dt = **0.99 A** and the ramp is 36 V / 300 = **120 ms** |
-| UVLO/OVP string | **723 kΩ / 249 kΩ / 27.4 kΩ** 1% | IN→OVP→UVLO→GND against a 1.2 V reference on both pins. Gives **UVLO 4.34 V**, **OVP 43.8 V**, and draws 38 µA |
+| C_dVdT | **220 nF** | Eq. 2 gives t = 20.8e3 × 36 × 220 nF = **165 ms**; Eq. 1 gives inrush = 3.3 mF × 36 / 165 ms = **0.72 A** |
+| UVLO/OVP string | **723 kΩ / 249 kΩ / 29.4 kΩ** 1% | IN → R1 → **UVLO** → R2 → **OVP** → R3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.32 V**, **OVP 40.9 V**, and draws 38 µA |
 | C_IN | **100 nF** | §10.2.2 "a minimum of 0.1 µF is recommended" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain; both channels wire-ORed onto one GPIO |
 
-**The inrush is constant, which is the whole point.** Under dV/dt control the
-charging current is `C_OUT × dV/dt` and does not vary with bus voltage or with
-how far the ramp has progressed. At 0.99 A per channel, **both channels can be
-released simultaneously** — 1.98 A against a 5.0 A contract — and the staggering
-requirement that the previous design needed is gone.
+**The inrush is constant, which is the whole point.** Equations 1 and 2 make the
+charging current independent of bus voltage and of how far the ramp has
+progressed. At **0.72 A** per channel, **both channels can be released
+simultaneously** — 1.44 A against a 5.0 A contract — and the staggering the
+previous design needed is gone.
 
-**The ramp time does not depend on module count.** `t = V / (dV/dt)` is 120 ms
-whether a channel carries 10 modules or 20; only the inrush scales, to 1.98 A per
-channel at 6.6 mF. That removes the 12.7-modules-per-channel start-up ceiling the
-LM5069's fault timer imposed — the binding constraint returns to power, where it
-belongs.
+**The ramp time does not depend on module count.** Equation 2 has no C_OUT term,
+so t is **165 ms** whether a channel carries 10 modules or 20; only the inrush
+scales, to 1.44 A per channel at 6.6 mF. That removes the
+12.7-modules-per-channel start-up ceiling the LM5069's fault timer imposed — the
+binding constraint returns to power, where it belongs.
+
+**Turn-on delay** is `742 µs + 49.5 × C_dVdT[nF]` = **11.6 ms** at 220 nF, which
+is what replaces the LM5069's multi-second insertion timer.
 
 **Ramping 3.3 mF is characterised, not inferred.** TI publishes the part powering
 up into **15 mF** (Figure 16, "Thermal Regulation Loop Response During Power up
@@ -760,22 +765,40 @@ own junction temperature during start-up rather than relying on SOA margin. This
 is the question that cost four rounds on the discrete P-FET, and here the
 datasheet answers it directly.
 
-**Thresholds.** UVLO at 4.34 V sits just under the part's own 4.5 V minimum
+**Thresholds.** UVLO at 4.32 V sits just under the part's own 4.5 V minimum
 operating voltage, so **the device's own floor is the binding one** and the LED
-output follows the rails all the way down to vSafe5V. OVP cuts off at 43.8 V,
-above the 37.8 V maximum bus and below the SMAJ36CA's clamp.
+output follows the rails down to vSafe5V. Its hysteresis is 78 mV typ, so it
+falls out at 4.06 V — still under that floor, which is why the hysteresis does
+not need designing around.
 
-### Enable, and it is no longer inverted
+**OVP cuts off at 40.9 V, and that number closes an accepted limit.** The
+reference is **±2%** (1.176/1.2/1.224 V), not the ±10% of the LM5069 comparator
+this design previously carried. With 1% resistors the trip lands between
+**39.2 V and 42.5 V** — above the 37.8 V maximum bus by 1.4 V and below the
+modules' 45 V absolute by 2.5 V. The window the old part could not fit into is
+comfortable for this one.
 
-SHDN is an active-low shutdown: pulling it low enters low-power shutdown, so
-**high is enabled**. A 2N7002 with its drain on SHDN and a **pull-down** on the
-pin gives fail-safe-off through MCU reset, and firmware drives the GPIO **high**
-to enable. The previous design had to invert this because it acted on a UVLO
-divider; that wart is gone.
+### Enable
 
-The FAULT interlock still needs **one transistor per channel** — a MOSFET drain
-is one node, so a single device tied to both SHDN pins would couple the two
-channels and make either enable disable both.
+**An earlier version of this section could not enable a channel.** It put a
+2N7002 open drain on SHDN *and* a 100 kΩ pull-down on the same pin — two paths to
+ground and none to 3V3 — so both channels would have sat in low-IQ shutdown
+permanently. The only thing that can raise SHDN is its own internal source
+(2.48-3.3 V open circuit, ≤10 µA), which against 100 kΩ settles near 0.77 V,
+under the 0.8 V guaranteed-shutdown threshold.
+
+**SHDN is a logic input and the GPIO drives it directly.** It accepts 0-5 V with
+V(SHUTR) ≤ 2 V, so a 3.3 V GPIO is in range with margin.
+
+| Part | Value | Why |
+|---|---|---|
+| SHDN pull-down | **10 kΩ** to GND | fail-safe off through MCU reset. Against the pin's own ≤10 µA source this holds 0.1 V, clear of the 0.8 V shutdown threshold — 100 kΩ would sit at 0.77 V and might not shut down at all |
+| GPIO series | **1 kΩ** | lets the FAULT transistor override a driven-high GPIO without shorting it. With 1 kΩ into 10 kΩ, SHDN reaches **3.0 V** when the GPIO is high, above the 2 V turn-on threshold |
+| Q3/Q4 | BSS138 drain on SHDN | FAULT asserted pulls SHDN to ~0.1 V; the GPIO then sources 3.2 mA through the 1 kΩ, well inside its limit |
+
+**The logic is not inverted.** GPIO high enables, GPIO low or high-Z disables, and
+the pull-down makes reset the off state. The 2N7002s the old arrangement needed
+for the enable path are gone — Q1/Q2 no longer exist.
 
 ### What is still open here
 
@@ -785,9 +808,10 @@ channels and make either enable disable both.
   enabled. The part also brings an **IMON** current-monitor output per channel,
   which would give the per-channel sensing the shared shunt cannot — unused for
   now because there are no spare ADC pins.
-- **R_SENSE package and layout.** A 10 mOhm sense resistor wants Kelvin
-  connection; at 0.059 W steady state the part is thermally trivial but the sense traces are
-  not a routing afterthought.
+- **The low-side shunt wants Kelvin connection.** R1 is 10 mΩ carrying the full
+  5 A, so 0.25 W, and its sense traces are not a routing afterthought. (The eFuse
+  has no sense resistor — this is the INA226's shunt, and an earlier version of
+  this bullet described it as a per-channel part at 0.059 W.)
 - **Second-source risk is lower than it was.** C1849461 is TI silicon at 1141
   units, where the LM5069 it replaces was a Tokmas clone at 105. The TPS16632
   variant adds adjustable output power limiting but fixes the overvoltage clamp
@@ -831,7 +855,7 @@ Two boundaries worth knowing rather than discovering:
 - **Growth is no longer capped by start-up.** The LM5069 that preceded the
   TPS16630 had a fault timer that expired during the ramp above ~12.7 modules per
   channel, because t_start scaled with capacitance. Under dV/dt control the ramp
-  is **120 ms whatever the load**; only the inrush scales, to 1.98 A per channel
+  is **165 ms whatever the load**; only the inrush scales, to 1.44 A per channel
   at 20 modules. The binding constraint is power again.
 
 - **Frame rate past ~24 modules degrades too**, if the capacitance problem were
@@ -859,13 +883,12 @@ Active parts. Passives are listed below the table.
 | U7,U8 | MAX3485 | C6395158 | 2 | differential line driver, one per channel | 0.35 |
 | U9 | 74AHCT541 | C84548 | 1 | status-chain level shift (oversized, see KB) | 0.224 |
 | U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.80 |
-| Q1,Q2 | 2N7002 | C7420321 | 2 | pulls its channel's SHDN low to disable | 0.018 |
-| Q3,Q4 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see below | 0.027 |
-| Q5 | BSS138 | C7420339 | 1 | source follower feeding the VBUS pin | 0.027 |
+| Q1,Q2 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see Enable | 0.027 |
+| Q3 | BSS138 | C7420339 | 1 | source follower feeding the VBUS pin | 0.027 |
 | D1 | BZT52C20 | C19077415 | 1 | clamps the BSS138 follower gate | 0.017 |
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
-| D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the 100 V FET is 1.72x that, but the 60 V bus parts are only **1.03x** | 0.037 |
+| D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the eFuse is 67 V absolute (1.15x), but the 60 V bus parts are only **1.03x** | 0.037 |
 | D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.043 |
 | D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
 | L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.228 |
@@ -901,11 +924,12 @@ Passives, standard values, final selection at layout:
   all three pins are dual-function and become push-pull outputs after
   initialisation, which is why the resistor cannot be omitted on any of them
 - **TPS16630 support, per channel**: R_ILIM **3.24 kΩ** 1%, C_dVdT **220 nF**,
-  UVLO/OVP string **723 kΩ / 249 kΩ / 27.4 kΩ** 1%, C_IN **100 nF** ≥100 V. All
+  UVLO/OVP string **723 kΩ / 249 kΩ / 29.4 kΩ** 1%, C_IN **100 nF** ≥100 V. All
   derived in Channel switching and inrush
-- **100 kΩ** pull-down on each TPS16630 SHDN pin, so both channels are off
-  whenever the MCU is in reset — SHDN is active-low, so this is the fail-safe
-  direction and the logic is not inverted
+- **10 kΩ** pull-down on each TPS16630 SHDN pin plus **1 kΩ** in series with the
+  driving GPIO. The pull-down makes reset the off state; the series resistor lets
+  the FAULT transistor override a driven-high GPIO. 100 kΩ would not be enough —
+  see Enable
 - **10 kΩ** on the FAULT interlock gate, **4.7 kΩ** I2C pull-ups, **10 kΩ** on
   INT_N, **10 kΩ** on the shared PGD line
 - **100 nF 0402** per supply pin, plus bulk per rail
@@ -1002,7 +1026,7 @@ and strongly temperature-dependent — µA at 25 °C, potentially mA at 85 °C �
 means standby draw and self-heating on three parts.
 
 **The 58.1 V against 60 V squeeze did not go away with the FET — it moved.** The
-channel switch is now a 100 V part at 1.72x, but the clamp sits on the
+channel switch is 67 V absolute at 1.15x, but the clamp sits on the
 *unswitched* bus, where the **TPS54360B** (60 V absolute input) and the **SS36**
 catch diode (60 V) share the node. For those two it is still **1.03x**, measured
 at 10/1000 µs, and an 8/20 µs surge drives the clamp higher. Changing the FET
@@ -1088,9 +1112,9 @@ in firmware are still written against 36 V and have to follow:
 | **Status power bar** | 30 W per LED across 180 W | must scale to the contract, or it shows one LED on a 36 W contract whatever the wall is doing |
 
 **The ramp no longer scales against the contract.** Inrush is `C_OUT × dV/dt` =
-0.99 A per channel whatever the bus voltage, so 1.98 A for both — 40% of a
+0.72 A per channel whatever the bus voltage, so 1.44 A for both — 20% of a
 36 V/5 A contract and 66% of a 12 V/3 A one. No staggering, and the limiter only
-has to hold the frame down until the 120 ms ramp finishes.
+has to hold the frame down until the 165 ms ramp finishes.
 
 **Downward renegotiation is new and untested.** With UVLO at 28 V the channels
 opened at 26.2 V on any 36 → 28 → 20 V transition, isolating the module banks.
@@ -1188,7 +1212,7 @@ pulls pin 13 high "if the power adapter cannot supply the required voltage or
 current, or if an OVP/UVP/OTP event is detected" (datasheet p.5) — the chip
 senses this natively, so no software is needed to notice it.
 
-**Two** 2N7002, Q3 and Q4, gates both on FAULT, sources to ground, and each
+**Two** BSS138, Q1 and Q2, gates both on FAULT, sources to ground, and each
 drain on **one channel's SHDN pin**. FAULT high turns them on, both SHDN pins go
 low, both TPS16630s enter shutdown, and the LED load is shed regardless of what
 firmware is doing.
@@ -1197,7 +1221,7 @@ firmware is doing.
 tied to both SHDN pins would couple the two channels and either enable would then
 disable *both* — destroying the independent enable the GPIO budget and
 the per-channel shedding both depend on. Two devices, or a diode-OR into each
-UVLO pin; two 2N7002 at $0.018 is the cheaper of the two.
+SHDN pin; two BSS138 at $0.027 is the cheaper of the two.
 
 An earlier version of this paragraph described the interlock pulling *gates* low
 to release *P-FETs*, which under the inverted enable logic would have **enabled**
@@ -1433,9 +1457,12 @@ table is the schematic checklist.
 |---|---|---|
 | R_ILIM, ILIM→GND | **3.24 kΩ** 1% | §10.2.2.1 — sets the 5.56 A overload limit |
 | C_dVdT, dVdT→GND | **220 nF** | §10.2.2.3 — sets the output slew, and so the inrush |
-| UVLO/OVP string | **723 kΩ / 249 kΩ / 27.4 kΩ** 1% | IN→OVP→UVLO→GND against 1.2 V on both pins |
+| UVLO/OVP string | **723 kΩ / 249 kΩ / 29.4 kΩ** 1% | IN → R1 → **UVLO** → R2 → **OVP** → R3 → GND, 1.2 V on both pins. UVLO is the **upper** tap — swapping them gives a part that never turns on |
 | C_IN, IN→GND | **100 nF** ≥100 V | §10.2.2 "a minimum of 0.1 µF is recommended" |
-| SHDN pull-down | **100 kΩ** to GND | active-low shutdown, so this is the fail-safe direction |
+| SHDN pull-down | **10 kΩ** to GND | active-low shutdown. 100 kΩ sits at 0.77 V against a 0.8 V threshold against the pin's own source — see Enable |
+| SHDN series from GPIO | **1 kΩ** | lets the FAULT transistor win without shorting the GPIO |
+| **P_IN (pin 6) to IN** | direct, no element | p.4 Pin Functions: "Always connect P_IN to IN directly" |
+| **GND (pin 9)** | wired, **in addition to** the PowerPAD | p.5: "Do not use PowerPad as the only electrical connection to GND" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain |
 | MODE | tie per the latch/auto-retry choice | p.4 — **not yet decided**, see open questions |
 
@@ -1443,8 +1470,15 @@ table is the schematic checklist.
 which is exactly the per-channel sensing the shared low-side shunt cannot give —
 but there are no spare ADC pins. Worth revisiting if the GPIO budget ever loosens.
 
-The **PowerPAD must be soldered to a ground pour**: it is the thermal path for a
-part dissipating 0.27 W steady and far more during the ramp.
+The **PowerPAD must be soldered to a ground pour** — it is the thermal path the
+part's own temperature-regulation loop depends on — **but it is not the ground
+connection**: pin 9 must be wired as well, which the datasheet states outright.
+
+**FLT (pin 15) is left unconnected, and that is a compromise worth naming.**
+PGOOD alone cannot tell a fault from a commanded shutdown, since it goes low for
+both, and the two PGOODs are wire-ORed onto one pin — so the single bit firmware
+gets is ambiguous twice over. Per-channel FLT would cost two GPIOs the budget
+does not have. Recorded in Known electrical limits rather than left silent.
 
 ### Tie-offs that are inputs, not options
 
@@ -1485,11 +1519,11 @@ reflection returns ~110 ns after the edge, inside a 400 ns pulse.
   their LED chains, and the cable unplugged at the controller. The fix belongs on
   the **converter board** — a 560/120/560 bias divider, or a true-fail-safe
   receiver such as SN65HVD75 (C57928), which the KB rejected over $0.24.
-- **Channel enable**: each 2N7002 gate needs a **100 kΩ pull-up to 3V3**, not a
-  pull-down. Pulling the gate high pulls UVLO low, which holds the channel
-  **off** — so through reset and the whole boot window, when the driving GPIOs
-  are high-Z, both 36 V channels are defined off. Firmware drives the GPIO **low
-  to enable**; the inverted sense is deliberate and is the fail-safe direction.
+- **Channel enable**: SHDN takes a **10 kΩ pull-down** and the GPIO drives it
+  through **1 kΩ** in series. Through reset and the whole boot window, when the
+  GPIOs are high-Z, the pull-down holds both channels off. Firmware drives the
+  GPIO **high to enable** — not inverted. See Enable for why 100 kΩ is not
+  enough and why there is no transistor in this path.
 - **HUSB238A ADDR**: tie to **GND (0x42)**, not VDD. Mode and address latch at
   power-up, when the 3.3 V rail does not yet exist — so a VDD tie reads as GND
   anyway, or worse is ambiguous against the float-means-GPIO-mode state.
@@ -1524,7 +1558,7 @@ The module exposes **exactly 23** GPIO pads (datasheet Table 3, pp.10-11):
 0-13, 15-23. GPIO14 does not exist on this package; GPIO24-30 serve the internal
 QSPI flash and reach no pad.
 
-The design needs **19**, not the 17 an early count suggested — that count omitted
+The design needs **20**, not the 17 an early count suggested — that count omitted
 the status chain and the bus-voltage ADC:
 
 | Signal | Count |
@@ -1564,7 +1598,7 @@ A workable assignment, which also shows how tight it is:
 | 23, 10 | HUSB238A INT_N, EN_N | |
 | 11 | INA226 ALERT | |
 | 4, 5 | MAX3485 ch1/ch2 DI | |
-| 0, 1 | channel enables | each with a **pull-up to 3V3** — high holds UVLO low, so the channel is OFF through MCU reset. A pull-down here would enable both 36 V channels during reset. Costs the 32.768 kHz crystal option |
+| 0, 1 | channel enables | drive SHDN through 1 kΩ; a **10 kΩ pull-down** on the pin holds the channel OFF through MCU reset. High enables. Costs the 32.768 kHz crystal option |
 | 15 | SK6812 chain | a pull-down gives the right idle state. With factory eFuses GPIO15 selects the JTAG source and is **ignored**, so no strap level is required — only "not high-Z" |
 | 3 | bus-voltage ADC | GPIO2/3 are the **only** ADC pins free of strap, JTAG or 32 kHz conflicts |
 | 12, 13 | USB D-/D+ | fixed |
@@ -1714,8 +1748,8 @@ the 22 µH part was dropped for a 10 µH one in the first place.
 
 Hot spots need local copper rather than relying on the board average: the
 ESP32-C6 (1.26 W), the Ethernet module and the TPS54360B (0.50 W each), the catch diode
-(0.30 W) and the shunt (0.25 W). The channel FETs are **no longer hot spots** at
-0.079 W each. The two bucks should not share a thermal zone with the module or
+(0.30 W) and the shunt (0.25 W). The channel eFuses are now **among** the hot spots at 0.265 W each — they
+dissipate more than the discrete FET and shunt they replaced. The two bucks should not share a thermal zone with the module or
 the Ethernet controller.
 
 The N-channel switch is what made this comfortable: the 100 V P-channel
@@ -1738,6 +1772,14 @@ constraint the layout has to honour.
 **H5VL10B on CC1/CC2 is marginal.** 5 V standoff, 5.6 V breakdown, against a
 3.0 A Rp that pulls CC toward 5 V ±5 % with no cable attached. A 6 V-class part
 is the usual choice. **Open.**
+
+**Fault reporting is ambiguous, twice over.** The eFuse's PGOOD goes low both for
+a real fault and for a commanded shutdown, and the two channels' PGOODs are
+wire-ORed onto one GPIO. So firmware cannot tell a faulted channel from one it
+disabled, nor which channel it was. **FLT** (pin 15) would disambiguate the first
+and a separate pin the second, at two GPIOs the budget does not have. Accepted;
+the INA226 sees total current and the ADC divider sees the bus, so a fault is
+*detectable*, just not attributable.
 
 **The module draws 2.16 A from a 2.0 A converter.** Every brightness, current and
 fps figure in this document derives from 14.4 W per module, which derives from
@@ -1773,13 +1815,24 @@ add 2× 10 m of 0.5 mm² at 4.06 W per channel (0.23 A) and 0.14 A of controller
 draw and the total is **≈5.2 A against a 5.0 A contract**. The 5 % drop line is
 described as an efficiency choice; at the 20-module target it is an overrun.
 
-**The current limit cannot fit between the flash peak and the PD contract.** It
-has to sit above the **4.0 A** white-flash peak so a flash does not trip it, and
-below the **5.0 A** contract so the eFuse sheds a faulted channel before the PD
-source gives up on the whole bus. R_ILIM 3.24 kΩ gives **5.56 A**, clearing the
-flash by 1.29x and sitting above the contract — the squeeze is the same one the
-discrete sense resistor had, because it is set by the 4.0 A flash and the 5.0 A
-contract rather than by any part.
+**The current limit is a deliberate trade, not an impossibility.** It has to sit
+above the **4.0 A** white-flash peak so a flash does not trip it, and below the
+**5.0 A** contract so the eFuse sheds a faulted channel before the PD source
+gives up on the whole bus. The eFuse's ±7% tolerance makes that window **real**:
+a nominal 4.30-4.67 A satisfies both, and R_ILIM = 4.02 kΩ gives 4.185 A min /
+4.815 A max.
+
+**This design takes 3.24 kΩ (5.56 A) anyway**, giving up per-channel isolation to
+keep a 1.29x flash margin instead of 1.05x. The reason is that the 4.0 A flash
+figure is itself derived from an *inferred* 20 mA per LED channel, and Known
+limits already records that 2.43 A sustained is a floor rather than a ceiling.
+Sitting 5% above an uncertain number invites nuisance trips that black out the
+wall; losing per-channel isolation only costs something in a fault that is
+already taking the bus down.
+
+An earlier version of this entry claimed the window was empty and concluded
+per-channel isolation was "not reliably obtainable". That was inherited from the
+LM5069's ±18% sense comparator and is false for this part.
 
 The consequence is that on a hard short the source's own protection acts first,
 in a few milliseconds, against the eFuse's own fault response — so the whole
@@ -1788,17 +1841,19 @@ therefore not reliably obtainable**, and the protection list has been corrected
 to say so. Closing this needs either a tighter-tolerance controller or a lower
 flash peak, i.e. fewer modules per channel.
 
-**The TVS breaks down before the eFuse's OVP trips, on a sustained overvoltage.**
-The SMAJ36CA's V_BR is **40.0-44.2 V** and the TPS16630's OVP cut-off sits at
-**43.8 V** nominal, so for most of that band the TVS conducts first and must
-dissipate continuously — an SMA part rated 400 W at 10/1000 µs, i.e. a surge
-device, not a sustained one.
+**The TVS and the eFuse's OVP now overlap, which is better than the ordering the
+previous part had.** The SMAJ36CA's V_BR is **40.0-44.2 V** and the TPS16630's OVP
+cut-off lands between **39.2 V and 42.5 V** with 1% resistors. So the eFuse often
+trips first — at its low corner it is a full 0.8 V below the TVS's breakdown
+minimum — rather than always after it, which is what the 43.8 V setting before
+the retune would have given.
 
-OVP could not fix this even if it tripped first: it sheds the **channels**, while
-the TVS, the rails and the PD front end all sit **upstream** of the eFuses.
-Nothing on this board disconnects them from a sustained overvoltage. Setting OVP
-lower than 43.8 V is not available either — it has to clear the 37.8 V maximum
-bus with tolerance.
+**It is still not a clean ordering, and OVP could not fully fix it anyway.** OVP
+sheds the **channels**, while the TVS, the rails and the PD front end all sit
+**upstream** of the eFuses. On a sustained overvoltage above ~42.5 V the TVS
+conducts continuously — an SMA part rated 400 W at 10/1000 µs, i.e. a surge
+device, not a sustained one — and nothing on this board disconnects the upstream
+node. Accepted.
 
 **L1 still saturates before the converter current-limits, but less.** The part
 was changed from ANR5040T100M (2.9 A Isat, 163 mΩ) to **SPM6530T-100M** (3.8 A,
@@ -1912,17 +1967,13 @@ build.
     the failure modes are asymmetric: A/B swapped is non-destructive, power onto
     a data pole destroys the transceiver.
 
-9. **The OVLO cannot be set to protect the modules.** Carrying both the ±10%
-    comparator spread and the 1% resistors, an OVLO that stays above the 37.8 V
-    maximum bus at its *low* extreme needs **≥42.8 V** nominal, and one that stays
-    below the modules' 45 V absolute at its *high* extreme needs **≤40.1 V**.
-    Those are **mutually exclusive**. It is set at 44.7 V nominal to protect the
-    controller with **1.71 V** of margin, which leaves a **45-50.15 V** window
-    where a worst-case part passes voltage the modules are not rated for. The SMAJ36CA
-    does not cover that window the way an earlier version of this entry claimed:
-    its breakdown is 40.0-44.2 V, i.e. **below** the OVLO trip, so on a sustained
-    overvoltage the TVS conducts first and cooks. See Known electrical limits.
-    Accepted — closing it needs a tighter comparator than this part has.
+9. **(closed) The overvoltage trip now protects the modules too.** This entry
+    said the window was mutually exclusive — above 37.8 V at the low extreme and
+    below 45 V at the high one — and it was, for the LM5069's ±10% comparator.
+    The TPS16630's OVP reference is **±2%**, so a 40.9 V nominal trip lands
+    between **39.2 V and 42.5 V** with 1% resistors: 1.4 V over the maximum bus
+    and 2.5 V under the modules' absolute rating. Retuning the divider to
+    723k/249k/29.4k closed it.
 
 ## Resolved
 

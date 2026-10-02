@@ -52,7 +52,7 @@
   "notes": [
     "Carries the OVP role that the HUSB238A loses above 28 V to its clamp topology. The 470k/27k ADC divider is the slow software check beside it, at tau = 2.55 ms.",
     "Vrwm 36 V against a 37.8 V maximum PDO (+5%) is the uncomfortable part: the standoff is at or just under the normal operating maximum, so leakage at the top of the PDO tolerance is not characterised. SMAJ40CA (C19077552) stands off further but clamps at ~64 V; SMAJ33CA clamps lower but cannot stay off at 36 V. Open, and recorded as such in the README.",
-    "Clamps at 58.1 V. Against the NSS085N100S 100 V channel switch that is 1.72x margin; against the 60 V P-FET it replaced it was 1.03x, which is what drove the switch to a 100 V part.",
+    "Clamps at 58.1 V. Against the TPS16630 eFuse's 67 V absolute that is 1.15x; the 60 V TPS54360B and SS36 on the same node sit at 1.03x and are the binding parts.",
     "Three fitted: bus node and the two channel outputs."
   ]
 }
