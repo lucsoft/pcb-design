@@ -1,0 +1,1721 @@
+{
+  "gge1": {
+    "props": {
+      "Designator": "J1",
+      "device_name": "CX90B-16P",
+      "value": "USB-C 16P",
+      "Supplier Part": "C3198004"
+    },
+    "pins": {
+      "A1": "GND",
+      "A4": "VBUS",
+      "A5": "CC1",
+      "A6": "USB_DP",
+      "A7": "USB_DM",
+      "A8": "NC",
+      "A9": "VBUS",
+      "A12": "GND",
+      "B1": "GND",
+      "B4": "VBUS",
+      "B5": "CC2",
+      "B6": "USB_DP",
+      "B7": "USB_DM",
+      "B8": "NC",
+      "B9": "VBUS",
+      "B12": "GND",
+      "0": "GND",
+      "1": "GND",
+      "2": "GND",
+      "3": "GND"
+    }
+  },
+  "gge2": {
+    "props": {
+      "Designator": "D3",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "USB_DP",
+      "2": "GND"
+    }
+  },
+  "gge3": {
+    "props": {
+      "Designator": "D4",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "USB_DM",
+      "2": "GND"
+    }
+  },
+  "gge4": {
+    "props": {
+      "Designator": "D5",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "CC1",
+      "2": "GND"
+    }
+  },
+  "gge5": {
+    "props": {
+      "Designator": "D6",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "CC2",
+      "2": "GND"
+    }
+  },
+  "gge6": {
+    "props": {
+      "Designator": "C33",
+      "device_name": "CGA5L3X7R2A225K",
+      "value": "2.2uF 100V",
+      "Supplier Part": "C153036"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge7": {
+    "props": {
+      "Designator": "R2",
+      "device_name": "RC1206FR-0710KL",
+      "value": "10k 1206",
+      "Supplier Part": "C17902"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge8": {
+    "props": {
+      "Designator": "D7",
+      "device_name": "SMAJ36CA",
+      "value": "TVS 36V",
+      "Supplier Part": "C19077551"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge9": {
+    "props": {
+      "Designator": "U1",
+      "device_name": "HUSB238A-BB001-QN16R",
+      "value": "PD sink",
+      "Supplier Part": "C24833806"
+    },
+    "pins": {
+      "1": "NC",
+      "2": "NC",
+      "3": "CC1",
+      "4": "CC2",
+      "5": "BUS_3V3",
+      "6": "PD_DEBUG_N",
+      "7": "PD_EN_HVDCP",
+      "8": "PD_ADDR",
+      "9": "I2C_SDA",
+      "10": "I2C_SCL",
+      "11": "PD_INT_N",
+      "12": "PD_EN_N",
+      "13": "PD_FAULT",
+      "14": "GND",
+      "15": "NC",
+      "16": "PD_VBUS_SENSE",
+      "17": "GND"
+    }
+  },
+  "gge10": {
+    "props": {
+      "Designator": "R21",
+      "device_name": "0402WGF9103TCE",
+      "value": "910k",
+      "Supplier Part": "C25800"
+    },
+    "pins": {
+      "1": "PD_ADDR",
+      "2": "GND"
+    }
+  },
+  "gge11": {
+    "props": {
+      "Designator": "R22",
+      "device_name": "0402WGF9103TCE",
+      "value": "910k",
+      "Supplier Part": "C25800"
+    },
+    "pins": {
+      "1": "PD_DEBUG_N",
+      "2": "GND"
+    }
+  },
+  "gge12": {
+    "props": {
+      "Designator": "R23",
+      "device_name": "0402WGF9103TCE",
+      "value": "910k",
+      "Supplier Part": "C25800"
+    },
+    "pins": {
+      "1": "PD_EN_HVDCP",
+      "2": "GND"
+    }
+  },
+  "gge13": {
+    "props": {
+      "Designator": "R19",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "PD_INT_N",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge14": {
+    "props": {
+      "Designator": "C18",
+      "device_name": "CL05A105KA5NQNC",
+      "value": "1uF",
+      "Supplier Part": "C7472948"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge15": {
+    "props": {
+      "Designator": "C19",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge16": {
+    "props": {
+      "Designator": "R44",
+      "device_name": "0402WGF3241TCE",
+      "value": "3.24k",
+      "Supplier Part": "C11457"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "PD_BASE"
+    }
+  },
+  "gge17": {
+    "props": {
+      "Designator": "D1",
+      "device_name": "BZT52C27",
+      "value": "27V zener",
+      "Supplier Part": "C173421"
+    },
+    "pins": {
+      "1": "PD_BASE",
+      "2": "GND"
+    }
+  },
+  "gge18": {
+    "props": {
+      "Designator": "Q3",
+      "device_name": "MMBT5551",
+      "value": "NPN 160V",
+      "Supplier Part": "C7420357"
+    },
+    "pins": {
+      "1": "PD_BASE",
+      "2": "PD_VBUS_SENSE",
+      "3": "VBUS"
+    }
+  },
+  "gge19": {
+    "props": {
+      "Designator": "D14",
+      "device_name": "RB751V-40",
+      "value": "schottky 40V",
+      "Supplier Part": "C7502691"
+    },
+    "pins": {
+      "1": "PD_VBUS_SENSE",
+      "2": "BUS_5V"
+    }
+  },
+  "gge20": {
+    "props": {
+      "Designator": "R48",
+      "device_name": "0402WGF0000TCE",
+      "value": "0R DNF",
+      "Supplier Part": "C17168"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "PD_VBUS_SENSE"
+    }
+  },
+  "gge21": {
+    "props": {
+      "Designator": "U4",
+      "device_name": "TPS54360BDDAR",
+      "value": "buck 5V",
+      "Supplier Part": "C524806"
+    },
+    "pins": {
+      "1": "SW_BOOT",
+      "2": "VBUS",
+      "3": "NC",
+      "4": "RT_SET",
+      "5": "FB_5V",
+      "6": "COMP_5V",
+      "7": "GND",
+      "8": "SW_5V",
+      "9": "GND"
+    }
+  },
+  "gge22": {
+    "props": {
+      "Designator": "C5",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "SW_BOOT",
+      "2": "SW_5V"
+    }
+  },
+  "gge23": {
+    "props": {
+      "Designator": "R24",
+      "device_name": "0402WGF1003TCE",
+      "value": "100k",
+      "Supplier Part": "C25741"
+    },
+    "pins": {
+      "1": "RT_SET",
+      "2": "GND"
+    }
+  },
+  "gge24": {
+    "props": {
+      "Designator": "R25",
+      "device_name": "0402WGF5362TCE",
+      "value": "53.6k",
+      "Supplier Part": "C53398"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "FB_5V"
+    }
+  },
+  "gge25": {
+    "props": {
+      "Designator": "R26",
+      "device_name": "0402WGF1022TCE",
+      "value": "10.2k",
+      "Supplier Part": "C11660"
+    },
+    "pins": {
+      "1": "FB_5V",
+      "2": "GND"
+    }
+  },
+  "gge26": {
+    "props": {
+      "Designator": "R27",
+      "device_name": "0402WGF4701TCE",
+      "value": "4.7k",
+      "Supplier Part": "C25900"
+    },
+    "pins": {
+      "1": "COMP_5V",
+      "2": "COMP_MID"
+    }
+  },
+  "gge27": {
+    "props": {
+      "Designator": "C6",
+      "device_name": "CC0402KRX7R9BB333",
+      "value": "33nF",
+      "Supplier Part": "C106862"
+    },
+    "pins": {
+      "1": "COMP_MID",
+      "2": "GND"
+    }
+  },
+  "gge28": {
+    "props": {
+      "Designator": "C7",
+      "device_name": "0402B151K500NT",
+      "value": "150pF",
+      "Supplier Part": "C1527"
+    },
+    "pins": {
+      "1": "COMP_5V",
+      "2": "GND"
+    }
+  },
+  "gge29": {
+    "props": {
+      "Designator": "C8",
+      "device_name": "CGA6M3X7R2A475K",
+      "value": "4.7uF 100V",
+      "Supplier Part": "C2840282"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge30": {
+    "props": {
+      "Designator": "C9",
+      "device_name": "CL21B224KBFNNNE",
+      "value": "220nF 100V",
+      "Supplier Part": "C513710"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge31": {
+    "props": {
+      "Designator": "D2",
+      "device_name": "SS36",
+      "value": "schottky 60V",
+      "Supplier Part": "C2903825"
+    },
+    "pins": {
+      "1": "SW_5V",
+      "2": "GND"
+    }
+  },
+  "gge32": {
+    "props": {
+      "Designator": "L1",
+      "device_name": "SPM6530T-100M",
+      "value": "10uH",
+      "Supplier Part": "C112288"
+    },
+    "pins": {
+      "1": "SW_5V",
+      "2": "BUS_5V"
+    }
+  },
+  "gge33": {
+    "props": {
+      "Designator": "C10",
+      "device_name": "CL31A106KBHNNNE",
+      "value": "10uF 50V",
+      "Supplier Part": "C7432781"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge34": {
+    "props": {
+      "Designator": "C11",
+      "device_name": "CL31A106KBHNNNE",
+      "value": "10uF 50V",
+      "Supplier Part": "C7432781"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge35": {
+    "props": {
+      "Designator": "U5",
+      "device_name": "SY8089A1AAC",
+      "value": "buck 3V3",
+      "Supplier Part": "C479074"
+    },
+    "pins": {
+      "1": "SY_EN",
+      "2": "GND",
+      "3": "LX_3V3",
+      "4": "BUS_5V",
+      "5": "FB_3V3"
+    }
+  },
+  "gge36": {
+    "props": {
+      "Designator": "R30",
+      "device_name": "0402WGF1003TCE",
+      "value": "100k",
+      "Supplier Part": "C25741"
+    },
+    "pins": {
+      "1": "SY_EN",
+      "2": "BUS_5V"
+    }
+  },
+  "gge37": {
+    "props": {
+      "Designator": "R28",
+      "device_name": "0402WGF1003TCE",
+      "value": "100k",
+      "Supplier Part": "C25741"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "FB_3V3"
+    }
+  },
+  "gge38": {
+    "props": {
+      "Designator": "R29",
+      "device_name": "0402WGF2212TCE",
+      "value": "22.1k",
+      "Supplier Part": "C43473"
+    },
+    "pins": {
+      "1": "FB_3V3",
+      "2": "GND"
+    }
+  },
+  "gge39": {
+    "props": {
+      "Designator": "C12",
+      "device_name": "CL21A106KOQNNNE",
+      "value": "10uF 25V",
+      "Supplier Part": "C15850"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge40": {
+    "props": {
+      "Designator": "C14",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge41": {
+    "props": {
+      "Designator": "L2",
+      "device_name": "ANR6028T2R2M",
+      "value": "2.2uH",
+      "Supplier Part": "C7427146"
+    },
+    "pins": {
+      "1": "LX_3V3",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge42": {
+    "props": {
+      "Designator": "C13",
+      "device_name": "CL21A226MOQNNNE",
+      "value": "22uF 25V",
+      "Supplier Part": "C45783"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge43": {
+    "props": {
+      "Designator": "U2",
+      "device_name": "ESP32-C6-WROOM-1-N8",
+      "value": "MCU",
+      "Supplier Part": "C5366877"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "BUS_3V3",
+      "3": "MCU_EN",
+      "4": "CH1_DI",
+      "5": "CH2_DI",
+      "6": "I2C_SDA",
+      "7": "I2C_SCL",
+      "8": "CH1_EN",
+      "9": "CH2_EN",
+      "10": "ETH_SCSN",
+      "11": "PD_EN_N",
+      "12": "INA_ALERT",
+      "13": "USB_DM",
+      "14": "USB_DP",
+      "15": "MCU_BOOT",
+      "16": "ETH_SCLK",
+      "17": "ETH_MOSI",
+      "18": "ETH_MISO",
+      "19": "ETH_RSTN",
+      "20": "ETH_INTN",
+      "21": "PD_INT_N",
+      "22": "NC",
+      "23": "LED_DATA_3V3",
+      "24": "UART_RX",
+      "25": "UART_TX",
+      "26": "VBUS_ADC",
+      "27": "PGOOD",
+      "28": "GND",
+      "29": "GND",
+      "30": "GND",
+      "31": "GND",
+      "32": "GND",
+      "33": "GND",
+      "34": "GND",
+      "35": "GND",
+      "36": "GND",
+      "37": "GND"
+    }
+  },
+  "gge44": {
+    "props": {
+      "Designator": "R39",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "MCU_EN",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge45": {
+    "props": {
+      "Designator": "C17",
+      "device_name": "CL05A105KA5NQNC",
+      "value": "1uF",
+      "Supplier Part": "C7472948"
+    },
+    "pins": {
+      "1": "MCU_EN",
+      "2": "GND"
+    }
+  },
+  "gge46": {
+    "props": {
+      "Designator": "C15",
+      "device_name": "CL21A226MOQNNNE",
+      "value": "22uF 25V",
+      "Supplier Part": "C45783"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge47": {
+    "props": {
+      "Designator": "C16",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge48": {
+    "props": {
+      "Designator": "SW1",
+      "device_name": "TS-1088-AR02016",
+      "value": "BOOT",
+      "Supplier Part": "C720477"
+    },
+    "pins": {
+      "1": "MCU_BOOT",
+      "2": "GND"
+    }
+  },
+  "gge49": {
+    "props": {
+      "Designator": "SW2",
+      "device_name": "TS-1088-AR02016",
+      "value": "EN",
+      "Supplier Part": "C720477"
+    },
+    "pins": {
+      "1": "MCU_EN",
+      "2": "GND"
+    }
+  },
+  "gge50": {
+    "props": {
+      "Designator": "R40",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "ETH_SCSN",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge51": {
+    "props": {
+      "Designator": "R41",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "LED_DATA_3V3",
+      "2": "GND"
+    }
+  },
+  "gge52": {
+    "props": {
+      "Designator": "U3",
+      "device_name": "WIZ850io",
+      "value": "W5500 module",
+      "Supplier Part": "C134462"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "GND",
+      "3": "ETH_MOSI",
+      "4": "ETH_SCLK",
+      "5": "ETH_SCSN",
+      "6": "ETH_INTN",
+      "7": "ETH_MISO",
+      "8": "ETH_RSTN",
+      "9": "NC",
+      "10": "BUS_3V3",
+      "11": "BUS_3V3",
+      "12": "GND"
+    }
+  },
+  "gge53": {
+    "props": {
+      "Designator": "R46",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "ETH_RSTN",
+      "2": "GND"
+    }
+  },
+  "gge54": {
+    "props": {
+      "Designator": "R47",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "ETH_INTN",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge55": {
+    "props": {
+      "Designator": "C32",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge56": {
+    "props": {
+      "Designator": "U6",
+      "device_name": "INA226AIDGSR",
+      "value": "current sense",
+      "Supplier Part": "C49851"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "GND",
+      "3": "INA_ALERT",
+      "4": "I2C_SDA",
+      "5": "I2C_SCL",
+      "6": "BUS_3V3",
+      "7": "GND",
+      "8": "BUS_3V3",
+      "9": "GND",
+      "10": "LED_RTN"
+    }
+  },
+  "gge57": {
+    "props": {
+      "Designator": "R1",
+      "device_name": "WSL2512R0100FEA",
+      "value": "10mR 2512",
+      "Supplier Part": "C7419995"
+    },
+    "pins": {
+      "1": "LED_RTN",
+      "2": "GND"
+    }
+  },
+  "gge58": {
+    "props": {
+      "Designator": "R45",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "INA_ALERT",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge59": {
+    "props": {
+      "Designator": "C20",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge60": {
+    "props": {
+      "Designator": "R17",
+      "device_name": "0402WGF4701TCE",
+      "value": "4.7k",
+      "Supplier Part": "C25900"
+    },
+    "pins": {
+      "1": "I2C_SDA",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge61": {
+    "props": {
+      "Designator": "R18",
+      "device_name": "0402WGF4701TCE",
+      "value": "4.7k",
+      "Supplier Part": "C25900"
+    },
+    "pins": {
+      "1": "I2C_SCL",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge62": {
+    "props": {
+      "Designator": "R31",
+      "device_name": "0402WGF4703TCE",
+      "value": "470k",
+      "Supplier Part": "C25790"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "VBUS_ADC"
+    }
+  },
+  "gge63": {
+    "props": {
+      "Designator": "R32",
+      "device_name": "0402WGF2702TCE",
+      "value": "27k",
+      "Supplier Part": "C25771"
+    },
+    "pins": {
+      "1": "VBUS_ADC",
+      "2": "GND"
+    }
+  },
+  "gge64": {
+    "props": {
+      "Designator": "C36",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "VBUS_ADC",
+      "2": "GND"
+    }
+  },
+  "gge65": {
+    "props": {
+      "Designator": "U9",
+      "device_name": "74AHCT541PW",
+      "value": "level shift",
+      "Supplier Part": "C84548"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "LED_DATA_BUF",
+      "3": "GND",
+      "4": "GND",
+      "5": "GND",
+      "6": "GND",
+      "7": "GND",
+      "8": "GND",
+      "9": "GND",
+      "10": "GND",
+      "11": "NC",
+      "12": "NC",
+      "13": "NC",
+      "14": "NC",
+      "15": "NC",
+      "16": "NC",
+      "17": "NC",
+      "18": "LED_DATA_5V",
+      "19": "GND",
+      "20": "BUS_5V"
+    }
+  },
+  "gge66": {
+    "props": {
+      "Designator": "C23",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge67": {
+    "props": {
+      "Designator": "R34",
+      "device_name": "0402WGF4990TCE",
+      "value": "499R",
+      "Supplier Part": "C4125"
+    },
+    "pins": {
+      "1": "LED_DATA_3V3",
+      "2": "LED_DATA_BUF"
+    }
+  },
+  "gge68": {
+    "props": {
+      "Designator": "R33",
+      "device_name": "0402WGF4990TCE",
+      "value": "499R",
+      "Supplier Part": "C4125"
+    },
+    "pins": {
+      "1": "LED_DATA_5V",
+      "2": "LED_D1"
+    }
+  },
+  "gge69": {
+    "props": {
+      "Designator": "U10",
+      "device_name": "TPS16630PWPR",
+      "value": "eFuse ch1",
+      "Supplier Part": "C1849461"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "VBUS",
+      "3": "VBUS",
+      "4": "NC",
+      "5": "NC",
+      "6": "VBUS",
+      "7": "CH1_UVLO",
+      "8": "CH1_OVP",
+      "9": "GND",
+      "10": "CH1_DVDT",
+      "11": "CH1_ILIM",
+      "12": "NC",
+      "13": "CH1_SHDN",
+      "14": "NC",
+      "15": "NC",
+      "16": "PGOOD",
+      "17": "NC",
+      "18": "CH1_36V",
+      "19": "CH1_36V",
+      "20": "CH1_36V",
+      "21": "GND"
+    }
+  },
+  "gge70": {
+    "props": {
+      "Designator": "R5",
+      "device_name": "0402WGF7323TCE",
+      "value": "732k",
+      "Supplier Part": "C5159692"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "CH1_UVLO"
+    }
+  },
+  "gge71": {
+    "props": {
+      "Designator": "R7",
+      "device_name": "0402WGF2553TCE",
+      "value": "255k",
+      "Supplier Part": "C270623"
+    },
+    "pins": {
+      "1": "CH1_UVLO",
+      "2": "CH1_OVP"
+    }
+  },
+  "gge72": {
+    "props": {
+      "Designator": "R9",
+      "device_name": "0402WGF3002TCE",
+      "value": "30.0k",
+      "Supplier Part": "C2909347"
+    },
+    "pins": {
+      "1": "CH1_OVP",
+      "2": "GND"
+    }
+  },
+  "gge73": {
+    "props": {
+      "Designator": "C1",
+      "device_name": "CC0603KRX7R9BB224",
+      "value": "220nF",
+      "Supplier Part": "C64705"
+    },
+    "pins": {
+      "1": "CH1_DVDT",
+      "2": "GND"
+    }
+  },
+  "gge74": {
+    "props": {
+      "Designator": "R3",
+      "device_name": "0402WGF3241TCE",
+      "value": "3.24k",
+      "Supplier Part": "C11457"
+    },
+    "pins": {
+      "1": "CH1_ILIM",
+      "2": "GND"
+    }
+  },
+  "gge75": {
+    "props": {
+      "Designator": "C3",
+      "device_name": "CL21B224KBFNNNE",
+      "value": "220nF 100V",
+      "Supplier Part": "C513710"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge76": {
+    "props": {
+      "Designator": "C34",
+      "device_name": "CL21B224KBFNNNE",
+      "value": "220nF 100V",
+      "Supplier Part": "C513710"
+    },
+    "pins": {
+      "1": "CH1_36V",
+      "2": "GND"
+    }
+  },
+  "gge77": {
+    "props": {
+      "Designator": "D15",
+      "device_name": "MBRS3100T3G",
+      "value": "schottky 100V",
+      "Supplier Part": "C12790"
+    },
+    "pins": {
+      "1": "CH1_36V",
+      "2": "GND"
+    }
+  },
+  "gge78": {
+    "props": {
+      "Designator": "D8",
+      "device_name": "SMAJ36CA",
+      "value": "TVS 36V",
+      "Supplier Part": "C19077551"
+    },
+    "pins": {
+      "1": "CH1_36V",
+      "2": "LED_RTN"
+    }
+  },
+  "gge79": {
+    "props": {
+      "Designator": "R11",
+      "device_name": "0402WGF1001TCE",
+      "value": "1k",
+      "Supplier Part": "C2906864"
+    },
+    "pins": {
+      "1": "CH1_EN",
+      "2": "CH1_SHDN"
+    }
+  },
+  "gge80": {
+    "props": {
+      "Designator": "R13",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "CH1_SHDN",
+      "2": "GND"
+    }
+  },
+  "gge81": {
+    "props": {
+      "Designator": "Q1",
+      "device_name": "BSS138",
+      "value": "interlock ch1",
+      "Supplier Part": "C7420339"
+    },
+    "pins": {
+      "1": "PD_FAULT",
+      "2": "GND",
+      "3": "CH1_SHDN"
+    }
+  },
+  "gge82": {
+    "props": {
+      "Designator": "R15",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "PD_FAULT",
+      "2": "GND"
+    }
+  },
+  "gge83": {
+    "props": {
+      "Designator": "U11",
+      "device_name": "TPS16630PWPR",
+      "value": "eFuse ch2",
+      "Supplier Part": "C1849461"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "VBUS",
+      "3": "VBUS",
+      "4": "NC",
+      "5": "NC",
+      "6": "VBUS",
+      "7": "CH2_UVLO",
+      "8": "CH2_OVP",
+      "9": "GND",
+      "10": "CH2_DVDT",
+      "11": "CH2_ILIM",
+      "12": "NC",
+      "13": "CH2_SHDN",
+      "14": "NC",
+      "15": "NC",
+      "16": "PGOOD",
+      "17": "NC",
+      "18": "CH2_36V",
+      "19": "CH2_36V",
+      "20": "CH2_36V",
+      "21": "GND"
+    }
+  },
+  "gge84": {
+    "props": {
+      "Designator": "R6",
+      "device_name": "0402WGF7323TCE",
+      "value": "732k",
+      "Supplier Part": "C5159692"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "CH2_UVLO"
+    }
+  },
+  "gge85": {
+    "props": {
+      "Designator": "R8",
+      "device_name": "0402WGF2553TCE",
+      "value": "255k",
+      "Supplier Part": "C270623"
+    },
+    "pins": {
+      "1": "CH2_UVLO",
+      "2": "CH2_OVP"
+    }
+  },
+  "gge86": {
+    "props": {
+      "Designator": "R10",
+      "device_name": "0402WGF3002TCE",
+      "value": "30.0k",
+      "Supplier Part": "C2909347"
+    },
+    "pins": {
+      "1": "CH2_OVP",
+      "2": "GND"
+    }
+  },
+  "gge87": {
+    "props": {
+      "Designator": "C2",
+      "device_name": "CC0603KRX7R9BB224",
+      "value": "220nF",
+      "Supplier Part": "C64705"
+    },
+    "pins": {
+      "1": "CH2_DVDT",
+      "2": "GND"
+    }
+  },
+  "gge88": {
+    "props": {
+      "Designator": "R4",
+      "device_name": "0402WGF3241TCE",
+      "value": "3.24k",
+      "Supplier Part": "C11457"
+    },
+    "pins": {
+      "1": "CH2_ILIM",
+      "2": "GND"
+    }
+  },
+  "gge89": {
+    "props": {
+      "Designator": "C4",
+      "device_name": "CL21B224KBFNNNE",
+      "value": "220nF 100V",
+      "Supplier Part": "C513710"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge90": {
+    "props": {
+      "Designator": "C35",
+      "device_name": "CL21B224KBFNNNE",
+      "value": "220nF 100V",
+      "Supplier Part": "C513710"
+    },
+    "pins": {
+      "1": "CH2_36V",
+      "2": "GND"
+    }
+  },
+  "gge91": {
+    "props": {
+      "Designator": "D16",
+      "device_name": "MBRS3100T3G",
+      "value": "schottky 100V",
+      "Supplier Part": "C12790"
+    },
+    "pins": {
+      "1": "CH2_36V",
+      "2": "GND"
+    }
+  },
+  "gge92": {
+    "props": {
+      "Designator": "D9",
+      "device_name": "SMAJ36CA",
+      "value": "TVS 36V",
+      "Supplier Part": "C19077551"
+    },
+    "pins": {
+      "1": "CH2_36V",
+      "2": "LED_RTN"
+    }
+  },
+  "gge93": {
+    "props": {
+      "Designator": "R12",
+      "device_name": "0402WGF1001TCE",
+      "value": "1k",
+      "Supplier Part": "C2906864"
+    },
+    "pins": {
+      "1": "CH2_EN",
+      "2": "CH2_SHDN"
+    }
+  },
+  "gge94": {
+    "props": {
+      "Designator": "R14",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "CH2_SHDN",
+      "2": "GND"
+    }
+  },
+  "gge95": {
+    "props": {
+      "Designator": "Q2",
+      "device_name": "BSS138",
+      "value": "interlock ch2",
+      "Supplier Part": "C7420339"
+    },
+    "pins": {
+      "1": "PD_FAULT",
+      "2": "GND",
+      "3": "CH2_SHDN"
+    }
+  },
+  "gge96": {
+    "props": {
+      "Designator": "R16",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "PD_FAULT",
+      "2": "GND"
+    }
+  },
+  "gge97": {
+    "props": {
+      "Designator": "R20",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "PGOOD",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge98": {
+    "props": {
+      "Designator": "U7",
+      "device_name": "MAX3485CSA",
+      "value": "RS-485 ch1",
+      "Supplier Part": "C6395158"
+    },
+    "pins": {
+      "1": "NC",
+      "2": "BUS_3V3",
+      "3": "BUS_3V3",
+      "4": "CH1_DI",
+      "5": "GND",
+      "6": "CH1_A_DRV",
+      "7": "CH1_B_DRV",
+      "8": "BUS_3V3"
+    }
+  },
+  "gge99": {
+    "props": {
+      "Designator": "C21",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge100": {
+    "props": {
+      "Designator": "R42",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "CH1_DI",
+      "2": "GND"
+    }
+  },
+  "gge101": {
+    "props": {
+      "Designator": "R35",
+      "device_name": "RC0402FR-0733RL",
+      "value": "33R",
+      "Supplier Part": "C138002"
+    },
+    "pins": {
+      "1": "CH1_A_DRV",
+      "2": "CH1_A"
+    }
+  },
+  "gge102": {
+    "props": {
+      "Designator": "R36",
+      "device_name": "RC0402FR-0733RL",
+      "value": "33R",
+      "Supplier Part": "C138002"
+    },
+    "pins": {
+      "1": "CH1_B_DRV",
+      "2": "CH1_B"
+    }
+  },
+  "gge103": {
+    "props": {
+      "Designator": "D10",
+      "device_name": "SMAJ7.0CA",
+      "value": "TVS 7V",
+      "Supplier Part": "C19077529"
+    },
+    "pins": {
+      "1": "CH1_A",
+      "2": "LED_RTN"
+    }
+  },
+  "gge104": {
+    "props": {
+      "Designator": "D11",
+      "device_name": "SMAJ7.0CA",
+      "value": "TVS 7V",
+      "Supplier Part": "C19077529"
+    },
+    "pins": {
+      "1": "CH1_B",
+      "2": "LED_RTN"
+    }
+  },
+  "gge105": {
+    "props": {
+      "Designator": "U8",
+      "device_name": "MAX3485CSA",
+      "value": "RS-485 ch2",
+      "Supplier Part": "C6395158"
+    },
+    "pins": {
+      "1": "NC",
+      "2": "BUS_3V3",
+      "3": "BUS_3V3",
+      "4": "CH2_DI",
+      "5": "GND",
+      "6": "CH2_A_DRV",
+      "7": "CH2_B_DRV",
+      "8": "BUS_3V3"
+    }
+  },
+  "gge106": {
+    "props": {
+      "Designator": "C22",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge107": {
+    "props": {
+      "Designator": "R43",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "CH2_DI",
+      "2": "GND"
+    }
+  },
+  "gge108": {
+    "props": {
+      "Designator": "R37",
+      "device_name": "RC0402FR-0733RL",
+      "value": "33R",
+      "Supplier Part": "C138002"
+    },
+    "pins": {
+      "1": "CH2_A_DRV",
+      "2": "CH2_A"
+    }
+  },
+  "gge109": {
+    "props": {
+      "Designator": "R38",
+      "device_name": "RC0402FR-0733RL",
+      "value": "33R",
+      "Supplier Part": "C138002"
+    },
+    "pins": {
+      "1": "CH2_B_DRV",
+      "2": "CH2_B"
+    }
+  },
+  "gge110": {
+    "props": {
+      "Designator": "D12",
+      "device_name": "SMAJ7.0CA",
+      "value": "TVS 7V",
+      "Supplier Part": "C19077529"
+    },
+    "pins": {
+      "1": "CH2_A",
+      "2": "LED_RTN"
+    }
+  },
+  "gge111": {
+    "props": {
+      "Designator": "D13",
+      "device_name": "SMAJ7.0CA",
+      "value": "TVS 7V",
+      "Supplier Part": "C19077529"
+    },
+    "pins": {
+      "1": "CH2_B",
+      "2": "LED_RTN"
+    }
+  },
+  "gge112": {
+    "props": {
+      "Designator": "J4",
+      "device_name": "PZ254V-11-02P",
+      "value": "fan 5V DNF",
+      "Supplier Part": "C492401"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge113": {
+    "props": {
+      "Designator": "LED1",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "LED_D2",
+      "3": "GND",
+      "4": "LED_D1"
+    }
+  },
+  "gge114": {
+    "props": {
+      "Designator": "C24",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge115": {
+    "props": {
+      "Designator": "LED2",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "LED_D3",
+      "3": "GND",
+      "4": "LED_D2"
+    }
+  },
+  "gge116": {
+    "props": {
+      "Designator": "C25",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge117": {
+    "props": {
+      "Designator": "LED3",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "LED_D4",
+      "3": "GND",
+      "4": "LED_D3"
+    }
+  },
+  "gge118": {
+    "props": {
+      "Designator": "C26",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge119": {
+    "props": {
+      "Designator": "LED4",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "LED_D5",
+      "3": "GND",
+      "4": "LED_D4"
+    }
+  },
+  "gge120": {
+    "props": {
+      "Designator": "C27",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge121": {
+    "props": {
+      "Designator": "LED5",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "LED_D6",
+      "3": "GND",
+      "4": "LED_D5"
+    }
+  },
+  "gge122": {
+    "props": {
+      "Designator": "C28",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge123": {
+    "props": {
+      "Designator": "LED6",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "LED_D7",
+      "3": "GND",
+      "4": "LED_D6"
+    }
+  },
+  "gge124": {
+    "props": {
+      "Designator": "C29",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge125": {
+    "props": {
+      "Designator": "LED7",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "LED_D8",
+      "3": "GND",
+      "4": "LED_D7"
+    }
+  },
+  "gge126": {
+    "props": {
+      "Designator": "C30",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  },
+  "gge127": {
+    "props": {
+      "Designator": "LED8",
+      "device_name": "SK6812-EC20",
+      "value": "RGB",
+      "Supplier Part": "C2909058"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "NC",
+      "3": "GND",
+      "4": "LED_D8"
+    }
+  },
+  "gge128": {
+    "props": {
+      "Designator": "C31",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_5V",
+      "2": "GND"
+    }
+  }
+}

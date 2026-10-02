@@ -85,3 +85,23 @@ ignore:
   # see the sourcing table - but the importer cannot resolve them and
   # S4 would fire on every build.
   - S4-missing-lcsc
+
+  # The HUSB238A's VBUS pin is a sense input behind the Figure 6 follower, not
+  # a supply. The chip's actual supply is VDD, tied to 3V3 and decoupled with
+  # C18 (1 uF, datasheet-mandated) and C19 (100 nF). P2 fires because the kb
+  # types pin 16 power_in - which is true, it CAN power the chip when VDD is
+  # absent, and here VDD is not absent.
+  #
+  # Fitting a capacitor to satisfy the rule would make the board worse. The
+  # node's only discharge path is the pin's own 330 uA draw, so 100 nF would
+  # delay the undervoltage detector by about 1.2 ms crossing vVBUV_F2 - and
+  # UVP is the one protection mechanism the clamp topology preserves above
+  # 28 V. Scoped to this rail: P2 still guards BUS_5V and BUS_3V3.
+  - P2-no-decoupling@PD_VBUS_SENSE
+
+  # TP1/TP2 are bare pads for the UART0 console, not components - a footprint
+  # with no LCSC part, so the importer cannot place them and the net has one
+  # pin until they are drawn by hand. Named rather than dropped so the import
+  # carries a net to attach the pad to; see 'Hand-drawn after import'.
+  - C1-single-pin-net@UART_TX
+  - C1-single-pin-net@UART_RX

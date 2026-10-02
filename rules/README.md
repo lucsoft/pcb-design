@@ -4,6 +4,14 @@ Every rule `tools/erc.py` can report. Suppress one for a design by listing its
 id under `ignore:` in that design's `design.yaml` — and write down why, because
 a suppressed rule is a decision, not a cleanup.
 
+An entry is either a bare rule id, which silences the rule across the whole
+board, or **`rule@where`**, which silences it at one net or pin only. Prefer the
+scoped form. The bare form is how a real check gets lost: `P2-no-decoupling`
+has one justified exception on the LED matrix controller — a sense pin that is
+worse off with a capacitor — and suppressing it unscoped would have stopped it
+guarding both actual supply rails as well. The `where` to match is the one the
+finding prints in brackets.
+
 ## Structural — the EasyEDA importer's own contract
 
 | id | severity | catches |
@@ -23,7 +31,7 @@ a suppressed rule is a decision, not a cleanup.
 | `K2-no-pin-map` | warning | part is known but has no pins, so electrical checks are skipped |
 | `K3-unknown-pin` | error | a pin number the part does not have |
 | `K4-unconnected-pin` | error for supply pins, warning otherwise | a declared pin left floating |
-| `K5-nc-connected` | warning | a not-connected pin wired to a real net |
+| `K5-nc-connected` | warning | a not-connected pin wired to a real net. The literal net `NC` is not a real net — it is how K4 asks you to record "open on purpose" — so it does not fire on that |
 
 ## Connectivity
 
@@ -38,7 +46,7 @@ a suppressed rule is a decision, not a cleanup.
 
 | id | severity | catches |
 |----|----------|---------|
-| `E1-driver-contention` | error (warning on a declared rail) | two push-pull outputs on one net |
+| `E1-driver-contention` | error (warning on a declared rail) | two push-pull outputs **from different parts** on one net. Several output pads of one part are how power silicon is bonded out — the TPS16630 has three OUT pins — and paralleling them is required wiring, not contention |
 | `E2-no-driver` | warning | a net of inputs with nothing driving it |
 | `E3-missing-pullup` | warning | open-drain pins with no pull-up |
 
@@ -49,7 +57,7 @@ a suppressed rule is a decision, not a cleanup.
 | `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax`. Compared against the rail's `voltageMax` when `design.yaml` declares one, otherwise its nominal `voltage` — a bus stated only at nominal passes a pin that the source's +5% tolerance breaks |
 | `P1-undervoltage` | warning | rail below a pin's `vMin`. Compared against the rail's `voltageMin` when `design.yaml` declares one, otherwise its nominal `voltage` — a rail stated only at nominal hides the sag that crosses the floor |
 | `P2-no-decoupling` | error | a supply rail with no capacitor to ground |
-| `P2-thin-decoupling` | warning | fewer capacitors than supply pins on a rail |
+| `P2-thin-decoupling` | warning | fewer capacitors than supplied **parts** on a rail. Counted per part, not per pad: a part taking four pins off one bus wants one capacitor, not four |
 
 `P1` needs rail voltages declared in `design.yaml`; without them it cannot fire.
 

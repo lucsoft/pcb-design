@@ -197,7 +197,12 @@ class Check:
                     self.nets[net].append((comp, pin))
 
     def add(self, rule, severity, message, where="", hint=""):
-        if rule in self.design.ignore:
+        # A bare rule id suppresses the rule everywhere; `rule@where` suppresses
+        # it at one place only. The scoped form exists because the broad one is
+        # dangerous: silencing P2-no-decoupling for the one sense pin that does
+        # not want a capacitor would otherwise silence it for every real supply
+        # rail on the board, which is the rule's whole job.
+        if rule in self.design.ignore or f"{rule}@{where}" in self.design.ignore:
             return
         self.findings.append(Finding(rule, severity, message, where, hint))
 
@@ -330,7 +335,12 @@ class Check:
                               "a floating supply pin will not work")
 
             for num, rec in kb_pins.items():
-                if rec.get("type") == "nc" and comp.pins.get(num):
+                # The literal net NC is the project's way of writing "open on
+                # purpose" -- K4's own hint tells you to use it. Flagging it
+                # here made the two rules contradict each other: connect the
+                # pin and K5 fires, leave it and K4 does.
+                if (rec.get("type") == "nc" and comp.pins.get(num)
+                        and comp.pins[num].upper() != "NC"):
                     self.add("K5-nc-connected", "warning",
                              f"pin {num} is marked not-connected but is wired to "
                              f"'{comp.pins[num]}'",
@@ -424,7 +434,12 @@ class Check:
             passives = [(c, p) for c, p, t in types if t == "passive"]
             unknown = any(t == "unspecified" for _, _, t in types)
 
-            if len(strong) > 1:
+            # Count distinct parts, not pins. A power part routinely bonds one
+            # output to several pads -- the TPS16630 has three OUT pins and the
+            # ESP32-C6 module nine GND -- and paralleling them is the required
+            # wiring, not contention. Contention needs two different drivers.
+            drivers = {c.designator for c, _ in strong}
+            if len(drivers) > 1:
                 who = ", ".join(f"{c.designator}.{p} ({c.pin_name(p)})"
                                 for c, p in strong)
                 ground_or_rail = self.design.is_ground(net) or \
@@ -504,17 +519,24 @@ class Check:
                     supply_pins[net].append(f"{comp.designator}.{pin}")
 
         for net, pins in sorted(supply_pins.items()):
-            have, need = caps_on.get(net, 0), len(pins)
+            # One capacitor per supplied PART, not per pad. The TPS16630 takes
+            # four pins off the bus (three IN and P_IN) that are one node
+            # internally and the datasheet asks for one capacitor at them; the
+            # USB-C receptacle takes four VBUS contacts that are one contact
+            # set. Counting pads made a correctly decoupled board look starved
+            # and put thirteen pins in the message where there are four parts.
+            need = len({q.split(".")[0] for q in pins})
+            have = caps_on.get(net, 0)
             if have == 0:
                 self.add("P2-no-decoupling", "error",
-                         f"rail '{net}' feeds {need} supply pin(s) with no "
+                         f"rail '{net}' feeds {need} part(s) with no "
                          f"capacitor to ground",
                          where=net,
-                         hint="add 100nF per supply pin, placed close to the pin")
+                         hint="add 100nF per supplied part, placed close to the pin")
             elif have < need:
                 self.add("P2-thin-decoupling", "warning",
-                         f"rail '{net}' has {have} capacitor(s) for {need} supply "
-                         f"pin(s): {', '.join(pins)}",
+                         f"rail '{net}' has {have} capacitor(s) for {need} "
+                         f"supplied part(s), across pins {', '.join(pins)}",
                          where=net,
                          hint="the usual rule is one 100nF per supply pin, plus one "
                               "bulk capacitor per rail")

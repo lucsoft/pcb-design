@@ -322,6 +322,64 @@ def _():
     assert "P1-overvoltage" in rules(run(n, worst))
 
 
+@case("E1 does not fire on two output pads of the same part")
+def _():
+    # The TPS16630 bonds its output to three pads and the ESP32-C6 module its
+    # ground to nine. Paralleling them is the required wiring, so counting pads
+    # rather than parts made correct boards look like driver contention -- and
+    # a rule that fires on a correct board is a rule people stop reading.
+    n = {
+        **comp("gge1", "U1", "C84548",
+               {"20": "VBUS", "10": "GND", "11": "SIG", "12": "SIG"}),
+        **comp("gge2", "R1", "C25744", {"1": "SIG", "2": "GND"}),
+    }
+    assert "E1-driver-contention" not in rules(run(n))
+
+
+@case("K5 does not fire on a pin wired to the NC net")
+def _():
+    # K4 tells you to wire a deliberately open pin to a net named NC. K5 then
+    # objected to exactly that, so the two rules contradicted each other and
+    # one of them had to be wrong whichever way the pin was left.
+    n = comp("gge1", "U1", "C1849461",
+             {"1": "VBUS", "9": "GND", "4": "NC", "18": "OUT1", "21": "GND"})
+    found = rules(run(n))
+    assert "K5-nc-connected" not in found
+    # ...and a real net on an NC pin must still be caught.
+    n2 = comp("gge1", "U1", "C1849461",
+              {"1": "VBUS", "9": "GND", "4": "VBUS", "18": "OUT1", "21": "GND"})
+    assert "K5-nc-connected" in rules(run(n2))
+
+
+@case("P2-thin-decoupling counts supplied parts, not supply pads")
+def _():
+    # One part taking four pins off a rail wants one capacitor, not four. The
+    # eFuse's three IN pins plus P_IN are one node inside the package.
+    n = {
+        **comp("gge1", "U1", "C1849461",
+               {"1": "VBUS", "2": "VBUS", "3": "VBUS", "6": "VBUS",
+                "9": "GND", "18": "OUT1", "21": "GND"}),
+        **comp("gge2", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    }
+    assert "P2-thin-decoupling" not in rules(run(n))
+
+
+@case("a scoped ignore suppresses one place and not the rule")
+def _():
+    # Suppressing a rule board-wide to silence one justified exception is how a
+    # real check gets lost. rule@where keeps it live everywhere else.
+    n = {
+        **comp("gge1", "U1", "C84548", {"20": "VBUS", "10": "GND", "11": "LONE"}),
+        **comp("gge2", "U2", "C84548", {"20": "VBUS", "10": "GND", "12": "SOLO"}),
+        **comp("gge3", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    }
+    scoped = DESIGN + "\nignore: ['C1-single-pin-net@LONE']\n"
+    found = [f for f in run(n, scoped) if f["rule"] == "C1-single-pin-net"]
+    assert len(found) == 1, found
+    assert found[0]["where"] == "SOLO", found
+
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:
