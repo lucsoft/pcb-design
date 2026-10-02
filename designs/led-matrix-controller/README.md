@@ -229,7 +229,7 @@ pair is good for tens of metres at 800 kbps, well past anything power
 allows, and it is far more tolerant of a room full of switching converters than
 a single-ended line would have been.
 
-So **power is now the only constraint: 0.5 mm², up to about 10.8 m** at 5% drop.
+So **power is now the only constraint: 0.5 mm², up to about 9 m** at 5% drop — 10.8 m on the balanced 2.43 A, 9.3 m at the 2.80 A one channel actually draws with the other dark.
 That is a real gain over the ~5 m the single-ended link would have been held to.
 
 Practice for the pair:
