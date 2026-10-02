@@ -144,7 +144,7 @@ of eight is used.
 is 40 V operating, 45 V absolute. 240 W would need every module respun onto a 60 V-class
 buck. The controller's bus-side parts are rated **60 V class**, which does not leave room
 for 48 V — that would want 100 V throughout, and **nothing on this board is
-100 V**. The eFuse is 60 V with a 67 V absolute, the TPS54360B and the SS36 are
+100 V**, bar a few ceramics. No *active* part is: the eFuse is 60 V with a 67 V absolute, the TPS54360B and the SS36 are
 60 V parts, and the 100 V figure belonged to the discrete NSS085N100S that the
 eFuse replaced. The argument is stronger for it, not weaker. Since 48 V needs every module respun
 anyway, the door is closed by the modules, not by this board.
@@ -516,11 +516,11 @@ indicators may misbehave before negotiation, not that the board fails to start.
 And 4.19 V still clears the VBUS pin's 3.15 V minimum by 1.04 V. What it does
 erode is the margin against two 4.0 V thresholds — see Known electrical limits.
 
-**The sag at low bus voltage matters locally, not across the cable.** An earlier
-version argued it was self-correcting because the modules' own XL1509 is also in
-pass-through at 5 V, so module VDD falls too and WS2812 thresholds track. That
-tracking argument is void here — the controller's 5 V rail and the modules' 5 V
-rail no longer share a signal path, only a differential pair at 3.3 V logic.
+**The sag at low bus voltage matters locally, not across the cable.** It is
+tempting to call it self-correcting — the modules' own XL1509 is also in
+pass-through at 5 V, so module VDD falls too and WS2812 thresholds track with it.
+That argument is void here: the controller's 5 V rail and the modules' 5 V rail
+no longer share a signal path, only a differential pair at 3.3 V logic.
 
 What the sag actually threatens is the **SK6812 status chain on this board**:
 its VIH is 0.6 x VDD, so at a 4.56 V rail the threshold is 2.74 V and the
@@ -558,8 +558,9 @@ rail's own sag is counted.
 | **total** | **~574 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
 
 The transceivers' line current is the row that was missing: it appears in the
-thermal budget as 0.06 W of *board heat* — correct, but not for the reason an
-earlier version gave. 2 × (2 + 12) mA × 3.3 V is 92 mW total and the far-end
+thermal budget as 0.06 W of *board heat*, and the split is worth stating because
+"most of it is burned in the far-end termination" is the natural guess and is
+wrong. 2 × (2 + 12) mA × 3.3 V is 92 mW total and the far-end
 terminations take 2 × (12 mA)² × 120 Ω = **35 mW**, so 38% leaves the board and
 about 60% stays, which is the 0.06 W row. It is a real continuous draw on
 the SY8089 either way. Note the datasheet gives neither a loaded I_CC nor a V_OD
@@ -763,7 +764,7 @@ Both are 4.0 V thresholds against the 4.19 V the Schottky delivers:
 | Threshold | Value | Margin at 4.19 V |
 |---|---|---|
 | `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.7) | +0.19 V on typ, **−0.21 V on max** |
-| VBUS UV falling, vVBUV_F1 | **not specified at a 5 V RDO.** p.7 bands it 86% for 26 V > RDO > 10 V and 80% for 10 V ≥ RDO > 5 V — 5 V itself falls in no band. At the adjacent 86% the threshold is 4.30 V and the pin is **0.11 V short**, not 0.19 V over | **unknown; treat 4.30 V as the bound** |
+| VBUS UV falling | **not specified at a 5 V RDO.** p.7 bands it 86% for 26 V > RDO > 10 V (F0) and 80% for 10 V ≥ RDO > 5 V (F1) — 5 V itself falls in no band. The **adjacent** band is F1 at 80%, which ends exactly at 5 V; F0 is two bands away. At 80% the bound is **4.00 V** and the pin clears by **+0.19 V**. At F0's 86% it would be 4.30 V and 0.11 V short | **+0.19 V on the adjacent band, −0.11 V on the pessimistic one** |
 
 The first decides whether VBUS-present is seen; the second is the under-voltage
 detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
@@ -773,12 +774,15 @@ it sounds, because USB Type-C gates
 the `AttachWait.SNK → Attached.SNK` transition on VBUS detection, which is what
 vVBPRS_R implements, and the UV detector was not mentioned at all.
 
-**Honest position: one margin and one shortfall, and the shortfall is the one
-that matters.** `VBUS_OK` rising clears by **+0.19 V** on a typical part. The
-under-voltage detector does not: a 5 V RDO falls in no published band, and at the
-adjacent 86% the bound is 4.30 V against a pin at 4.19 V — **0.11 V short**. Both
-numbers would move 0.35 V the right way if the 5 V rail were not at its own
-dropout floor. Bench-check it on the first board; if it
+**Honest position: two margins, both thin, and one of them unspecified.**
+`VBUS_OK` rising clears by **+0.19 V** on a typical part and misses by 0.21 V on
+a max one. The under-voltage detector publishes no band covering a 5 V RDO at
+all; its **adjacent** band is F1 at 80%, giving a 4.00 V bound that the 4.19 V pin
+clears by **+0.19 V** — numerically the same figure by coincidence, since
+vVBPRS_R typ is 4.0 V and 80% of 5 V is also 4.0 V. Reading the *next* band up
+instead (F0, 86%) would put the bound at 4.30 V and the pin 0.11 V short, which
+is the pessimistic case rather than the adjacent one. Both margins would move
+0.35 V the right way if the 5 V rail were not at its own dropout floor. Bench-check it on the first board; if it
 fails, the lever is the rail, not the diode — a lower-DCR inductor buys back
 more than any Schottky swap can.
 
@@ -1315,13 +1319,10 @@ the cable side is galvanically isolated, and Bob Smith termination is inside the
 jack rather than something to add. Shield-to-GND bonding is the module's
 arrangement, not ours.
 
-**This was an error, now corrected.** The earlier text claimed "no part both
-stays off at 36 V and clamps below 60 V" and leaned on the P-FET's body diode to
-excuse a 64 V clamp. Both halves were wrong.
-
 **SMAJ36CA** clamps at **58.1 V**, under the TPS16630's **67 V** absolute
-maximum (1.15x) — so the earlier claim that no part could both stay off at 36 V
-and clamp below 60 V was simply wrong, and was never checked.
+maximum (1.15x). It is easy to conclude that no part both stays off at 36 V and
+clamps below 60 V, and to lean on a body diode to excuse a 64 V clamp instead;
+both halves of that are wrong, and the catalogue settles it in one search.
 
 But it is not comfortable either. A compliant PD fixed PDO is **±5%**, so a
 source may sit at **37.8 V indefinitely** against Vrwm = 36 V. Checking only
@@ -1351,9 +1352,10 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7045 mm2.**
 
-Component area estimates at **~2360 mm2** — which now counts the passives individually rather than as an allowance, the itemised list being in the BOM.  — the Ethernet module made the board
-slightly *bigger*, 575 mm2 against the ~496 it replaced, and an earlier 2310
-figure predates that swap. At 45% utilisation (2-layer, relaxed) that is roughly
+Component area estimates at **~2360 mm2**, counting the passives individually
+rather than as an allowance — the itemised list is in the BOM. The Ethernet
+module made the board slightly *bigger*, 575 mm2 against the ~496 it replaced.
+At 45% utilisation (2-layer, relaxed) that is roughly
 **72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
 with room to spare.
 
@@ -1385,12 +1387,19 @@ voltage directly. The binding limit is the 74AHCT541's **4.5 V** supply minimum:
 
 | fan | 5 V rail at a 4.75 V bus, R_DS typ | at the 190 mΩ corner |
 |---|---|---|
-| none | 4.569 V | 4.520 V |
-| 25 mm, ~50 mA | 4.559 V | 4.507 V |
-| **30 mm, ~70 mA** | 4.556 V | **4.502 V** |
-| 40 mm, ~100 mA | 4.550 V | 4.494 V — **under the floor** |
+| none | 4.564 V | 4.515 V |
+| **25 mm, ~50 mA** | 4.554 V | **4.502 V** |
+| 58 mA | 4.553 V | 4.500 V — **on the floor** |
+| 30 mm, ~70 mA | 4.551 V | 4.497 V — **under it** |
+| 40 mm, ~100 mA | 4.545 V | 4.489 V |
 
-So **fit a fan of 70 mA or less**, which is a 25-30 mm part. At 36 V none of this
+Worked from the same inverted Eq. 1 as the dropout table above, **V_F term
+included** — dropping it moves every row about 5 mV optimistic and puts the
+crossing between 70 and 100 mA instead of at 58.
+
+So **fit a fan of 50 mA or less**, which is a 25 mm part. Note that even 50 mA
+clears by 2 mV, which is inside this model's own noise: treat it as "25 mm class,
+and confirm the rail on the first board", not as a margin. At 36 V none of this
 applies: the rail is a real buck off a 3.5 A converter and the fan is free. The
 constraint exists only at the bottom of vSafe5V, where there is no heat to move
 anyway — the board makes 2.3 W there.
@@ -1584,9 +1593,10 @@ Supporting pieces:
 - **Bus voltage sense**: **470 k / 27 k** divider into an ESP32-C6 ADC, plus
   **100 nF** at the tap. Gives **1.96 V at 36 V** and 2.72 V at 50 V, so events up to ~57 V are on-scale (3.26 V at 60 V is above the SAR's usable ceiling) —
   which matters because this divider is now the only overvoltage measurement the
-  system has. An earlier 330 k/33 k gave 3.27 V, above the SAR ADC's ~3.1 V
-  usable top at 12 dB, pinning the reading at full scale **at the normal
-  operating point**. The INA226 cannot do this job: its VBUS pin is specified
+  system has. The obvious 330 k/33 k pick gives 3.27 V, above the SAR ADC's
+  ~3.1 V usable top at 12 dB, which pins the reading at full scale **at the
+  normal operating point** — check the divider against the ADC ceiling, not just
+  against the rail. The INA226 cannot do this job: its VBUS pin is specified
   0-36 V against a 36 V bus, so no margin. The 100 nF fixes the source
   impedance, which an ESP32 SAR wants nearer 10 kΩ — but 25.5 kΩ with 100 nF is
   **τ = 2.55 ms**, so this cannot see an OV event faster than ~10 ms. It is a
@@ -2196,9 +2206,12 @@ undetectable. None of these is all three.
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
 | **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 8.75 J available against 2.14 J needed at the design point is 4×, which a package change does not eat. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
-| **0.09 W/cm² free-air** | rule of thumb; the ambient it assumes is not stated | thermal headroom is not 1.17× | **J4**, the fan header — see Cooling. The mitigation is fitted before the question is answered |
+| **0.09 W/cm² free-air** | rule of thumb, for a 40 °C rise from 25 °C ambient | thermal headroom is not 1.17× | **J4**, the fan header — see Cooling. The *footprint* exists before the question is answered; nothing is fitted by default |
 | **XL1509 V_CE ≈ 0.30 + 0.45·I** | fitted to the single datasheet point, 1.2 V at 2 A | the vSafe5V brightness estimate is wrong | measurement on one module. Affects a convenience figure, not the design |
 | **Tier flags** (basic/extended) | jlcsearch's cached `is_basic` | an unexpected per-part assembly fee | confirm against JLCPCB when ordering. `./tools/stock.py` already covers the stock half |
+| **20 mA per LED channel → 10.8 W per module** | p.3 of the WS2812D-F8 datasheet gives I_F = 20 mA as the *test condition* for the die's V_F and I_v, not as a rating of the internal sink | **everything.** Every brightness row, every fps row, the 2.43 A channel current, the 4.0 A flash peak, R_ILIM and the whole 180 W budget derive from it; `figures.py` hard-codes it as `FULL_W` | measure one module at full white. This is the single most load-bearing unsourced number in the design |
+| **75% module buck efficiency** | characterised at 28 V, applied at 36 V | the bus-current model, hence the limiter divisor | measurement, or the XL1509 efficiency curve read at 36 V |
+| **ESP32-C6 claims beyond the pin table** | only the *module* datasheet is cached. GPIO14's absence, the strapping tables, the ADC pin set, the PARLIO and RMT channel counts and `clk_out_gpio_num` all rest on the chip datasheet, the TRM and IDF 5.3 | a GPIO assignment that does not exist, or one that conflicts with a peripheral | cache the chip datasheet and TRM, then re-check the GPIO table against them |
 | **BSS138 R_DS at the FAULT gate drive** | not characterised at that V_GS | the interlock pulls SHDN down too slowly | 330 Ω is needed against a 909 Ω source, and the part is ~2 Ω fully on; the margin is two orders of magnitude |
 
 Three of these — the pad numbers, the FAULT default and the MISO pin — are not
@@ -2228,9 +2241,11 @@ instead of the conservative 60 widens the 12 V margin to 0.23 V. Treat 12 V as
 the contract to test first on real hardware.
 
 One thing that makes the analysis above valid and is not obvious: the base sits
-**below** the collector by exactly I_B·R44 ≈ 50 mV, at every bus voltage, because
-R44 is the only path into the base. So V_BC is pinned a hair negative and the
-transistor is always just inside the active region — never saturated, where V_BE
+**below** the collector by exactly I_B·R44 ≈ **63 mV** on any contract the Zener
+does not clamp, because R44 is the only path into the base. (At 28 V and 36 V the
+clamp holds the base 7-10 V below the collector instead, which is the same
+conclusion with more room.) So V_BC is never positive and the transistor is
+always inside the active region — never saturated, where V_BE
 would climb. That is also why V_BE(sat) is the wrong spec to reach for.
 
 **The HUSB238A's FAULT pin may not be a FAULT pin at reset.** Pin 13 is
@@ -2504,10 +2519,10 @@ Kept so they are not re-opened:
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
   draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.19 V on a
   4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: `VBUS_OK`
-  rising clears by **+0.19 V** on a typical part, while the under-voltage
-  detector publishes no band covering a 5 V RDO at all — at the adjacent 86%
-  the bound is 4.30 V and the pin is **0.11 V short**. Works on a typical part,
-  not guaranteed at the corner.
+  rising clears by **+0.19 V** on a typical part, and the under-voltage detector
+  publishes no band covering a 5 V RDO — its adjacent band (F1, 80%) puts the
+  bound at 4.00 V, which the pin clears by the same 0.19 V. Works on a typical
+  part, not guaranteed at the corner.
 - **USB-C receptacle** — **CX90B-16P** (C3198004), Hirose CX series, **5 A /
   48 V AC/DC**, 16-position USB 2.0. Closes the longest-standing blocking
   question. Note LCSC's parameter table says 20 V for it and is **wrong**; the

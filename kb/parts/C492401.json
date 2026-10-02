@@ -52,7 +52,7 @@
     "category": "lcsc-api",
     "pins": "1x2 2.54 mm pin header, 3 A per contact"
   },
-  "designVerdict": "SELECTED as J4, the fan header. 1x2 2.54 mm, 3 A per contact.",
+  "designVerdict": "SELECTED as J4, the fan header. 1x2 2.54 mm, 3 A per contact. Specified for a fan of 50 mA or less - see Cooling.",
   "notes": [
     "Optional part. The board is designed to pass its thermal budget without a fan - 4.11 W against 4.80 W of free-air capacity at 25 C ambient - but that margin is 1.17x and it is gone by 45 C, and the enclosure is not designed. This header is the cheap insurance against finding that out late.",
     "2.54 mm because mini fans ship with bare wires or a 2-pin 2.54 housing more often than anything else, and because a through-hole header is the one part on this board that can be fitted after the fact without a stencil."

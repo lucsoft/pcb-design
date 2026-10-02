@@ -75,7 +75,7 @@
     "catchDiodeDissipation": {
       "value": 0.93,
       "unit": "W",
-      "note": "0.5 V Vf x 2.16 A x (1 - 0.139) = 0.930 W. CORRECTED: the value here read 0.89 W, which is the same formula at duty 0.179 = 5/28 - a 28 V figure under a 36 V label, the exact error icDissipationAt36V already records having fixed. Against the 1.0 W free-air budget this is 93%, not 89%."
+      "note": "0.5 V Vf x 2.16 A x (1 - 0.139) = 0.930 W. Taking duty as 0.179 = 5/28 gives 0.89 W instead - a 28 V figure under a 36 V label, which is the trap this whole key exists to avoid. Against the 1.0 W free-air budget this is 93%, not 89%."
     },
     "freeAirBudget": {
       "value": 1.0,
@@ -88,7 +88,7 @@
       "value": 0.9,
       "unit": "W",
       "tolerance": 0.1,
-      "note": "modelled at 36 V: VCE 1.2 V x 2.16 A x duty 0.139 (= 5/36) = 0.36 W conduction, plus switching and quiescent. CORRECTED: an earlier note used duty 0.179, which is 5/28 - a 28 V figure under a 36 V label."
+      "note": "modelled at 36 V: VCE 1.2 V x 2.16 A x duty 0.139 (= 5/36) = 0.36 W conduction, plus switching and quiescent. Duty is 5/36 here. Using 0.179 = 5/28 is the 28 V figure and does not belong under a 36 V label."
     }
   },
   "failureModes": [
@@ -217,7 +217,7 @@
       }
     ],
     "perceivedBrightnessNote": "'perceived' applies a gamma of 2.2. Luminous output is linear with PWM duty, but human brightness perception is not, so halving the power looks like roughly 73% of the brightness rather than 50%. Degradation with module count is far gentler than the raw power numbers suggest.",
-    "mitigation": "Parallel data lines fix the refresh limit but NOT the power limit. Splitting the chain across 4 outputs multiplies the achievable frame rate by 4; available watts are unchanged. CORRECTED: the controller uses PARLIO, not RMT. The ESP32-C6 has ONE PARLIO TX unit driving both channels as lanes at data_width=2, and only 2 RMT TX channels - too few for two data channels plus the status chain.",
+    "mitigation": "Parallel data lines fix the refresh limit but NOT the power limit. Splitting the chain across 4 outputs multiplies the achievable frame rate by 4; available watts are unchanged. The controller uses PARLIO, not RMT. The ESP32-C6 has ONE PARLIO TX unit driving both channels as lanes at data_width=2, and only 2 RMT TX channels - too few for two data channels plus the status chain.",
     "verification": "Modelled. The 0.75 efficiency and 0.70 thermal cap are both estimates.",
     "parallelLines": {
       "decision": "2 channels, 10 modules each.",
@@ -272,10 +272,10 @@
     "storedEnergyAt36V": {
       "10 modules": "2.14 J",
       "25 modules": "5.35 J",
-      "_note": "CORRECTED: these were computed at 28 V with 220 uF/module while the key says 36 V. Recomputed as 0.5 * N * 330 uF * 36^2, the capacitance the design sizes the ramp for."
+      "_note": "Computed as 0.5 * N * 330 uF * 36^2 - the capacitance the design sizes the ramp for, at the voltage the key names. Working it at 28 V with 220 uF/module is the mismatch to watch for."
     },
-    "slewRequired_note": "CORRECTED: these were computed at 28 V with 220 uF/module while labelled 36 V. Recomputed at 36 V with the 330 uF the design sizes for.",
-    "storedEnergyAt36V_note": "CORRECTED: these were computed at 28 V with 220 uF/module while labelled 36 V. Recomputed at 36 V with the 330 uF the design sizes for.",
+    "slewRequired_note": "Computed at 36 V with the 330 uF the design sizes for, not at 28 V with the 220 uF ripple-sizing value.",
+    "storedEnergyAt36V_note": "Computed at 36 V with the 330 uF the design sizes for, not at 28 V with the 220 uF ripple-sizing value.",
     "bulkByCount_note": "The four figures above are N x 220 uF, the ripple-sizing value. The inrush ramp is sized at N x 330 uF - see sourceOfCharge. Do not mix the two: the controller's C_dVdT is derived from the 330 uF set."
   },
   "connector": {

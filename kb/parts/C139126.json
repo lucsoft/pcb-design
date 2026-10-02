@@ -45,10 +45,11 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "",
+    "fullWhiteCurrent": "inferred - p.3 20 mA is a test condition, not a sink rating"
   },
   "notes": [
-    "IF = 20 mA per colour channel (datasheet p.3). That table is an embedded image and does not survive pdftotext; it was read with a vision pass on a rendered page.",
+    "p.3 gives I_F = 20 mA as the TEST CONDITION for the LED die's V_F and I_v, NOT as a stated spec of the internal constant-current sink. The 20 mA per colour channel this design uses is INFERRED from it. That table is an embedded image and does not survive pdftotext; it was read with a vision pass on a rendered page.",
     "Full white = 3 x 20 mA = 60 mA per LED. A 6x6 module is 36 x 60 mA = 2.16 A at 5 V, which is 8% above the XL1509's 2 A rating.",
     "VDD absolute maximum 5.3 V (datasheet p.2), supply range 3.5-5.3 V. An XL1509-5.0 outputs 4.8-5.2 V, leaving as little as 0.1 V of headroom at the top of tolerance.",
     "Drive is internally constant-current, so the LEDs do not need external current limiting and are not themselves at risk from an overcurrent event.",
