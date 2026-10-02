@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 100 kΩ 1% 0402. TPS54360B RT, and the SY8089 EN pull-up"
+  "designVerdict": "SELECTED. 100 kΩ 1% 0402. TPS54360B RT, and the SY8089 EN pull-up",
+  "notes": []
 }

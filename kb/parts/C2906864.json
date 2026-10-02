@@ -43,5 +43,6 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "SELECTED as R11,R12 - 1 kOhm in series from each GPIO to a TPS16630 SHDN pin. Replaces C11702, zero stock."
+  "designVerdict": "SELECTED as R11,R12 - 1 kOhm in series from each GPIO to a TPS16630 SHDN pin. Replaces C11702, zero stock.",
+  "notes": []
 }

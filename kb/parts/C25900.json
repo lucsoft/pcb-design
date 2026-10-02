@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 4.7 kΩ 1% 0402. I2C pull-ups on SDA and SCL, 2 off"
+  "designVerdict": "SELECTED. 4.7 kΩ 1% 0402. I2C pull-ups on SDA and SCL, 2 off",
+  "notes": []
 }

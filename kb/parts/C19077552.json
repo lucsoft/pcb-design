@@ -41,6 +41,6 @@
     "SMAJ40CA, 40 V bidirectional TVS, SMA, 24k stock, $0.037. One on USB-C VBUS and one on each output connector's +36 V pin.",
     "40 V standoff is the lowest standard value that stays off at a 36 V bus. 36 V parts exist but would sit on the edge of conduction at the nominal bus voltage.",
     "CLAMPS AT ROUGHLY 64 V, which is above the TM40P06D's 60 V rating. TVS clamping is inherently about 1.6x standoff, so no part both stays off at 36 V and clamps under 60 V - the squeeze is real and drove the 60 V versus 100 V FET question, now RESOLVED in favour of the 60 V part: in a P-channel high-side switch an output transient above the input forward-biases the body diode, which passes the surge back to the input where the VBUS-side TVS clamps it. With the 100 V MOT1793G there is no interaction at all.",
-    "OBSOLETE CONTEXT: this record argues the 60 V vs 100 V FET question via a P-channel body-diode path. The channel switches are now N-channel NSS085N100S at 100 V, so the SMAJ36CA 58.1 V clamp sits at 1.72x the FET rating and the interaction this note worries about is gone."
+    "SCOPE: this record argues the 60 V vs 100 V FET question via a P-channel body-diode path. The channel switches are now N-channel NSS085N100S at 100 V, so the SMAJ36CA 58.1 V clamp sits at 1.72x the FET rating and the interaction this note worries about is gone."
   ]
 }

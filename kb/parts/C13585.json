@@ -41,5 +41,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "REJECTED - zero live stock. Replaced by C7432781."
+  "designVerdict": "REJECTED - zero live stock. Replaced by C7432781.",
+  "notes": []
 }

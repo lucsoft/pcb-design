@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 10 kΩ 1% 0402. the board's general-purpose pull-up/pull-down: SHDN pull-down x2, FAULT gate pull-down x2, INT_N, shared PGOOD, ESP32 EN and GPIO8"
+  "designVerdict": "SELECTED. 10 kΩ 1% 0402. the board's general-purpose pull-up/pull-down: SHDN pull-down x2, FAULT gate pull-down x2, INT_N, shared PGOOD, ESP32 EN and GPIO8",
+  "notes": []
 }

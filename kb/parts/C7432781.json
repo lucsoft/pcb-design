@@ -40,5 +40,6 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "SELECTED as C10,C11 - TPS54360B output bulk. 10 uF 50 V 1206. Replaces C13585, zero stock."
+  "designVerdict": "SELECTED as C10,C11 - TPS54360B output bulk. 10 uF 50 V 1206. Replaces C13585, zero stock.",
+  "notes": []
 }

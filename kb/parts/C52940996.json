@@ -40,7 +40,7 @@
     "Integrated 40 V hot-swap FET. That is 1.43x margin on a 28 V bus but only 1.11x at 36 V, which is too thin for a bus feeding inductive cable runs. Rejected when the design moved to 36 V.",
     "Would have been a good choice at 28 V: adjustable 0.6-5 A limit that holds in constant-current mode rather than merely tripping, dVdT inrush slew, OVP, reverse blocking in 0.2 us, IMON and PGOOD.",
     "Its job is instead done by the p.16 Figure 6 P-FET with an RC gate network - see the design README. The topology 36 V forces on us already contains inrush control.",
-    "OBSOLETE CONTEXT: this record says the eFuse job 'is instead done by the p.16 Figure 6 P-FET with an RC gate network'. There is no P-FET and no RC gate network. Per-channel current limiting, power limiting and overvoltage lockout are done by two LM5069 hot-swap controllers (C52940995)."
+    "SCOPE: this record says the eFuse job 'is instead done by the p.16 Figure 6 P-FET with an RC gate network'. There is no P-FET and no RC gate network. Per-channel current limiting, power limiting and overvoltage lockout are done by two LM5069 hot-swap controllers (C52940995)."
   ],
   "designVerdict": "REJECTED at 36 V - FET margin"
 }

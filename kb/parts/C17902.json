@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 10 kΩ 1% 1206 250 mW. R2, the 36 V bus bleeder - 1206 because 36^2/10k = 130 mW, which an 0402 at 62.5 mW cannot take"
+  "designVerdict": "SELECTED. 10 kΩ 1% 1206 250 mW. R2, the 36 V bus bleeder - 1206 because 36^2/10k = 130 mW, which an 0402 at 62.5 mW cannot take",
+  "notes": []
 }

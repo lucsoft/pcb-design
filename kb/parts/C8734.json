@@ -35,5 +35,6 @@
     "pins": "",
     "category": "lcsc-api"
   },
-  "tier": null
+  "tier": null,
+  "notes": []
 }

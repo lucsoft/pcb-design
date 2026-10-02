@@ -372,5 +372,6 @@
     "finding3_inrush": "Shrinking the cap collapses the inrush problem: 10 modules x 330 uF = 3300 uF needing a 59 ms ramp, versus 10 x 20 uF = 200 uF needing 4 ms.",
     "directionIfPursued": "Ceramic bank for ripple and HF, plus a deliberate damping element - either an SMD polymer/hybrid (long life, low profile, no long leads) or an explicit RC damping branch sized per Middlebrook (Cdamp ~4x Cin, R ~ sqrt(L/C)). Note only the FIRST module in each chain sees the long cable; downstream links are board-to-board with little inductance, so they could be all-ceramic.",
     "caveat": "At a 36 V bus every candidate needs a >=50 V rating, which thins the polymer options considerably."
-  }
+  },
+  "notes": []
 }

@@ -48,5 +48,6 @@
     "category": "lcsc-api",
     "pins": "0603 LED, cathode marked"
   },
-  "tier": null
+  "tier": null,
+  "notes": []
 }

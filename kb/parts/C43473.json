@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 22.1 kΩ 1% 0402. SY8089 feedback divider, lower leg"
+  "designVerdict": "SELECTED. 22.1 kΩ 1% 0402. SY8089 feedback divider, lower leg",
+  "notes": []
 }

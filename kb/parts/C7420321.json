@@ -60,7 +60,6 @@
     "THE FAULT INTERLOCK NEEDS TWO DEVICES, NOT ONE. A MOSFET drain is a single node, so one device tied to both UVLO pins would short the two dividers together and each enable transistor would then disable both channels, destroying independent per-channel shedding.",
     "SUPERSEDED: earlier notes here described level-shifting a 36 V P-FET gate off the HUSB238A GATE pin, and gave a count of three. Neither is the circuit; that topology does not exist in the design.",
     "ROLE CHANGED with the move from LM5069 to TPS16630. They now pull SHDN low rather than a UVLO divider node. SHDN is active-low shutdown, so a 100 kOhm PULL-DOWN on the pin is the fail-safe direction and firmware drives the GPIO HIGH to enable - the inverted logic the LM5069 arrangement needed is gone. The FAULT interlock still needs one device per channel, since one drain tied to both SHDN pins would couple the channels.",
-    "SCOPE REDUCED: the FAULT interlock moved to BSS138 (C7420339), whose 1.6 V max threshold suits the HUSB238A's 2.64 V V_OH. These two keep the enable role, where a full 3.3 V gate drive makes the threshold irrelevant.",
-    "RETIRED. Earlier revisions used it for a high-side P-FET gate shift, then for an LM5069 UVLO pull-down, then for the TPS16630 SHDN enable. None of those exist: SHDN is a logic input the GPIO drives directly through a 1 kOhm series resistor, and the FAULT interlock moved to BSS138 because its 1.5 V max threshold suits the HUSB238A's 2.64 V V_OH where this part's 2.5 V max does not."
+    "SCOPE REDUCED: the FAULT interlock moved to BSS138 (C7420339), whose 1.6 V max threshold suits the HUSB238A's 2.64 V V_OH. These two keep the enable role, where a full 3.3 V gate drive makes the threshold irrelevant."
   ]
 }

@@ -41,5 +41,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 4.7 uF 100 V X7R 1210. 36 V bus bulk - 100 V rating so the 58.1 V TVS clamp does not reach it"
+  "designVerdict": "SELECTED. 4.7 uF 100 V X7R 1210. 36 V bus bulk - 100 V rating so the 58.1 V TVS clamp does not reach it",
+  "notes": []
 }

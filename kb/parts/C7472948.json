@@ -40,5 +40,6 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "SELECTED as C17,C18 - ESP32-C6 EN delay and HUSB238A VDD. 1 uF 50 V 0402, a better rating than the 25 V part it replaces. Replaces C52923, zero stock."
+  "designVerdict": "SELECTED as C17,C18 - ESP32-C6 EN delay and HUSB238A VDD. 1 uF 50 V 0402, a better rating than the 25 V part it replaces. Replaces C52923, zero stock.",
+  "notes": []
 }

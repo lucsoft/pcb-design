@@ -42,5 +42,6 @@
     "category": "lcsc-api",
     "pins": "0603 chip resistor, two-terminal passive"
   },
-  "tier": null
+  "tier": null,
+  "notes": []
 }

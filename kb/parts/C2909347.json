@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 30.0 kΩ 1% 0402. R3 of each TPS16630 UVLO/OVP string, 2 off - the bottom leg, sets OVP"
+  "designVerdict": "SELECTED. 30.0 kΩ 1% 0402. R3 of each TPS16630 UVLO/OVP string, 2 off - the bottom leg, sets OVP",
+  "notes": []
 }

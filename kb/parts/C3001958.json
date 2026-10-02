@@ -34,5 +34,6 @@
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
     "pins": ""
-  }
+  },
+  "notes": []
 }

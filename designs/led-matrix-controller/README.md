@@ -247,8 +247,7 @@ ones for the bar, and it does not pay:
 | 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W | 1 | 18 | **$0.15** |
 | 2 addressable + 6 plain, driven directly | 0.070 W | 7 — none spare | 14 | — |
 
-**GPIO count is a tie, not a win**, and an earlier version of this section said
-otherwise. A 74HC595 shares SCLK and MOSI with the Ethernet module and needs only
+**GPIO count is a tie, not a win.** A 74HC595 shares SCLK and MOSI with the Ethernet module and needs only
 a latch pin — exactly what the addressable chain costs — and it would replace the
 74AHCT541, which exists only because SK6812 wants 5 V logic. The plain option is
 genuinely buildable: YLED0805R (C19171391) at 127k stock and 0.8 ¢.
@@ -340,8 +339,7 @@ measurement is too late: a sudden all-white flash steps the bus by several amps,
 and if that exceeds what PD negotiated the source can cut VBUS entirely, blacking
 out the whole installation.
 
-The model needs three terms, and an earlier version of this paragraph had only
-the first:
+The model needs three terms:
 
     I_bus  =  (sum(channel values) x 20 mA / 255) x 5 V / (36 V x eta)   [LED term]
            +  N_ICs x 0.6 mA x 5 V / (36 V x eta)                        [quiescent floor]
@@ -352,9 +350,9 @@ the first:
   at 36 V and 75% efficiency, but **3.0** at 20 V and **1.8** at 12 V. Hard-wiring
   36 V here would under-predict bus current by **3×** on a 12 V contract, which is
   the least forgiving one the board accepts. Dividing by η *raises* the bus current, so it belongs in the
-  numerator of that ratio, not the denominator: an earlier version of this bullet
-  said 9.6 (= 7.2/0.75) and would have **under-predicted bus current by 44%**, in
-  the one computation whose whole purpose is to stop the source cutting VBUS.
+  numerator of that ratio, not the denominator. Writing 9.6 (= 7.2/0.75) instead
+  **under-predicts bus current by 44%**, in the one computation whose whole
+  purpose is to stop the source cutting VBUS.
   Sanity check against this document's own numbers: 20 modules at full white is
   43.2 A at 5 V, and 43.2/5.4 = **8.0 A**, which is exactly the 2 × 4.0 A per
   channel stated in Cabling.
@@ -376,8 +374,8 @@ worth stating because the earlier wording argued the opposite way.
 dims by duty-cycling its constant-current sinks at roughly **400 Hz**, so at 61%
 a channel draws its *full-white* 3.98 A for 61% of each 2.5 ms period and nothing
 for the rest. What reaches the bus is set by a current divider, and it is a **phasor** divider
-— an earlier version of this paragraph added a resistance to a reactance as
-scalars and got the wrong fraction. The channel's 3.3 mF bank is **0.121 Ω** at
+— adding the resistance to the reactance as scalars gives the wrong
+fraction. The channel's 3.3 mF bank is **0.121 Ω** at
 400 Hz; the path is cable, switch and sense resistance:
 
     bus share = |Z_C| / |R + Z_C| = 0.121 / sqrt(R² + 0.121²)
@@ -427,9 +425,8 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
    3.3 V from it.
 3. The MCU boots. EN_N is still high (internal pull-up), so the PD chip is idle.
 4. Firmware pulls EN_N low and the HUSB238A negotiates. **It is powered from
-   VDD**, which step 2 already brought up — an earlier version of this step said
-   the chip "self-powers from VBUS, so it needs nothing from us", and that is
-   exactly what does not work here: behind the Figure 6 follower the VBUS pin
+   VDD**, which step 2 already brought up. It cannot self-power from VBUS the way
+   the datasheet's standalone application implies: behind the Figure 6 follower the VBUS pin
    sees only 3.05-3.75 V at vSafe5V, under the 4.5 V the chip needs when VDD is
    absent. D14 holds the pin at ~4.19 V and VDD does the supplying.
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
@@ -508,10 +505,10 @@ itself should be read as typical, not as the floor.
 | 5.00 V | 4.81 V | ok |
 | >= 5.25 V | 5.00 V | ok |
 
-Two earlier versions of this table were wrong in opposite directions: one assumed
-a flat 0.15 V drop and got 4.60 V, the other used a 163 mΩ inductor and got
-4.50 V — exactly the 74AHCT541's floor. With the lower-DCR part it is **4.56 V**,
-and D14 holds the HUSB238A VBUS pin at **4.19 V**.
+The rail is **4.56 V** at the bottom of vSafe5V, and D14 holds the HUSB238A VBUS
+pin at **4.19 V**. Both numbers are sensitive to the inductor: this is the
+SPM6530T-100M's 72 mΩ, and a 163 mΩ part would put the rail at 4.50 V, exactly on
+the 74AHCT541's floor.
 
 **Neither is fatal, and here is why.** The 74AHCT541 only drives the status LED
 chain; a marginal rail during the few seconds of the 5 V phase means the
@@ -539,9 +536,9 @@ synchronous buck burns under 0.1 W and avoids a thermal problem in a small packa
 The board needs **both** rails: 3.3 V for the MCU, Ethernet module, INA226 and the
 HUSB238A's VDD, and 5 V for the 74AHCT541, the SK6812 status chain and **D14**.
 
-**The reason is the status chain, not the modules.** An earlier version of this
-paragraph argued from the WS2812's 0.7 x VDD = 3.5 V threshold — but the
-controller does not drive any WS2812. It drives two MAX3485s at 3.3 V, and the
+**The reason is the status chain, not the modules.** The WS2812's 0.7 x VDD =
+3.5 V threshold is the tempting number here and it does not apply: this
+controller drives no WS2812. It drives two MAX3485s at 3.3 V, and the
 3.3 -> 5 V shift lives on the converter board, which the module record states
 outright. The governing number is the **status chain's 0.6 x 5.0 = 3.00 V** on the
 controller's own rail, against the ESP32-C6's *guaranteed* V_OH of 0.8 x VDD =
@@ -589,12 +586,10 @@ alternatives are all worse:
 - **One bus-to-3.3 V buck plus a charge pump to 5 V** works — the level shifter
   draws only tens of mA — but adds a part and puts switching noise next to the
   data lines.
-- **Eliminating the 5 V rail is not available.** An earlier version of this
-  bullet called it "the only real simplification" and framed it as a *module*
-  change — running the modules at 4.5 V so a 3.3 V GPIO could drive their
-  WS2812s directly. That argument belongs to a design where the controller
-  drives the modules' LEDs, which this one stopped doing when the link went
-  differential. Three things on **this** board need 5 V and no module revision
+- **Eliminating the 5 V rail is not available.** It reads like the one real
+  simplification — run the modules at 4.5 V so a 3.3 V GPIO could drive their
+  WS2812s directly — but that belongs to a design where the controller drives the
+  modules' LEDs, which this one stopped doing when the link went differential. Three things on **this** board need 5 V and no module revision
   touches any of them: the 74AHCT541, the SK6812 status chain it buffers, and
   **D14**, which must sit above the HUSB238A's VBUS pin to hold it at 4.19 V.
 
@@ -772,9 +767,9 @@ Both are 4.0 V thresholds against the 4.19 V the Schottky delivers:
 
 The first decides whether VBUS-present is seen; the second is the under-voltage
 detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
-state"*. An earlier version of this paragraph labelled 3.67 V as the typical —
-it is the **minimum** — and argued the risk away on the grounds that "negotiation
-runs on CC". That argument is weaker than it was made to sound: USB Type-C gates
+state"*. Note that 3.67 V is the **minimum**, not the typical. The risk is easy
+to argue away on the grounds that "negotiation runs on CC"; that is weaker than
+it sounds, because USB Type-C gates
 the `AttachWait.SNK → Attached.SNK` transition on VBUS detection, which is what
 vVBPRS_R implements, and the UV detector was not mentioned at all.
 
@@ -904,8 +899,8 @@ on how much capacitance is hanging on it.
 ### Values, derived
 
 Per channel, from the datasheet's own equations rather than from its worked
-example. **An earlier version of this section back-solved a gain of 33x from the
-rounded example in §10.2.2.3 and was wrong**: the datasheet specifies
+example — **back-solving the gain from the rounded example in §10.2.2.3 gives
+33x and is wrong**. The datasheet specifies
 `GAIN(dVdT) = 23.5 / 25 / 26 V/V` directly (p.7), and Equations 1 and 2 give it
 independently as `1/(20.8e3 × 2 µA) = 24.0`.
 
@@ -968,9 +963,7 @@ the 20-module design point.
 | 26 W (20 modules on the channel) | 68 ms | 38 ms | 14 ms |
 
 **So the programmed 165 ms slew is never realised at any ambient.** At 25 °C the
-boundary at 13 W is 120 ms, *below* the ramp — an earlier version of this section
-read it as "several hundred milliseconds inside the boundary" and was wrong by
-three to four times. Two things make it tighter still: Figure 13 is time-to-*shutdown*
+boundary at 13 W is 120 ms, *below* the ramp. Two things make it tighter still: Figure 13 is time-to-*shutdown*
 at T(TSD) = 165 °C, while the regulation loop engages at T(J_REG) = 145 °C typ and
 136 °C minimum, so regulation starts earlier than the plotted time; and the
 inrush tolerance band puts P_D at 11.3-15.7 W rather than exactly 13 W.
@@ -984,8 +977,7 @@ against the **2.14 J** one channel needs at the 10-modules-per-channel design
 point, and 4.28 J at twenty. At 85 °C the same curve is near 4 W, about 5 J. So
 the design point has **2.3x** margin even hot; it is the 20-per-channel growth
 case that is marginal at 5 J against 4.28 J, and that case is already outside the
-power budget. An earlier version of this paragraph compared the hot curve against
-4.28 J and called the design point marginal — it is not.
+power budget.
 
 One caveat the datasheet attaches and this design cannot close: Figure 13 is
 *"taken on VQFN device on EVM board"*, and the fitted part is the HTSSOP-20. Both
@@ -1012,8 +1004,8 @@ which is inside that band. A low-corner part that trips on an excursion would
 then **not re-enable on a healthy bus**: it needs the bus below 36.2 V, which a
 36 V contract never reaches.
 
-**And cycling SHDN does not clear it.** An earlier version of this section said
-it did. OVP is not a latch: p.7 gives it a rising threshold V(OVPR) and a falling
+**And cycling SHDN does not clear it**, which the datasheet's own latch-reset
+sentence makes tempting to assume. OVP is not a latch: p.7 gives it a rising threshold V(OVPR) and a falling
 one V(OVPF), so it is a hysteretic comparator that re-enables the FET on its own
 once the OVP pin falls below V(OVPF) and *not before*. The SHDN-reset sentence in
 the datasheet, and Table 1's latch/auto-retry choice, belong to the overload and
@@ -1036,10 +1028,10 @@ overvoltage the modules are not rated to see is the wrong direction.
 
 ### Enable
 
-**An earlier version of this section could not enable a channel.** It put a
-2N7002 open drain on SHDN *and* a 100 kΩ pull-down on the same pin — two paths to
-ground and none to 3V3 — so both channels would have sat in low-IQ shutdown
-permanently. The only thing that can raise SHDN is its own internal source
+**SHDN needs a path *up*, and that is the whole difficulty.** An open-drain
+transistor on SHDN together with a pull-down on the same pin gives two paths to
+ground and none to 3V3, so both channels sit in low-IQ shutdown permanently. The
+only thing that can raise SHDN is its own internal source
 (2.48-3.3 V open circuit, ≤10 µA), which against 100 kΩ settles near 0.77 V,
 under the 0.8 V guaranteed-shutdown threshold.
 
@@ -1067,16 +1059,16 @@ transistors left on this net are the two FAULT interlocks.
   now because there are no spare ADC pins.
 - **The low-side shunt wants Kelvin connection.** R1 is 10 mΩ carrying the full
   5 A, so 0.25 W, and its sense traces are not a routing afterthought. (The eFuse
-  has no sense resistor — this is the INA226's shunt, and an earlier version of
-  this bullet described it as a per-channel part at 0.059 W.)
+  has no sense resistor — this is the INA226's shunt, one part in the shared
+  return, not a per-channel pair.)
 - **Second-source risk is lower than it was.** C1849461 is TI silicon at 1141
   units, where the LM5069 it replaces was a Tokmas clone at 105. The TPS16632
   variant adds adjustable output power limiting but fixes the overvoltage clamp,
   and the binding figure is its **35.7 V minimum** (36.6 typ, 39 max, p.7) — i.e.
   the worst-case part clamps *below* the 36 V nominal bus, never mind the 37.8 V
-  maximum. So the -30 is the right one here. An earlier version of this line
-  quoted the 39 V maximum, which is the forgiving end of the spread and 3.3 V
-  away from the number that decides it.
+  maximum. So the -30 is the right one here. Read the **minimum** of that spread,
+  not the 39 V maximum: the maximum is the forgiving end and 3.3 V away from the
+  number that decides it.
 - **The OVP release threshold straddles the maximum bus.** See Known electrical
   limits: the trip point is sound, the recovery point is not, and the lever is
   firmware cycling SHDN rather than a divider change.
@@ -1236,7 +1228,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | C14 | **100 nF 50 V X7R 0402** | C131394 | SY8089 input decoupling, on the 5 V rail |
 | C10,C11 | **10 µF 50 V X5R 1206** | C7432781 | TPS54360B output |
 | C12 | **10 µF 25 V X5R 0805** | C15850 | SY8089 input |
-| C13 | **22 µF 25 V X5R 0805** | C45783 | SY8089 output — the p.1 selection table ticks 2.2 µH only at 22 µF and above, and L2 is 2.2 µH. An earlier revision fitted 10 µF here, outside the vendor's endorsed L/C set for a COT regulator whose stability depends on exactly that pair |
+| C13 | **22 µF 25 V X5R 0805** | C45783 | SY8089 output — the p.1 selection table ticks 2.2 µH only at 22 µF and above, and L2 is 2.2 µH. 10 µF would be outside the vendor's endorsed L/C set, for a COT regulator whose stability depends on exactly that pair |
 | C15 | **22 µF 25 V X5R 0805** | C45783 | ESP32-C6 local bulk — the 382 mA TX peak |
 | C16,C19,C20 | **100 nF 50 V X7R 0402** | C131394 | ESP32-C6, HUSB238A and INA226 supply decoupling |
 | C17,C18 | **1 µF 50 V X5R 0402** | C7472948 | ESP32-C6 EN delay, and HUSB238A VDD |
@@ -1373,7 +1365,7 @@ The largest items are where any further shrink comes from:
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
 | 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
-| 81 passives | ~188 | 67 × 0402 at ~1.5 mm² with pads, 6 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25. An earlier version of this row said 205 mm² from sub-counts that did not add up to their own total |
+| 81 passives | ~188 | 67 × 0402 at ~1.5 mm² with pads, 6 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
 | SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
 
@@ -1434,9 +1426,9 @@ design it has specific gaps:
   mistake: both of R1's pins literally written `GND`. **It does not catch the
   likelier form**, where J2/J3 pin 2 is called `GND` and R1 therefore sits
   between two legitimately different nets — that is a connectivity fact about a
-  different component, and no rule inspects it. An earlier version of this
-  section claimed S6 covered that case; it does not, and the split return below
-  remains a layout-discipline item with no automated backstop.
+  different component, and no rule inspects it. S6 does **not** cover that case,
+  so the split return below remains a layout-discipline item with no automated
+  backstop.
 - **No I2C address-collision rule.** This design has already got that question
   wrong once (0x42 against the INA226), and the fix depends on pinning A0/A1 by
   hand — which the checker cannot see.
@@ -1485,10 +1477,8 @@ rather than an option.
 
 ## Layout constraints
 
-Until now this document said "2-layer, relaxed" and "4-layer, dense" as area
-utilisation factors and nothing else — no copper weight, no trace width, no
-return path. For a board carrying 5 A next to a differential pair and an ADC,
-that is the largest remaining gap.
+For a board carrying 5 A next to a differential pair and an ADC, copper weight,
+trace width and return path decide more than the area utilisation factor does.
 
 **Copper weight: 2 oz (70 µm), and it is not a preference.** Trace widths per IPC-2221,
 external layer:
@@ -1509,9 +1499,7 @@ thermal path.
 TPS16630 dissipates 0.27 W steady per channel and far more during the ramp,
 with the device regulating its own junction temperature — which it can only
 do if the pad has somewhere to put the heat. TI's HTSSOP-20 PowerPAD wants a
-soldered pour with thermal vias. An earlier version of this section worked
-through a discrete FET's "1 in² of 2 oz copper" (645 mm², 70 µm) requirement; that part is gone,
-and this constraint replaces it.
+soldered pour with thermal vias.
 
 **The low-side shunt forces a split return, and nothing else in this document
 says so.** R1 sits in the ground return so that both channels' current passes
@@ -1519,8 +1507,8 @@ through it before joining board ground. If the netlist calls J2/J3 pin 2 `GND`,
 the shunt is shorted by the ground pour and **the current sense reads zero**. The
 output connectors' return is therefore a net of its own, **`LED_RTN`**, joined to
 board ground only at the shunt — and the connector pinout is written
-`+36V / LED_RTN / A / B` everywhere in this document for exactly that reason. It
-used to say `GND`, which is the name whoever wrote the netlist would have typed. **No ERC
+`+36V / LED_RTN / A / B` everywhere in this document for exactly that reason.
+`GND` is the name anyone writing the netlist would type, and it is the wrong one. **No ERC
 rule catches this** - S6 sees a part shorted by its own two pins, not a connector
 wired to the wrong net one component away - so it is a layout-discipline item
 with no automated backstop.
@@ -1534,8 +1522,7 @@ area table already shows the board does not need for density.
 not an area one.** Its recommended footprint (datasheet Figure 10 p.30) marks an
 **18 × 6 mm antenna area** that must be copper-free on all layers. That area lies
 *inside* the 18 × 25.5 mm outline, so the mechanical table's 459 mm² already
-contains it — an earlier version of this paragraph claimed the budget was short
-by the keep-out, and it is not.
+contains it; the budget is not short by the keep-out.
 
 What is still true is everything downstream: those 108 mm² carry **no copper on
 any layer**, the module wants that edge overhanging the board, and with USB-C,
@@ -1592,10 +1579,6 @@ disable *both* — destroying the independent enable the GPIO budget and
 the per-channel shedding both depend on. Two devices, or a diode-OR into each
 SHDN pin; two BSS138 at $0.027 is the cheaper of the two.
 
-An earlier version of this paragraph described the interlock pulling *gates* low
-to release *P-FETs*, which under the inverted enable logic would have **enabled**
-both channels on a fault. That text predates the hot-swap controllers.
-
 Supporting pieces:
 
 - **Bus voltage sense**: **470 k / 27 k** divider into an ESP32-C6 ADC, plus
@@ -1637,7 +1620,7 @@ any of them does not work. Cited so they can be checked rather than trusted.
 | Feedback divider | 53.6 kΩ / 10.2 kΩ 1% (VREF 0.8 V) | p.28 §8.2.2.9 |
 | COMP network | ~4.7 kΩ + 33 nF series, 150 pF parallel | p.13 §7.3.5, eq. 44-51 |
 | CIN | ≥3 µF **effective after DC-bias derating**, 100 V X7R | p.26 §8.2.2.6 |
-| COUT | **≥7.3 µF** at this load | p.25 Eq. 32 at a 0.7 A step and 0.2 V of droop. §8.2.2.4's own "29.2 µF" and its 2 × 47 µF fit are for a 1.75 A step; an earlier version of this row quoted "≥22 µF" and attributed it to that section, where no such number appears. Eq. 33 gives 2.4 µF and Eq. 34 2.3 µF, so Eq. 32 binds. C10/C11 are 2 × 10 µF |
+| COUT | **≥7.3 µF** at this load | p.25 Eq. 32 at a 0.7 A step and 0.2 V of droop. §8.2.2.4's own "29.2 µF" and its 2 × 47 µF fit are for a 1.75 A step, and that section contains no "22 µF" despite being commonly cited for one. Eq. 33 gives 2.4 µF and Eq. 34 2.3 µF, so Eq. 32 binds. C10/C11 are 2 × 10 µF |
 
 PowerPAD must be **electrically** connected to GND, not just thermally (p.3).
 EN is left floating deliberately: abs max 8.4 V (p.4), and a UVLO divider would
@@ -1708,8 +1691,7 @@ The clone reads as `INT CS SCK MO G G` and `G V V NC RST WT`. The first of those
 is MJ1 right-to-left, which is what reading both headers left-to-right across the
 board produces — **MJ1 and MJ2 sit on opposite edges, so they run in opposite
 directions.** Both readings are therefore consistent with the table above. MJ2
-position 4 being **NC** is not the discriminator an earlier version of this
-paragraph claimed. On the WIZ550io, RDY is **MJ2-3**, MJ2-4 is nRESET, and it is
+position 4 being **NC** is not the discriminator it looks like. On the WIZ550io, RDY is **MJ2-3**, MJ2-4 is nRESET, and it is
 a **16-pad** part with MISO on MJ1-4 — so the real discriminator is **pad count,
 12 against 16**, which a 12-pad clone settles outright. Note that pad count alone
 does not exclude the **WIZ820io**, which WIZ850io p.1 says it is hardware
@@ -1751,9 +1733,8 @@ silkscreens are read against each other and a mirrored module is obvious before
 it is soldered. This costs nothing and converts the one error class that survives
 fabrication into one that cannot survive assembly.
 
-**This does not block the netlist, but not for the reason an earlier version of
-this paragraph gave.** That version said the netlist maps pin *names* to nets.
-It does not — the format in CLAUDE.md step 5 is `"pins": { "1": "GND", … }`,
+**This does not block the netlist.** The netlist does not map pin *names* to
+nets, which is the natural assumption — the format in CLAUDE.md step 5 is `"pins": { "1": "GND", … }`,
 keyed by **pin number**, and `erc.py`'s K3 rule checks those numbers against the
 KB pin map.
 
@@ -1881,10 +1862,9 @@ Reflections are secondary — one far-end termination is the right topology — 
 pair pulled from generic 4-conductor cable is 80-120 Ω at best, and a partial
 reflection returns ~110 ns after the edge, inside a 400 ns pulse.
 
-**Fail-safe is a converter-board problem, and an earlier note here dismissed
-  it wrongly.** That note said "failsafe biasing is genuinely not needed, since
-  DE is permanently asserted and the pair is never idle-floating". That covers
-  the **driver** end. The fitted part's fail-safe is **open-circuit only** (p.1,
+**Fail-safe is a converter-board problem.** "Failsafe biasing is not needed,
+  since DE is permanently asserted and the pair is never idle-floating" is true of
+  the **driver** end and only that end. The fitted part's fail-safe is **open-circuit only** (p.1,
   p.5 function table, p.9) with V_TH = ±200 mV and RO undefined inside that band
   — and a *terminated but undriven* pair is not an open circuit: the far end's
   own 120 Ω holds it at ~0 mV differential, squarely indeterminate. Two cases are
@@ -1916,11 +1896,8 @@ reflection returns ~110 ns after the edge, inside a 400 ns pulse.
   path on the board and it is already wired to a GPIO. Treating it as "a slow
   safety net" undersells it.
 - **INA226 ALERT** is open-drain (p.3) and needs a **10 kΩ pull-up** — fitted as
-  **R45**. Two earlier versions of this line were wrong in opposite directions:
-  one claimed `E3-missing-pullup` would fire, the other that it could not because
-  the INA226 had no pin map. It has one now, with pin 3 typed `open_collector`,
-  so E3 **does** check this — and it was checking a resistor that was not in the
-  BOM until this revision.
+  **R45**. The INA226 record carries a pin map with pin 3 typed
+  `open_collector`, so `E3-missing-pullup` **does** check this one.
 - **TPS16630 PGOOD** outputs are open-drain; the two are wired together into
   one GPIO with a **10 kΩ pull-up**.
 
@@ -1935,8 +1912,8 @@ The module exposes **exactly 23** GPIO pads (datasheet Table 3, pp.10-11):
 0-13, 15-23. GPIO14 does not exist on this package; GPIO24-30 serve the internal
 QSPI flash and reach no pad.
 
-The design needs **20**, not the 17 an early count suggested — that count omitted
-the status chain and the bus-voltage ADC:
+The design needs **20**, counting the status chain and the bus-voltage ADC that
+a quick tally leaves out:
 
 | Signal | Count |
 |---|---|
@@ -2056,9 +2033,9 @@ is a warm colour cast before it is darkness.
 
 **The binding constraint is not the port.** 12.7 W would be 2.5 A at 5 V and the
 port would supply it; the module's own buck is what stops it, two rows below
-where the LEDs give up. An earlier version of this section reasoned from the port
-budget alone and concluded "one module at 88% of full-white power", which is in
-the last row of that table. The model above is fitted to a single datasheet point
+where the LEDs give up. Reasoning from the port budget alone lands on "one module
+at 88% of full-white power" — the last row of that table, where the rail has
+collapsed and nothing lights. The model above is fitted to a single datasheet point
 and wants a measurement before any of it is quoted as fact.
 
 **That is still the difference between developing against a dark board and a lit
@@ -2171,8 +2148,8 @@ preference:
 | **all eight, one colour, 25%** | **0.12 W** | **the budgeted case** |
 
 The budget carries **0.12 W**, giving a board total of **4.11 W against 4.80 W —
-1.17× headroom**. An earlier version budgeted the 70% tricolour case at 1.01 W,
-which put the board at 4.99 W and 1.04× *over* — but that case is a floodlight,
+1.17× headroom**. Budgeting the 70% tricolour case instead costs 1.01 W, which
+puts the board at 4.99 W and 1.04× *over* — but that case is a floodlight,
 not a status display, and nothing about indicating six power levels and two fault
 states needs white at 70%.
 
@@ -2294,10 +2271,6 @@ Sitting 5% above an uncertain number invites nuisance trips that black out the
 wall; losing per-channel isolation only costs something in a fault that is
 already taking the bus down.
 
-An earlier version of this entry claimed the window was empty and concluded
-per-channel isolation was "not reliably obtainable". That was inherited from the
-LM5069's ±18% sense comparator and is false for this part.
-
 The consequence is that on a hard short the source's own protection acts first,
 in a few milliseconds, against the eFuse's own fault response — so the whole
 wall goes dark rather than one chain. **Per-channel autonomous isolation is
@@ -2339,7 +2312,7 @@ sentence because the datasheet contradicts itself: TI's prose on that page says
 "Equation 10 calculates the maximum switching frequency limitation set by the
 minimum controllable on time", while the equation actually tagged (10) is
 `f_SW(shift)`, the short-circuit foldback limit. The tags are right and the prose
-is wrong; a previous revision here followed the prose and cited (10). Read by
+is wrong — following the prose leads you to cite (10). Read by
 formula rather than by number, it gives f_SW(max skip) ≈
 1.13 MHz typ, falling to 1.07 MHz at a +5 % PDO. Against the 964 kHz the fitted
 R_T sets, that is **1.11-1.17×** on nominal parts, and **1.01×** once the ±10%
@@ -2521,8 +2494,8 @@ Kept so they are not re-opened:
   A0/A1 both to GND, which is pinned in the tie-off list. GND is the only tie
   valid at the moment ADDR latches, since that happens when 3V3 arrives.
 - **HUSB238A EN_N** — the internal pull-up is the correct default and no external
-  part is needed. An earlier note specified a pull-**down**, which would have
-  enabled the chip before the MCU existed.
+  part is needed. A pull-**down** here would enable the chip before the MCU
+  exists.
 - **The FAULT interlock no longer fights the GPIOs** — its transistors sit on the
   TPS16630 SHDN pins, not on driven gates, so two open drains on a
   logic input cannot contend. (Its *drive level* is still marginal and stays in

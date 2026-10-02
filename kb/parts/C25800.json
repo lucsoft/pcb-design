@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 910 kΩ 1% 0402. HUSB238A ADDR, DEBUG_N and EN_HVDCP/OUT1 straps, 3 off - the datasheet's 900 kΩ is not an E96 value, 910 kΩ is the nearest stocked one"
+  "designVerdict": "SELECTED. 910 kΩ 1% 0402. HUSB238A ADDR, DEBUG_N and EN_HVDCP/OUT1 straps, 3 off - the datasheet's 900 kΩ is not an E96 value, 910 kΩ is the nearest stocked one",
+  "notes": []
 }

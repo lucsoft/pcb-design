@@ -41,5 +41,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 150 pF 50 V C0G 0402. TPS54360B COMP, the parallel leg"
+  "designVerdict": "SELECTED. 150 pF 50 V C0G 0402. TPS54360B COMP, the parallel leg",
+  "notes": []
 }

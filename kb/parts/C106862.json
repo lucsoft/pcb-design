@@ -41,5 +41,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 33 nF 50 V X7R 0402. TPS54360B COMP, the series leg"
+  "designVerdict": "SELECTED. 33 nF 50 V X7R 0402. TPS54360B COMP, the series leg",
+  "notes": []
 }

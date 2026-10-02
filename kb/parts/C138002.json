@@ -43,5 +43,6 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "SELECTED as R35-R38 - 33 Ohm series at the MAX3485 outputs. Replaces C25105, zero stock."
+  "designVerdict": "SELECTED as R35-R38 - 33 Ohm series at the MAX3485 outputs. Replaces C25105, zero stock.",
+  "notes": []
 }

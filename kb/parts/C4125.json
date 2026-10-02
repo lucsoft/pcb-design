@@ -44,5 +44,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 499 Ω 1% 0402. series in each SK6812 data line out of the 74AHCT541, 2 off"
+  "designVerdict": "SELECTED. 499 Ω 1% 0402. series in each SK6812 data line out of the 74AHCT541, 2 off",
+  "notes": []
 }
