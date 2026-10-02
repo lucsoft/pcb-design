@@ -48,10 +48,12 @@
     "category": "manual",
     "pins": "two-terminal TVS, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
-  "designVerdict": "SELECTED - ESD on data lines",
+  "designVerdict": "SELECTED as D3-D6 - ESD on the USB-C D+/D- and CC1/CC2 lines.",
   "notes": [
     "H5VL10B, DFN1006-2L, 12.9M stock, $0.0065. Low-capacitance ESD clamp for USB D+/D- and the CC lines. (This board drives no WS2812; the module link is a MAX3485 differential pair with its own SMAJ7.0CA clamps.)",
     "Low capacitance matters on D+/D- (USB 2.0 full speed) and the four parts fitted are D3-D6, all on the USB-C side. A general-purpose TVS would load both.",
-    "SCOPE CORRECTED: used on USB-C D+/D- and CC1/CC2 only. The output pairs are differential and carry SMAJ7.0CA (C19077529), not this part."
+    "SCOPE CORRECTED: used on USB-C D+/D- and CC1/CC2 only. The output pairs are differential and carry SMAJ7.0CA (C19077529), not this part.",
+    "THE 5 V STANDOFF IS NOT MARGINAL ON CC, and the obvious reading says it is. A 3.0 A Rp pulls CC toward 5 V with nothing attached - but that is the SOURCE side. This board is a sink: the HUSB238A presents Rd, so CC sits at the Rp/Rd divider output, which the Type-C spec caps at 2.60 V for a 3.0 A advertisement (1.86 V with a 10 kOhm Rp against 5.1 kOhm). The 5 V standoff clears that by 2.4 V.",
+    "The case it does not cover is a VBUS-to-CC short in a damaged cable, which puts 36 V on the line. No 6 V-class part covers that either, so it is not an argument for a different part."
   ]
 }

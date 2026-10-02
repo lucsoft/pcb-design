@@ -2027,8 +2027,9 @@ reflection returns ~110 ns after the edge, inside a 400 ns pulse.
   shunt-overvoltage comparator it fires within one conversion — **140 µs to
   1.1 ms** — which is faster than the eFuse's own fault response and far
   faster than firmware polling. It gives no per-channel discrimination, since the
-  shunt is in the shared return, but it is the only sub-millisecond hardware shed
-  path on the board and it is already wired to a GPIO. Treating it as "a slow
+  shunt is in the shared return, but it is the only sub-millisecond hardware *detection*
+  path on the board — the shed itself is still firmware driving SHDN, because
+  ALERT lands on a GPIO and not on the interlock. Treating it as "a slow
   safety net" undersells it.
 - **INA226 ALERT** is open-drain (p.3) and needs a **10 kΩ pull-up** — fitted as
   **R45**. The INA226 record carries a pin map with pin 3 typed
@@ -2188,7 +2189,12 @@ same cable that flashes the board.
 first port. Its charger is what has the high-voltage PDOs — the 140 W one carries
 28 V, which is an EPR fixed PDO.
 
-Measured against 20 modules, where full white is 288 W:
+Measured against 20 modules, where full white is 288 W. Note the 175 W columns
+are module power at the *connector*: with the 10 m reference cable the two runs
+burn 8.1 W on top, which is what puts the 5 A contract at 5.2 A — so the firmware
+limiter's target is contract current measured at the shunt, not 175 W of module
+power. See Known electrical limits.
+
 
 | Source | PDO | for LEDs | perceived brightness |
 |---|---|---|---|
@@ -2384,9 +2390,18 @@ the register, which is exactly the cold-start window the interlock was introduce
 to cover. One register read with the part in hand closes this; until then the
 SHDN pull-downs are the only fail-safe before I²C init.
 
-**H5VL10B on CC1/CC2 is marginal.** 5 V standoff, 5.6 V breakdown, against a
-3.0 A Rp that pulls CC toward 5 V ±5 % with no cable attached. A 6 V-class part
-is the usual choice. **Open.**
+**H5VL10B on CC1/CC2 is fine, and this entry had the condition backwards.** It
+read the part's 5 V standoff against "a 3.0 A Rp that pulls CC toward 5 V with no
+cable attached" — but that is the voltage on a *source's* CC. This board is a
+**sink**: the HUSB238A presents Rd, which is how it is detected at all and how its
+ORIENT pin knows which CC is live. CC therefore never floats to vRp; it sits at
+the Rp/Rd divider output, which the Type-C spec caps at **2.60 V** for a 3.0 A
+advertisement (1.86 V with a 10 kΩ Rp against 5.1 kΩ). The standoff clears that by
+**2.4 V**.
+
+The case a 5 V part genuinely would not survive is a VBUS-to-CC short in a damaged
+cable, which puts 36 V on the line — and no 6 V-class part survives that either.
+**Closed.**
 
 **Fault reporting is ambiguous, twice over.** The eFuse's PGOOD goes low both for
 a real fault and for a commanded shutdown, and the two channels' PGOODs are
@@ -2456,8 +2471,7 @@ flash peak, i.e. fewer modules per channel.
 previous part had.** The SMAJ36CA's V_BR is **40.0-44.2 V** and the TPS16630's OVP
 cut-off lands between **39.1 V and 42.3 V** with 1% resistors. So the eFuse often
 trips first — at its low corner it is a full 0.9 V below the TVS's breakdown
-minimum — rather than always after it, which is what the 43.8 V setting before
-the retune would have given.
+minimum — rather than always after it.
 
 **It is still not a clean ordering, and OVP could not fully fix it anyway.** OVP
 sheds the **channels**, while the TVS, the rails and the PD front end all sit
