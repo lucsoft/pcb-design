@@ -1893,59 +1893,14 @@ everywhere else in this document.
 
 ## Known electrical limits
 
-Found by review, accepted or still open rather than silently carried.
-
-**The A/B TVS is resolved — SMAJ7.0CA, not SMAJ15CA.** The fitted part clamped
-at **24.4 V** against the MAX3485's ±15 V absolute maximum, so it could not
-conduct until the pin was already past its limit. The reasoning that rejected a
-5 V part assumed the RS-485 common-mode window of -7 V to +12 V, and that is the
-transceiver's *capability*, not what this cable imposes.
-
-**This link is not a bus.** Both ends share GND in the same 4-pole picoMAX shell,
-so the real common-mode excursion is the cable's own IR drop — the table above
-budgets 1.67 V round-trip at 0.5 mm² over 10 m, so the return carries ~0.84 V, and
-**1.38 V** on a 4.0 A white flash. SMAJ7.0CA stands off **7 V** against that (5.1x)
-and clamps at **12 V**, below the ±15 V limit. That is the ordering the SMAJ15CA
-could never achieve, and it closes an item that had been open since the first
-review.
-
-**What it still does not cover:** +36 V sits two poles from A/B in the same
-connector, so a mis-wired cable puts 2.4x the absolute maximum on those pins. No
-TVS survives that as a sustained condition — it is a mechanical and
-build-discipline problem, handled by the polarised shell and the hard module
-housings.
+**Live limits only.** Things that were found and then fixed belong in the commit
+that fixed them and in Resolved, not here — a limits list that doubles as a
+changelog stops being read. Each entry below is either open, accepted, or a
+constraint the layout has to honour.
 
 **H5VL10B on CC1/CC2 is marginal.** 5 V standoff, 5.6 V breakdown, against a
 3.0 A Rp that pulls CC toward 5 V ±5 % with no cable attached. A 6 V-class part
 is the usual choice. **Open.**
-
-**ADDR to GND, 0x42.** An earlier note claimed 0x42 clashes with the INA226 and
-specified a VDD tie for 0x62 — both wrong. The INA226 occupies exactly **one**
-address (0x40 with A0/A1 to GND), so 0x42 is free. And a VDD tie is unsafe here:
-ADDR latches at power-up, and with the follower in front of the VBUS pin that
-power-up does not happen on plug-in — the pin reaches only 3.05-3.75 V at
-vSafe5V, under the 4.5 V the chip needs with VDD absent. The chip therefore
-latches when **3V3 arrives**, after two converters have started. GND is valid at
-that moment and at every other, which is why it stays the tie; a VDD tie would
-now also be valid, but it buys nothing and depends on rail sequencing to stay
-true. An earlier version of this paragraph argued from the chip self-powering
-off VBUS the instant it appears, which is the behaviour this board does not
-have.
-
-**EN_N must stay HIGH at power-up**, which the internal pull-up already does —
-the cold-start sequence depends on the chip being idle until firmware enables it.
-An earlier note here specified a 100 kΩ **pull-down**, which would have enabled
-the chip before the MCU existed and contradicted step 3. No external pull is
-needed; the GPIO drives it low to enable. If a defined state during MCU reset is
-wanted, it must be a pull-**up** to 3V3, reinforcing the internal one.
-
-**The FAULT interlock used to fight the GPIOs — fixed by the LM5069.** Its
-2N7002 drain sat on gates driven push-pull by MCU pins, so asserting it shorted a
-driven-high GPIO through tens of ohms. The drain now sits on the **UVLO** pins
-instead, in parallel with the per-channel enable transistors: two open drains
-onto a passive divider node cannot contend. Tying FAULT straight to FLGIN would
-still leave no software path to clear a latched fault, which is why it goes
-through the interlock transistor rather than directly.
 
 **The module draws 2.16 A from a 2.0 A converter.** Every brightness, current and
 fps figure in this document derives from 14.4 W per module, which derives from
@@ -2022,15 +1977,6 @@ pulling it below 2.5 V now needs **380 µA**, not the 97 µA the old 120 k strin
 demanded. That is more than the current at which the 2.5 V threshold is itself
 specified. It probably works and should **not** be assumed to. A logic-level MOSFET, or a small
 pull-up on the FAULT line, would remove the question. **Open.**
-
-**The bus bypass capacitance is now inside the Type-C limit, but only just.**
-USB Type-C bounds a sink's VBUS bypass capacitance to **10 µF** so attach inrush
-stays within what a source tolerates. Deleting the hold-up removed ~100 µF from
-that node, leaving CIN (≥3 µF effective after derating), three SMAJ36CA and
-decoupling — a few µF. The module banks were never part of it: at attach the bus
-is 5 V, below the LM5069's 8 V minimum VIN, so both channel switches are held off
-and the 6.6 mF is genuinely isolated. **Worth re-checking once CIN is finally
-sized**, because ≥3 µF effective can mean 10 µF or more of nameplate.
 
 **L1 saturates before the converter current-limits.** 2.9 A Isat against a
 4.5 A minimum open-loop limit, so any 5 V-rail overload saturates the inductor
@@ -2186,6 +2132,27 @@ Kept so they are not re-opened:
   question. Note LCSC's parameter table says 20 V for it and is **wrong**; the
   48 V comes from Hirose's own series catalogue. Reaching 5 A needs all four
   VBUS and all four GND contacts paralleled — 1.25 A per contact.
+- **A/B pair TVS** — **SMAJ7.0CA** (C19077529), Vrwm 7 V, Vc **12 V**. The
+  SMAJ15CA it replaces clamped at 24.4 V against the MAX3485's ±15 V absolute
+  maximum, so it could not conduct until the pin was already past its limit. The
+  −7/+12 V window it was sized against is the transceiver's *capability*; this
+  cable imposes only its own return IR drop, 0.84 V sustained and 1.38 V on a
+  white flash, because both ends share GND in one connector shell. **Not
+  covered:** a mis-wired cable putting +36 V on A/B, two poles away in the same
+  shell — mechanical, not electrical.
+- **HUSB238A ADDR to GND (0x42)** — the INA226 occupies one address, 0x40 with
+  A0/A1 both to GND, which is pinned in the tie-off list. GND is the only tie
+  valid at the moment ADDR latches, since that happens when 3V3 arrives.
+- **HUSB238A EN_N** — the internal pull-up is the correct default and no external
+  part is needed. An earlier note specified a pull-**down**, which would have
+  enabled the chip before the MCU existed.
+- **The FAULT interlock no longer fights the GPIOs** — its transistors sit on the
+  LM5069 UVLO pins, not on driven gates, so two open drains onto a passive
+  divider cannot contend. (Its *drive level* is still marginal and stays in
+  Known electrical limits.)
+- **Type-C bypass capacitance** — inside the 10 µF limit once the hold-up was
+  deleted. Worth re-checking when CIN is finally sized, since "≥3 µF effective
+  after derating" can mean 10 µF of nameplate.
 - **Channel switching** — one **LM5069** hot-swap controller per channel driving
   an **NSS085N100S**, after four discrete gate networks failed. Ramp, current
   limit, power limit, fast turn-off and dV/dt immunity are integrated; the
