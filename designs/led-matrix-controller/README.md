@@ -1746,18 +1746,30 @@ source rated 180 W or more**, plus a 5 A e-marked cable:
 
 | Source | Bus | Channels |
 |---|---|---|
-| Laptop USB-C port (5 V) | 4.8–5.2 V | **off** — under the LM5069's own 8 V minimum |
-| 9 V PDO | 8.55–9.45 V | marginal; a worst-case part wants 9.1 V |
-| 12 V PDO | 11.4–12.6 V | **on**, ~36 W |
-| 20 V PDO | 19.0–21.0 V | **on**, ~100 W |
-| 28 V EPR PDO — a 140 W charger | 26.6–29.4 V | **on**, ~140 W |
-| 36 V EPR PDO — 180 W or more | 34.2–37.8 V | on, full 180 W |
+**A laptop port and a laptop charger are different things.** A MacBook *sinks*
+100 W or more; as a *source* its USB-C port offers 5 V only, up to 15 W on the
+first port. Its charger is what has the high-voltage PDOs — the 140 W one carries
+28 V, which is an EPR fixed PDO.
 
-So the LEDs do light from a 12 V or 20 V charger, at whatever brightness the
-contract supports — the software limiter already scales the frame to the
-negotiated current, and this is the hardware finally doing the same. Full
-brightness on 20 modules still needs a 180 W EPR source and a 5 A e-marked
-cable; everything below that degrades rather than failing.
+Measured against 20 modules, where full white is 288 W:
+
+| Source | PDO | for LEDs | perceived brightness |
+|---|---|---|---|
+| MacBook port, as a source | 5 V / 15 W | — | **off** — under the LM5069's 8 V minimum |
+| 9 V PDO | 8.55–9.45 V | — | marginal; a worst-case part wants 9.1 V |
+| 12 V PDO | 11.4–12.6 V | 31 W | ~37% |
+| Apple 96 W charger | 20.5 V / 4.7 A | 91 W | **59%** |
+| Apple 140 W charger | 28 V / 5 A | 135 W | **71%** |
+| 180 W EPR charger | 36 V / 5 A | 175 W | 80% |
+
+**The gamma curve is what makes this work.** Perceived brightness follows γ = 2.2,
+so halving the electrical power costs only about fifteen percentage points of
+apparent brightness: 91 W against 175 W is 52% of the power and 59% against 80%
+of what the eye reports. That is the whole argument for degrading rather than
+refusing — and it is what the old 28 V UVLO threw away.
+
+Full brightness on 20 modules still needs a 180 W EPR source and a 5 A e-marked
+cable. Everything below that now dims instead of going dark.
 
 **No PD contract forms on a PC port.** The HUSB238A presents Rd and stays idle
 until firmware pulls EN_N low; a non-PD host simply never answers, and the bus
