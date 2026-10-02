@@ -321,11 +321,13 @@ class Check:
     def check_shorted_parts(self):
         """A two-terminal part with the same net on both pins is a wire.
 
-        This is how a low-side shunt dies: the design wants both channel
-        returns to pass through it before joining board ground, but if the
-        output connectors' return is simply called GND the pour shorts the
-        shunt and the current sense reads zero. Nothing else in the checker
-        looks at a part's own pins as a set, so nothing else can see it.
+        Catches the DEGENERATE case only: both of a two-terminal part's pins
+        carrying the same net literally. It does NOT catch the likelier form
+        of the low-side-shunt mistake, where the output connectors' return is
+        called GND and the shunt therefore sits between two legitimately
+        different nets - that is a connectivity fact about a different
+        component, and no rule inspects it. Nothing else in the checker looks
+        at a part's own pins as a set, which is why this one exists.
         """
         SHORTABLE = {"resistor", "inductor", "diode", "capacitor", "fuse"}
         for comp in self.components.values():

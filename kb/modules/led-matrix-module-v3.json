@@ -293,7 +293,7 @@
       "A",
       "B"
     ],
-    "consequenceForLimits": "At 10 A the connector stops being a binding constraint: the 2.43 A balanced case is 24%, the 2.80 A worst case 28%, and a 4.0 A full-white flash 40%. The 3 A limit stack that drove the per-channel software cap and the PPTC no longer applies. The binding limit moves to the CABLE - 20 AWG is roughly 5 A chassis wiring, ~2.5 A bundled.",
+    "consequenceForLimits": "At 10 A the connector stops being a binding constraint: the 2.43 A balanced case is 24%, the 2.80 A worst case 28%, and a 4.0 A full-white flash 40%. The 3 A limit stack that drove the per-channel software cap and the PPTC no longer applies. The binding limit moves to the CABLE - 0.5 mm2 is roughly 5 A chassis wiring, ~2.5 A bundled (IEC 60228).",
     "openPoint": "RESOLVED: Reichelt WAGO 2091-1424 (picoMAX 3.5 angled pin header, 4-pole, art. 136753, EUR 0.77) on the board, WAGO 2091-1104 (spring plug, art. 136715) on the cable. Straight-pin alternative 2091-1524 (art. 136759, EUR 3.10). A 20-module run needs 20 plugs - easy to forget when ordering.",
     "orientationHandling": {
       "status": "accepted - handled mechanically",

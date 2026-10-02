@@ -51,7 +51,7 @@
   "designVerdict": "SELECTED as D10-D13, the A/B pair TVS. Replaces SMAJ15CA (C7466491), which clamped above the transceiver rating.",
   "notes": [
     "Vrwm 7 V, Vbr 8.6 V, Vc 12 V. The clamp is what matters: 12 V is UNDER the MAX3485's +/-15 V absolute maximum, where SMAJ15CA clamps at 24.4 V and therefore cannot conduct until the pin is already destroyed.",
-    "The 7 V standoff is sized against what this cable actually imposes, not against the RS-485 -7/+12 V common-mode window. Both ends share GND in the same 4-pole picoMAX shell, so the real excursion is the cable IR drop: ~0.81 V on the return at 20 AWG over 10 m, ~1.5 V on a 4.0 A white flash. That is 4.7x of margin.",
+    "The 7 V standoff is sized against what this cable actually imposes, not against the RS-485 -7/+12 V common-mode window. Both ends share GND in the same 4-pole picoMAX shell, so the real excursion is the cable IR drop: ~0.84 V on the return at 0.5 mm2 over 10 m, 1.38 V on a 4.0 A white flash. That is 5.1x of margin.",
     "Does NOT cover a mis-wired cable putting +36 V on A/B - 2.4x the absolute maximum, two poles away in the same connector. No TVS survives that sustained; it is handled mechanically by the polarised shell.",
     "Four fitted, two per output channel."
   ]

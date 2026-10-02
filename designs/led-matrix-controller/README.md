@@ -211,7 +211,7 @@ Cross-sections per **IEC 60228**, loop resistance 2ρ/A with ρ(Cu) = 0.0172
 1.5 V dropout), so from 36 V there is 29.5 V of headroom — the cable would have
 to be absurd before the converter stopped regulating. The 5% line above is an
 efficiency choice, not a functional limit. At 0.5 mm² and 10 m the cable burns
-3.9 W per channel, which is the real cost.
+**4.06 W** per channel, which is the real cost.
 
 **Data is no longer the limit.** Going differential removed it. A differential
 pair is good for tens of metres at 800 kbps, well past anything power
@@ -270,9 +270,11 @@ the first:
            +  N_ICs x 0.6 mA x 5 V / (36 V x eta)                        [quiescent floor]
            +  controller overhead
 
-- **The sum is amperes at the module's 5 V rail**, and the contract is amperes
-  at 36 V. The divisor is **5.4** — `36 × η / 5` at the design's 75% efficiency
-  estimate. Dividing by η *raises* the bus current, so it belongs in the
+- **The sum is amperes at the module's 5 V rail**, and the contract is amperes at
+  the **negotiated** bus voltage. The divisor is `V_negotiated × η / 5` — **5.4**
+  at 36 V and 75% efficiency, but **3.0** at 20 V and **1.8** at 12 V. Hard-wiring
+  36 V here would under-predict bus current by **3×** on a 12 V contract, which is
+  the least forgiving one the board accepts. Dividing by η *raises* the bus current, so it belongs in the
   numerator of that ratio, not the denominator: an earlier version of this bullet
   said 9.6 (= 7.2/0.75) and would have **under-predicted bus current by 44%**, in
   the one computation whose whole purpose is to stop the source cutting VBUS.
@@ -834,22 +836,37 @@ comparator spread alone:
 
 | Threshold | Typ | Worst case, incl. 1% resistors | Against |
 |---|---|---|---|
-| UVLO rising (enable) | **7.97 V** | 6.83 V low / **9.12 V** high | sized for **graceful degradation**, not for the 36 V contract — see below |
-| UVLO falling | 6.49 V | — | just under the modules' own 6.5 V converter dropout |
-| OVLO rising (trip) | 44.7 V | **40.3 V** low / 49.2 V high | must stay above the **37.8 V** maximum bus — 2.5 V of margin at the low end |
+| UVLO rising (enable) | **7.97 V** | 6.75 V low / **9.23 V** high | sized for **graceful degradation**, not for the 36 V contract — see below |
+| UVLO falling | 6.49 V | — | below the LM5069's own V_INEN, so it is never the binding threshold |
+| OVLO rising (trip) | 44.7 V | **39.51 V** low / 50.15 V high | must stay above the **37.8 V** maximum bus — **1.71 V** of margin at the low end |
 | OVLO falling | 42.5 V | — | above 37.8 V, so a recovered bus re-enables rather than latching out |
+
+An earlier version of this table was headed "incl. 1% resistors" and carried the
+comparator spread only. The figures above are the adverse combination of both:
+±10% on the threshold, 12-24 µA on the hysteresis current, and 1% on each of the
+three resistors. The OVLO low corner moves from 40.3 V to **39.51 V**, so the
+margin over the maximum bus is 1.71 V rather than the 2.5 V previously claimed —
+and that corner now sits **below** the SMAJ36CA's 40.0 V breakdown minimum, so
+the TVS-first ordering described in Known electrical limits holds at typical and
+at the high corner but not at the low one.
 
 **The UVLO is deliberately low, and an earlier version of this design had it at
 28 V.** That setting made the LED output work on a 36 V contract and nothing
 else: at 20 V, 15 V or 12 V the channels never released, which contradicted the
 design's own stated goal that "software holds back what it cannot power".
 
-| PDO | contract | at full brightness | at 20 modules |
+| PDO | contract | modules at full white | 20 modules, perceived |
 |---|---|---|---|
-| 12 V | 36 W | 2.5 modules/channel | ~20% brightness |
-| 20 V | 100 W | 6.9 modules/channel | ~57% |
-| 28 V | 140 W | 9.7 modules/channel | ~80% |
-| 36 V | 180 W | 12.5 modules/channel | 100% |
+| 12 V | 36 W | 2.2 total | ~37% |
+| 20 V | 100 W | 6.6 total | ~58% |
+| 28 V | 140 W | 9.4 total | ~71% |
+| 36 V | 180 W | 12.2 total | ~80% |
+
+Both columns were wrong in an earlier version: the counts are **total modules**,
+not per channel, and the last column was contract power over 180 W rather than
+anything to do with brightness. Perceived brightness follows γ = 2.2 and is
+tabulated against 20 modules in Recovery and debug, which is where these figures
+now come from.
 
 Below **12 V** it is not reliable: the effective turn-on is
 `max(V_INEN 6.8-8.5 V, UVLO)`, so a worst-case part needs ~9.1 V and a 9 V PDO
@@ -1227,6 +1244,35 @@ One documentation gap feeding this: only the **module** datasheet for the
 ESP32-C6 is cached. Every GPIO, strapping, ADC and peripheral claim beyond the
 pin table rests on the chip datasheet and TRM, which `ds.py` cannot re-read.
 
+## What the board does on each contract
+
+The UVLO change made four bus voltages normal where one used to be. Three things
+in firmware are still written against 36 V and have to follow:
+
+| | at 36 V | at a lower contract |
+|---|---|---|
+| **Limiter divisor** | 5.4 | `V_negotiated × η / 5` — 3.0 at 20 V, 1.8 at 12 V |
+| **INA226 alert threshold** | sized against 5.0 A | the contract current, which is 3 A on 12/15 V PDOs |
+| **Status power bar** | 30 W per LED across 180 W | must scale to the contract, or it shows one LED on a 36 W contract whatever the wall is doing |
+
+**The ramp is the case that changes most.** A channel's current-limit plateau is
+5.5 A regardless of bus voltage, so against a 36 V/5 A contract it is 1.1x — and
+against a 12 V/3 A contract it is **1.8x**. Staggering is not optional at low
+contracts, and the limiter must hold the frame down until both channels have
+finished ramping.
+
+**Downward renegotiation is new and untested.** With UVLO at 28 V the channels
+opened at 26.2 V on any 36 → 28 → 20 V transition, isolating the module banks.
+At 7.97 V they stay closed throughout, so the modules' 6.6 mF now rides the
+transition. The attach-time isolation argument still holds — at attach the bus is
+5 V, under the LM5069's own minimum — but the renegotiation case is not covered
+by it and the 15 ms tSnkNewPower paragraph predates the change.
+
+**The operator needs to know which contract was negotiated**, and no indicator
+currently shows it. The document already notes that "voltage can be encoded in
+colour if wanted"; with degradation as a headline feature that is a requirement
+rather than an option.
+
 ## Layout constraints
 
 Until now this document said "2-layer, relaxed" and "4-layer, dense" as area
@@ -1234,7 +1280,7 @@ utilisation factors and nothing else — no copper weight, no trace width, no
 return path. For a board carrying 5 A next to a differential pair and an ADC,
 that is the largest remaining gap.
 
-**Copper weight: 2 oz, and it is not a preference.** Trace widths per IPC-2221,
+**Copper weight: 2 oz (70 µm), and it is not a preference.** Trace widths per IPC-2221,
 external layer:
 
 | | 5 A bus | 2.43 A channel |
@@ -1246,7 +1292,7 @@ external layer:
 
 Both the feed and the return need it. On 1 oz a 10 °C-rise bus trace is 2.8 mm
 wide, which on a 72 × 74 mm board with four committed edges is awkward; on 2 oz
-it is 1.4 mm and routine. 2 oz also halves the copper's contribution to the FET
+it is 1.4 mm and routine. 2 oz (70 µm) also halves the copper's contribution to the FET
 thermal path.
 
 **The FET thermal claim assumes copper this board does not budget.** The
@@ -1666,7 +1712,8 @@ the status chain and the bus-voltage ADC:
 | SK6812 status chain | 1 |
 | Bus-voltage ADC divider | 1 |
 | USB D-/D+ (GPIO12/13, fixed) | 2 |
-| **total** | **19** |
+| LM5069 PGD, both channels wire-ORed | 1 |
+| **total** | **20** |
 
 **Seven pins carry constraints**, though three of them can still carry signals.
 GPIO4 and GPIO5 are MTMS/MTDI straps (§3.3 p.11-12) carrying the MAX3485 DI
@@ -1698,8 +1745,8 @@ A workable assignment, which also shows how tight it is:
 | 16, 17 | UART0 console | |
 | **2** | **LM5069 PGD, both channels** | open-drain pair wired together with a 10 kΩ pull-up |
 
-**No spare GPIO left.** The last free pin now carries the shared PGD line, so
-the budget is 20 signals on exactly 23 pads with BOOT and UART0. One
+**No spare GPIO left.** The last free pin carries the shared PGD line, so the
+budget is 20 signals on exactly 23 pads once BOOT and UART0 are counted. One
 **The PARLIO clock-pin worry that used to sit here is resolved and was the wrong
 worry.** `clk_out_gpio_num = -1` is accepted from IDF v5.3 onward, so no pin is
 at risk and the PGD line is safe. (It would not have been a usable fallback
@@ -1737,15 +1784,10 @@ LEDs. On a USB-C host the default Rp advertises at least 1.5 A and it is a
 non-issue; on an old USB-A port, bring up WiFi *or* Ethernet, not both.
 
 **The LED channels stay dark on USB power, by design.** The LM5069 UVLO does not
-release until ~28 V, so a 5 V bus holds both channel switches off no matter what
-firmware does. That is what makes it safe to develop with the wall connected.
+release until ~8 V, so a 5 V bus holds both channel switches off no matter what
+firmware does — the LM5069's own VIN minimum enforces it even before the UVLO
+divider does. That is what makes it safe to develop with the wall connected.
 
-**And a laptop port will not light them either.** A MacBook *sinks* EPR; as a
-source its port offers 5 V at around 15 W. What the LEDs need is a **PD 3.1 EPR
-source rated 180 W or more**, plus a 5 A e-marked cable:
-
-| Source | Bus | Channels |
-|---|---|---|
 **A laptop port and a laptop charger are different things.** A MacBook *sinks*
 100 W or more; as a *source* its USB-C port offers 5 V only, up to 15 W on the
 first port. Its charger is what has the high-voltage PDOs — the 140 W one carries
@@ -1802,7 +1844,7 @@ At the 72 x 74 mm envelope the board is 53 cm2.
 | TPS54360B IC | ~0.5 | conduction + switching at ~1 MHz |
 | Q1 + Q2 NSS085N100S | 0.16 | 13.3 mΩ hot, 2.43 A each |
 | 2x 10 mΩ sense resistor | 0.12 | 2.43 A each |
-| 2x LM5069 + dividers | 0.07 | 650 µA max IQ at 37.8 V, plus the 133 kΩ strings |
+| 2x LM5069 + dividers | 0.07 | 650 µA max IQ at 37.8 V, plus the 134 kΩ strings |
 | shunt 10 mΩ | 0.25 | at full 5 A |
 | SY8089 + inductor | 0.19 | |
 | 10 µH inductor DCR | 0.08 | |
@@ -1974,8 +2016,11 @@ switches. Nothing on this board disconnects them from a sustained overvoltage.
 **The FAULT interlock gate drive is marginal.** HUSB238A FAULT/OUT2 is push-pull
 with V_OH ≥ 0.8 × VDD (p.8), so **2.64 V** on a 3.3 V rail, against the 2N7002's
 V_GS(th) of **2.5 V max** (at 250 µA). A worst-case pair leaves ~0.14 V of
-overdrive to sink the ~97 µA needed to pull the UVLO node below 2.5 V. It
-probably works and should not be assumed to. A logic-level MOSFET, or a small
+overdrive — and the **lowered UVLO made this 3.9× harder**. With the 82.5 k /
+44.2 k / 7.50 k string the node sits at 3.61 V behind a stiffer divider, and
+pulling it below 2.5 V now needs **380 µA**, not the 97 µA the old 120 k string
+demanded. That is more than the current at which the 2.5 V threshold is itself
+specified. It probably works and should **not** be assumed to. A logic-level MOSFET, or a small
 pull-up on the FAULT line, would remove the question. **Open.**
 
 **The bus bypass capacitance is now inside the Type-C limit, but only just.**
@@ -2092,8 +2137,8 @@ build.
     maximum bus at its *low* extreme needs **≥42.8 V** nominal, and one that stays
     below the modules' 45 V absolute at its *high* extreme needs **≤40.1 V**.
     Those are **mutually exclusive**. It is set at 44.7 V nominal to protect the
-    controller with 2.0 V of margin, which leaves a **45-50.8 V** window where a
-    worst-case part passes voltage the modules are not rated for. The SMAJ36CA
+    controller with **1.71 V** of margin, which leaves a **45-50.15 V** window
+    where a worst-case part passes voltage the modules are not rated for. The SMAJ36CA
     does not cover that window the way an earlier version of this entry claimed:
     its breakdown is 40.0-44.2 V, i.e. **below** the OVLO trip, so on a sustained
     overvoltage the TVS conducts first and cooks. See Known electrical limits.

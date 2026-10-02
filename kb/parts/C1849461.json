@@ -1,0 +1,41 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C1849461",
+  "@type": "Component",
+  "lcscId": "C1849461",
+  "mpn": "TPS16630PWPR",
+  "manufacturer": "TI",
+  "description": "Surge Protection IC 4.5V~60V HTSSOP-20",
+  "category": "ic",
+  "package": "HTSSOP-20",
+  "stock": 1141,
+  "priceUsd": 2.8002,
+  "parameters": {
+    "Features": "Overcurrent Protection;Short-Circuit  Protection;Overvoltage clamping protection;Under-voltage lockout;Thermal Protection;Overload protection",
+    "Voltage - Supply": "4.5V~60V",
+    "Operating Temperature": "-40℃~+125℃",
+    "Trigger Current": "600mA~6A",
+    "FET Type": "Integrated FET",
+    "Width": "4.4mm",
+    "Threshold Voltage": "-",
+    "Length": "6.5mm",
+    "Height": "1.2mm",
+    "Peak Output Current(Source)": "-",
+    "Number of Channels": "1",
+    "RDS(on)": "30.44mΩ",
+    "Peak Output Current(Sink)": "-"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/2b50753da5dfb862a8b844fadf89b87b.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  }
+}
