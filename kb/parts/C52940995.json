@@ -85,7 +85,7 @@
     "category": "lcsc-api",
     "pins": "datasheet p.3 PIN table (MSOP-10); thermal pad is DFN-only"
   },
-  "designVerdict": "SELECTED - hot-swap controller, one per channel (U10, U11). Replaces four failed discrete gate networks.",
+  "designVerdict": "REJECTED - replaced by TPS16630 (C1849461). Not fitted.",
   "notes": [
     "Tokmas second-source LM5069MMX-2, not TI silicon. Live stock 105 at selection, where jlcsearch claimed 2952 - the staleness the workflow warns about. This is the -2 suffix, which AUTO-RESTARTS (p.13). TI's LM5069MM-1/NOPB (C486026, 89 units, $5.90) is the LATCH-OFF variant. An early note here had the two suffixes backwards.",
     "VIN absolute 108 V, operating 8-90 V (p.1, p.5). Below 8 V it holds the gate down, so the channels are off through the whole 5 V pre-negotiation phase with no firmware involvement. Quote 8 V, not the p.1 headline's 9 V, when the argument rests on the minimum.",
@@ -99,6 +99,7 @@
     "AUTO-RESTART PERIOD is ~64 s with C_TIMER 6.8 uF: seven complete cycles (2.8 V discharge at 2.5 uA plus recharge at 70 uA) plus the eighth ramp to 0.3 V. Counting only the seven discharges gives ~53 s and is wrong; the datasheet's 0.5% fault duty cycle corroborates 64 s.",
     "MSOP-10 RthJA is 156 C/W (p.1), which sounds alarming and is not: IQ is 650 uA max at 37.8 V, about 25 mW. The MSOP-10 part has NO exposed pad - the pad in the package drawings belongs to the DFN3x3 variant - so GND (pin 5) is the only ground connection.",
     "WHY THE LOW UVLO IS SAFE: the 28 V setting did not shed cleanly anyway - with hysteresis from 26.2 to 28.3 V a source sagging into that band oscillates, re-ramping every 61 ms. What protects a brownout is unchanged: the current limit stays active at 5.5 A per channel however far the bus falls, FAULT sheds both channels when the source reports it cannot supply, and the software limiter scales to the contract. t_start also improves at lower voltages (ratio 1.9x at 36 V, 5.8x at 20 V, 14x at 12 V), so the module ceiling relaxes with the contract.",
-    "THE LOWERED UVLO MADE THE FAULT INTERLOCK 3.9x HARDER. With the 82.5k string the UVLO node sits at 3.61 V behind a stiffer divider, so pulling it below 2.5 V needs 380 uA where the old 120k string needed 97 uA - more than the current at which the 2N7002's 2.5 V threshold is itself specified. Recorded as open in the README."
+    "THE LOWERED UVLO MADE THE FAULT INTERLOCK 3.9x HARDER. With the 82.5k string the UVLO node sits at 3.61 V behind a stiffer divider, so pulling it below 2.5 V needs 380 uA where the old 120k string needed 97 uA - more than the current at which the 2N7002's 2.5 V threshold is itself specified. Recorded as open in the README.",
+    "RETIRED. Its 8 V VIN minimum meant the LED output was dead below a 12 V contract and dead on a laptop port. Everything derived for it - R_SENSE, R_PWR, C_TIMER, the UVLO/OVP divider, the insertion delay, the fault timer against t_start and the 12.7-module ceiling that followed from it - is superseded and must not be reinstated. The TPS16630 controls inrush by dV/dt instead, which is constant and load-independent."
   ]
 }

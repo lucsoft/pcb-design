@@ -41,12 +41,13 @@
     "category": "manual",
     "pins": "two-terminal shunt, symmetric package outline - no polarity"
   },
-  "designVerdict": "SELECTED - low-side current sense shunt for the INA226",
+  "designVerdict": "SELECTED as R1 only - the low-side shunt. The LM5069 current-sense role is gone.",
   "notes": [
     "10 mOhm, 1% (F suffix), 2512, 9.8k stock, $0.058.",
     "Value set by the INA226's +/-81.92 mV maximum differential input. At the 5 A full-scale bus current, 10 mOhm gives 50 mV - inside the range with headroom, and good resolution (2.5 uV/LSB means ~20,000 counts). A 20 mOhm part would give 100 mV and clip.",
     "Dissipates 0.25 W at 5 A, comfortable in a 2512.",
     "1% tolerance matters: it sets current-measurement accuracy directly, and that feeds the software power budget. The cheaper 5% (J) parts in the same family would make the budget 5% uncertain.",
-    "Alternative with better stock if needed: FPM253WFR005TM (C7420019), 5 mOhm, 39.8k - halves the signal to 25 mV and the dissipation to 0.125 W."
+    "Alternative with better stock if needed: FPM253WFR005TM (C7420019), 5 mOhm, 39.8k - halves the signal to 25 mV and the dissipation to 0.125 W.",
+    "SCOPE REDUCED: this part was also R2/R3, the LM5069 sense resistors. The TPS16630 sets its current limit with a resistor on ILIM and needs no series sense element, so only the INA226's low-side shunt remains."
   ]
 }

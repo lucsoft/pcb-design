@@ -8,8 +8,8 @@
 # is actually wired.
 name: led-matrix-controller
 description: >-
-  36 V / 180 W USB-PD sink driving two LED-matrix channels through LM5069
-  hot-swap controllers, with Ethernet and a differential data link.
+  36 V / 180 W USB-PD sink driving two LED-matrix channels through TPS16630
+  eFuses, with Ethernet and a differential data link.
 
 rails:
   GND:
@@ -20,7 +20,7 @@ rails:
   VBUS:
     voltage: 36.0
 
-  # Channel outputs, downstream of the LM5069 switches. Same voltage as the
+  # Channel outputs, downstream of the TPS16630 eFuses. Same voltage as the
   # bus; separate nets so a short on one chain is visibly one chain.
   CH1_36V:
     voltage: 36.0
