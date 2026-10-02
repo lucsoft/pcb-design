@@ -51,5 +51,5 @@
     "The figures below are sound arithmetic on an ASSUMED part, not a reading of the built design. Treat them as conditional on the module actually using an SS36.",
     "If it is the catch diode: 3.0 A average forward rectified, 60 V (datasheet p.1). At 36 V in / 5 V out the duty is 0.14, so it carries 2.16 x 0.86 = 1.86 A average at full white, 62% of rating. Dissipates roughly 1 W, the hottest part on the module, with no protection of its own."
   ],
-  "designVerdict": "SELECTED - TPS54360B catch diode on the controller (module role still unconfirmed)"
+  "designVerdict": "SELECTED as D2 - the TPS54360B catch diode, and only that. The eFuse output transient Schottkys (D15/D16) are MBRS3100T3G (C12790): this part is 60 V and would sit at 60% of its rating in continuous reverse bias, where its 0.5 mA leakage costs ten times more standby draw."
 }

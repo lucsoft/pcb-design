@@ -121,8 +121,8 @@ flowchart LR
         BUF -->|status| LEDS["8x SK6812-EC20"]
     end
 
-    SW1["ch1 load switch"]
-    SW2["ch2 load switch"]
+    EF1["ch1 eFuse"]
+    EF2["ch2 eFuse"]
 
     MCU <-->|I2C| PD
     MCU <-->|I2C| INA
@@ -190,7 +190,8 @@ modules sit adjacent and chain board-to-board like a snake, so **only the
 controller-to-first-module cable has any length.** Everything after it is a
 short board-to-board link whose drop is negligible.
 
-That single cable carries the whole channel: 2.43 A sustained, 4.0 A on a
+That single cable carries the whole channel: 2.43 A sustained when both are lit,
+2.80 A when one is dark and the other is at the cap, 4.0 A on a
 full-white flash.
 
 <picture>
@@ -201,22 +202,21 @@ full-white flash.
 Cross-sections per **IEC 60228**, loop resistance 2ρ/A with ρ(Cu) = 0.0172
 Ω·mm²/m at 20 °C:
 
+Worked at **2.80 A**, which is the real per-channel worst case — one channel at
+the 70% thermal cap while the other is dark, since PD caps the total and not the
+split. The balanced 2.43 A would be 16% kinder and is not what sizes a cable.
+
 | mm² | 5 m | 10 m | 15 m | max at 5% |
 |---|---|---|---|---|
-| 0.25 | 1.67 V | 3.34 V | 5.02 V | 5.4 m |
-| 0.34 | 1.23 V | 2.46 V | 3.69 V | 7.3 m |
-| **0.50** | **0.84 V** | **1.67 V** | 2.51 V | **10.8 m** |
-| 0.75 | 0.56 V | 1.11 V | 1.67 V | 16.1 m |
-| 1.00 | 0.42 V | 0.84 V | 1.25 V | 21.5 m |
+| 0.25 | 1.93 V | 3.85 V | 5.78 V | 4.7 m |
+| 0.34 | 1.42 V | 2.83 V | 4.25 V | 6.4 m |
+| **0.50** | **0.96 V** | **1.93 V** | 2.89 V | **9.3 m** |
+| 0.75 | 0.64 V | 1.28 V | 1.93 V | 14.0 m |
+| 1.00 | 0.48 V | 0.96 V | 1.44 V | 18.7 m |
 
-**That table is the balanced case.** It is worked at 2.43 A, which is both
-channels sharing the contract evenly. "Why two channels" sets the real
-per-channel worst case at **2.80 A** — one channel at the 70% thermal cap while
-the other is dark, since PD caps the total and not the split. At 2.80 A the
-0.5 mm² / 10 m drop is **1.93 V = 5.4%**, just past the 5% line, and the maximum
-length falls from 10.8 m to **9.3 m**. The 5% is an efficiency choice rather than
-a functional limit — the converter needs only 6.5 V in — so this changes the
-recommendation and not the feasibility: **0.5 mm² up to 9 m, 0.75 mm² beyond**.
+The 5% is an efficiency choice rather than a functional limit — the converter
+needs only 6.5 V in — so past it the recommendation changes and the feasibility
+does not: **0.5 mm² up to 9 m, 0.75 mm² beyond**.
 
 **Power is not the constraint.** The converter needs only 6.5 V in (5 V out plus
 1.5 V dropout), so from 36 V there is 29.5 V of headroom — the cable would have
@@ -231,6 +231,9 @@ a single-ended line would have been.
 
 So **power is now the only constraint: 0.5 mm², up to about 9 m** at 5% drop — 10.8 m on the balanced 2.43 A, 9.3 m at the 2.80 A one channel actually draws with the other dark.
 That is a real gain over the ~5 m the single-ended link would have been held to.
+
+**The design's reference run is 10 m on 0.5 mm².** Where this document works
+EMC or ESD at 11 m, that is the maximum on 0.75 mm², not a second assumption.
 
 Practice for the pair:
 
@@ -391,12 +394,12 @@ fraction. The channel's 3.3 mF bank is **0.121 Ω** at
 
 | cable | R (loop) | bus share | ripple seen |
 |---|---|---|---|
-| ~5 m, 0.5 mm² | 0.35 Ω | 32.7% | **±0.51 A** |
-| 10 m, 0.5 mm² | 0.69 Ω | 17.3% | **±0.27 A** |
+| ~5 m, 0.5 mm² | 0.35 Ω | 32.7% | **+0.51 / −0.79 A** |
+| 10 m, 0.5 mm² | 0.69 Ω | 17.3% | **+0.27 / −0.42 A** |
 
 The two shares do not sum to one with the capacitor's — they are orthogonal
 components, which is exactly what the scalar version got wrong. **The document's
-own worked case is 10 m**, so ±0.27 A is the figure that matches the rest of the
+own worked case is 10 m**, so +0.27 A is the figure that matches the rest of the
 design; ±0.5 A applies to a short cable and is the conservative end.
 
 Every current figure in this document is a frame average, which is the right
@@ -928,6 +931,8 @@ independently as `1/(20.8e3 × 2 µA) = 24.0`.
 | UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.28 V**, **OVP 40.68 V**, and draws 35.4 µA. The E192 values this string first carried (723 k / 249 k / 29.4 k) are not stocked in 0402 — see Bill of materials |
 | C_IN | **100 nF** | §10.2.2 "a minimum of 0.1 µF is recommended" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain; both channels wire-ORed onto one GPIO |
+| C_OUT, **OUT → GND** | **100 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as the minimum at IN, P_IN **and** OUT. C34/C35 |
+| Transient Schottky, **OUT → GND** | **MBRS3100T3G**, cathode to OUT | §11.1 p.28: interrupting current makes the output inductance drive OUT negative, against a −0.3 V absolute maximum. D15/D16. Note it **bounds** the spike rather than meeting the rating: V_F is 0.79 V at 3 A, so OUT still goes to about −0.8 V — an unbounded inductive excursion becomes a bounded sub-µs one, which is the normal reading of an absolute maximum |
 
 **The inrush is constant, which is the whole point.** Equations 1 and 2 make the
 charging current independent of bus voltage and of how far the ramp has
@@ -1160,7 +1165,7 @@ Active parts. Passives are listed below the table.
 | D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the eFuse is 67 V absolute (1.15x), but the 60 V bus parts are only **1.03x** | 0.037 |
 | D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.043 |
 | D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
-| D15,D16 | SS36 | C2903825 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. Same part as D2 | 0.126 |
+| D15,D16 | **MBRS3100T3G** | C12790 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. 100 V rather than the 60 V SS36 for **leakage**, not breakdown: these sit at 36 V reverse continuously, and the SS36 would run at 60% of its rating for 0.5 mA against this part's 50 µA | 0.21 |
 | L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.228 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
 | R1,R2 | see Passives | — | — | the shunt and the bleeder are listed with the other passives below | — |
@@ -1476,12 +1481,15 @@ design it has specific gaps:
   P2-thin, B1, Q1 and Q2. The four that would fire on a voltage mistake on *this*
   board now have cases. `P1-undervoltage` needed a part with a `vMin` to fire at
   all, and no record carried one: the 74AHCT541's VCC pin now does, at 4.5-5.5 V,
-  which is the floor the whole dropout analysis is about. **It still cannot fire
-  on this design**, because `design.yaml` declares `BUS_5V` at its nominal 5.0 V
-  while the sag that matters is 4.56 V typ and 4.50 V at the 190 mΩ corner — the
-  rails file now takes a `voltageMin` alongside `voltage`, and `BUS_5V` declares
-  **4.50 V** there, so the rule does fire on the real sag rather than on the
-  nominal. E1, E2 and E3 needed only the pin *types* those records already had.
+  which is the floor the whole dropout analysis is about. The rails file takes a
+  `voltageMin` alongside `voltage` so the check sees the sag rather than the
+  nominal, and `BUS_5V` declares **4.515 V** — the 190 mΩ corner.
+
+  **It does not fire today, and that is the finding.** 4.515 V clears the
+  74AHCT541's floor by **15 mV**. Fit a 70 mA fan and §Cooling puts the rail at
+  4.497 V, where it does fire. So the rule is live and the margin is 15 mV, which
+  is a more useful thing to know than a clean report. E1, E2 and E3 needed only
+  the pin *types* those records already had.
 
 One documentation gap feeding this: only the **module** datasheet for the
 ESP32-C6 is cached. Every GPIO, strapping, ADC and peripheral claim beyond the
@@ -1524,12 +1532,12 @@ trace width and return path decide more than the area utilisation factor does.
 **Copper weight: 2 oz (70 µm), and it is not a preference.** Trace widths per IPC-2221,
 external layer:
 
-| | 5 A bus | 2.43 A channel |
+| | 5 A bus | 2.80 A channel (worst case) |
 |---|---|---|
-| 1 oz, 20 °C rise | 1.82 mm | 0.67 mm |
-| 1 oz, 10 °C rise | 2.77 mm | 1.02 mm |
-| **2 oz, 20 °C rise** | **0.91 mm** | **0.34 mm** |
-| 2 oz, 10 °C rise | 1.38 mm | 0.51 mm |
+| 1 oz, 20 °C rise | 1.82 mm | 0.82 mm |
+| 1 oz, 10 °C rise | 2.77 mm | 1.24 mm |
+| **2 oz, 20 °C rise** | **0.91 mm** | **0.41 mm** |
+| 2 oz, 10 °C rise | 1.38 mm | 0.62 mm |
 
 Both the feed and the return need it. On 1 oz a 10 °C-rise bus trace is 2.8 mm
 wide, which on a 72 × 74 mm board with four committed edges is awkward; on 2 oz
@@ -1541,6 +1549,12 @@ TPS16630 dissipates 0.27 W steady per channel and far more during the ramp,
 with the device regulating its own junction temperature — which it can only
 do if the pad has somewhere to put the heat. TI's HTSSOP-20 PowerPAD wants a
 soldered pour with thermal vias.
+
+**D15/D16 and C34/C35 must sit within a few mm of the OUT pins.** §11.1 is about
+lead inductance: a Schottky placed away from pin 18-20 adds its own loop to the
+path it is meant to shorten and clamps nothing useful. Same for the 100 nF. This
+is the one placement constraint on this board where the part does *nothing* if it
+is in the wrong place, rather than working less well.
 
 **The low-side shunt forces a split return, and nothing else in this document
 says so.** R1 sits in the ground return so that both channels' current passes
@@ -2153,8 +2167,9 @@ At the 72 x 74 mm envelope the board is 53.3 cm2.
 | 2x MAX3485 driving 120 Ω | 0.06 | DE tied high, line never idle |
 | 74AHCT541 | 0.02 | |
 | R2 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
+| D15/D16 leakage | ~0.004 | 2 × 50 µA at 25 °C and 36 V, which is 36% of the part's 100 V rating. A reverse-biased diode drawing µA self-heats by nothing, so it sits at ambient and the 5 mA 125 °C figure does not apply. Two SS36 here would have been 0.036 W |
 | status LEDs, capped | 0.12 | eight at one colour, 25% — see below |
-| **total** | **4.11** | TVS leakage not counted |
+| **total** | **4.11** | TVS leakage not counted; D15/D16 are |
 
 The rows sum to 4.11 W against **4.80 W** of capacity at 0.09 W/cm² over
 53.3 cm², so **1.17x headroom** — down from 1.29x. The eFuse is most of that
@@ -2204,7 +2219,7 @@ already calls over budget.
 
 Hot spots need local copper rather than relying on the board average: the
 ESP32-C6 (1.26 W), the Ethernet module and the TPS54360B (0.50 W each), the catch diode
-(0.30 W) and the shunt (0.25 W). The channel eFuses are now **among** the hot spots at 0.265 W each — they
+(0.30 W) and the shunt (0.25 W). The channel eFuses are now among the hot spots — 0.265 W each at the balanced 2.43 A, and **0.353 W** on the one device that carries the 2.80 A worst case while the other channel is dark — they
 dissipate more than the discrete FET and shunt they replaced. The two bucks should not share a thermal zone with the module or
 the Ethernet controller.
 

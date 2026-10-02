@@ -86,11 +86,14 @@ def fig_cable(ax, pal):
     Modules sit adjacent on the wall and chain board-to-board, so only this one
     cable has length. It carries the whole channel current.
     """
+    # 2.80 A, not the balanced 2.43 A: one channel at the thermal cap with the
+    # other dark is the real per-channel worst case, and it is what decides the
+    # length limit the text recommends.
     L = [x / 2 for x in range(1, 41)]
     for i, a in enumerate(CSA):
         rt = 2 * RHO_CU / a
-        ax.plot(L, [2.43 * rt * x for x in L], color=pal[i], label=f"{a} mm\u00b2")
-    ax.set_title("Drop in the controller-to-first-module cable (2.43 A)")
+        ax.plot(L, [2.80 * rt * x for x in L], color=pal[i], label=f"{a} mm\u00b2")
+    ax.set_title("Drop in the controller-to-first-module cable (2.80 A worst case)")
     ax.set_xlabel("cable length (m)")
     ax.set_ylabel("voltage drop (V)")
     ax.set_ylim(0, 4)

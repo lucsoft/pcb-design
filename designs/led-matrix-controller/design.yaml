@@ -35,9 +35,11 @@ rails:
     voltage: 5.0
     # The worst case, not the nominal, and the difference decides a real check:
     # in pass-through at the bottom of vSafe5V this rail is 4.56 V typical and
-    # 4.50 V with a 190 mOhm part - exactly the 74AHCT541's supply floor.
-    # Declaring only the nominal would hide that from P1-undervoltage.
-    voltageMin: 4.50
+    # 4.515 V at the 190 mOhm R_DS(on) corner - see the Cooling table. That
+    # clears the 74AHCT541's 4.5 V floor by 15 mV. Declaring only the nominal
+    # would hide the margin entirely. (4.50 V is a different case: the rail with
+    # a 163 mOhm inductor, which this design does not fit.)
+    voltageMin: 4.515
   BUS_3V3:
     voltage: 3.3
 
