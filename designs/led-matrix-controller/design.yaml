@@ -28,7 +28,7 @@ rails:
     voltage: 36.0
 
   # Rails. The 5 V stage runs in near-100% duty pass-through at vSafe5V, so
-  # it is 4.50 V at the bottom of the USB-C tolerance - see the dropout
+  # it is 4.56 V at the bottom of the USB-C tolerance - see the dropout
   # table. 5.0 V is the nominal declared here; the sag is a documented
   # limit rather than something the ERC can model.
   BUS_5V:
