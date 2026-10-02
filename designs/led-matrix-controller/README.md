@@ -289,11 +289,23 @@ the 0.12 W budget is unchanged.
 | price for eight | $0.65 | $0.90 |
 | stock | 187k | 52k |
 
-**It costs board edge, which is the scarce thing here.** Eight at 3.2 mm need
-~26 mm plus spacing, call it 35 mm of one 72 mm edge — and the mechanical section
-already has USB-C, two picoMAX, the Ethernet module's RJ45 and the antenna
-keep-out committed to the four edges. The LEDs have to share an edge with
-something, and that is a placement constraint rather than an area one.
+**What side-emitting actually requires is a clear path, not an edge.** The light
+leaves parallel to the board, so nothing tall may stand in front of it. The board
+edge is the natural place because that is where an enclosure opening would be,
+but the constraint is line of sight.
+
+**And board edge is not scarce.** An earlier version of this section called it
+the binding resource, which was wrong by a factor of six:
+
+| | |
+|---|---|
+| perimeter at 72 × 74 mm | **292 mm** |
+| committed — USB-C 9, two picoMAX 32, RJ45 16, antenna keep-out 18 | 75 mm, **26%** |
+| free | **217 mm** |
+| eight LEDs at 3.2 mm plus spacing | **34 mm**, 15% of what is free |
+
+"All four edges are committed" in the mechanical section means each edge carries
+*something*, not that any is full.
 
 **The pin order is not the same as the MINI-E's** — 1 GND / 2 DOUT / 3 DIN /
 4 VDD against 1 GND / 2 DIN / 3 VDD / 4 DOUT. A netlist written for one is wrong
@@ -1280,8 +1292,10 @@ by the keep-out, and it is not.
 What is still true is everything downstream: those 108 mm² carry **no copper on
 any layer**, the module wants that edge overhanging the board, and with USB-C,
 two angled picoMAX and the Ethernet module's RJ45 **all four edges are
-committed**. On a 2-layer board the keep-out punches a hole in the return path of
-a board carrying 5 A, which is a routing problem rather than a space one.
+committed** — meaning each edge carries something, not that any is full: those
+four items total 75 mm of a 292 mm perimeter, 26%. On a 2-layer board the
+keep-out punches a hole in the return path of a board carrying 5 A, which is a
+routing problem rather than a space one.
 
 ## Thermals and the FET choice
 
