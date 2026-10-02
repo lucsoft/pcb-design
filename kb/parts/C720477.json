@@ -34,23 +34,15 @@
   "pins": [
     {
       "number": "1",
-      "name": "",
-      "type": "passive"
+      "name": "1",
+      "type": "passive",
+      "contact": "legs 1 and 3"
     },
     {
       "number": "2",
-      "name": "",
-      "type": "passive"
-    },
-    {
-      "number": "3",
-      "name": "",
-      "type": "passive"
-    },
-    {
-      "number": "4",
-      "name": "",
-      "type": "passive"
+      "name": "2",
+      "type": "passive",
+      "contact": "legs 2 and 4"
     }
   ],
   "provenance": {
@@ -60,7 +52,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "SPST tactile switch, two internally-paired contacts: pads 1/2 common, pads 3/4 common"
+    "pins": "EasyEDA Pro symbol TS-1088-AR02016 and footprint SW-SMD_L3.9-W3.0-P4.45, read with tools/eda.py. The switch has four legs in two internally-common pairs, and this record used to list four pads for that reason - but the library part has TWO, pins 1 and 2, each a 1.23 x 1.86 mm pad spanning both legs of one side. A netlist keying pins 3 and 4 would place nothing."
   },
   "designVerdict": "SELECTED as SW1 (BOOT, GPIO9 to GND) and SW2 (EN to GND). 3.9 x 3 mm SMD tactile.",
   "notes": [

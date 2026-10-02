@@ -20,6 +20,8 @@ two fail independently.
 """
 import argparse
 import json
+import pathlib
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -27,6 +29,9 @@ import urllib.request
 SEARCH = "https://pro.easyeda.com/api/eda/product/search?keyword={}&currPage=1&pageSize=1"
 DEVICE = "https://pro.easyeda.com/api/devices/{}"
 COMPONENT = "https://pro.easyeda.com/api/components/{}"
+
+PARTS = pathlib.Path(__file__).resolve().parent.parent / "kb" / "parts"
+CNUM = re.compile(r"\bC\d{3,9}\b")
 
 # The short "Mozilla/5.0" that works against wmsc.lcsc.com gets a 403 here.
 # The endpoint is behind a CDN that wants a browser-shaped agent string.
@@ -94,6 +99,48 @@ def pins(code):
     return dev, out
 
 
+def verify(codes):
+    """Compare each kb record's pin numbers against the symbol's.
+
+    Returns the number of parts that disagree. A disagreement is not always a
+    bug -- a part with no pin map is simply unchecked -- but a kb key the
+    symbol does not have is one, every time: the netlist would carry a pin the
+    importer cannot place, and it places silently.
+    """
+    bad = 0
+    for code in codes:
+        f = PARTS / f"{code}.json"
+        if not f.exists():
+            print(f"  ?  {code:<11} not in the knowledge base")
+            continue
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        kb = {str(p["number"]) for p in rec.get("pins") or []}
+        if not kb:
+            print(f"  -  {code:<11} no pin map -- unchecked")
+            continue
+        try:
+            _, rows = pins(code)
+        except SystemExit as e:
+            print(f"  ?  {code:<11} {e}")
+            bad += 1
+            continue
+        sym = {n for n, _, _ in rows}
+        missing = sorted(kb - sym)   # in kb, not in the symbol: the netlist breaks
+        extra = sorted(sym - kb)     # in the symbol, not in kb: merely unrecorded
+        if missing:
+            bad += 1
+            print(f"  !  {code:<11} {len(missing)} key(s) the symbol does not "
+                  f"have: {', '.join(missing)}")
+            if extra:
+                print(f"     {'':<11} the symbol instead has: {', '.join(extra)}")
+        elif extra:
+            print(f"  -  {code:<11} symbol has {len(extra)} pin(s) the record "
+                  f"omits: {', '.join(extra)}")
+        else:
+            print(f"     {code:<11} {len(kb)} pin(s) agree")
+    return bad
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -105,7 +152,38 @@ def main():
     p.add_argument("--json", action="store_true")
     d = sub.add_parser("device", help="symbol and footprint titles and uuids")
     d.add_argument("code")
+    v = sub.add_parser("verify",
+                       help="check kb pin numbers against the symbol's")
+    v.add_argument("targets", nargs="*",
+                   help="C-numbers, or files to scan for them")
+    v.add_argument("--kb", action="store_true", help="every part in kb/parts/")
     args = ap.parse_args()
+
+    if args.cmd == "verify":
+        if args.kb:
+            codes = sorted(f.stem for f in PARTS.glob("C*.json"))
+        else:
+            codes, seen = [], set()
+            for t in args.targets:
+                if CNUM.fullmatch(t):
+                    found = [t]
+                else:
+                    found = CNUM.findall(
+                        pathlib.Path(t).read_text(encoding="utf-8"))
+                for c in found:
+                    if c not in seen:
+                        seen.add(c)
+                        codes.append(c)
+        if not codes:
+            ap.error("nothing to check -- give a file, a C-number, or --kb")
+        bad = verify(codes)
+        print(f"\n{len(codes)} part(s), {bad} with a key the symbol does not have")
+        if bad:
+            print("\nFix these before writing the netlist. The importer keys "
+                  "pins by the symbol's numbering and ignores anything else, "
+                  "so a key it does not have is a pin that silently goes "
+                  "nowhere.")
+        return 1 if bad else 0
 
     if args.cmd == "device":
         dev = device(args.code)
