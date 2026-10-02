@@ -1,0 +1,46 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C3198004",
+  "@type": "Component",
+  "lcscId": "C3198004",
+  "mpn": "CX90B-16P",
+  "manufacturer": "HRS",
+  "description": "USB 2.0 1 16P -40℃~+85℃ Surface Mount, Right Angle SMD USB, DVI, HDMI Connector Assemblies RoHS",
+  "category": "connector",
+  "package": "SMD",
+  "stock": 1359,
+  "priceUsd": 0.9868,
+  "parameters": {
+    "Protocol Standard": "USB 2.0",
+    "Number of Ports": "1",
+    "Number of Contacts": "16P",
+    "Connector Type": "Type-C",
+    "Voltage Rating": "20V",
+    "Operating Temperature": "-40℃~+85℃",
+    "Mounting Type": "Surface Mount, Right Angle",
+    "Gender": "Female"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/1769ab61f109a9fb2d065d6f92af02c6.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED as J1, the USB-C receptacle. Resolves the longest-standing blocking open question: 5 A and 48 V AC/DC rated, against a 5 A / 37.8 V requirement.",
+  "notes": [
+    "LCSC'S 'Voltage Rating = 20V' PARAMETER IS WRONG for this part and must not be trusted. Hirose's own CX Series catalogue (May 2022 / Jul 2024, p.6 product variation table and the Product Specifications block) states Rated Voltage 48V AC/DC for the series and lists CX90B-16P at Rated Current 5A, 16 positions, 480 Mbps, top-mount right-angle SMT single-row. The LCSC parameter is a catalogue default; kb.py add will reimpose it on every refresh, so read this note rather than the parameters block.",
+    "WHY IT MATTERS: the previous candidate (C19274016, HC-TYPE-C-16P-3M2S) is 3.0 A / 5.0 V against a 5 A / 36 V requirement - 1.67x over on current and 7x over on voltage - and was the single highest-stress component on the board. This part is rated for both: 48 V is 1.27x the 37.8 V maximum PDO, and 5 A is exactly the contract.",
+    "5 A IS A WHOLE-CONNECTOR FIGURE. The specification reads 'Power: 1.25A Max.' per contact (A1, A4, A9, A12, B1, B4, B9, B12), so reaching 5 A requires ALL FOUR VBUS and ALL FOUR GND contacts paralleled in the netlist. Wiring one pair would give 1.25 A. This was already a stated netlist requirement and is now a hard one.",
+    "5 A rated against a 5 A contract is 1.0x - at the rating, not above it. That is inherent to USB-C rather than a weakness of this part: 5 A is the Type-C maximum. The design's own cable-loss finding (~5.2 A at 20 modules) sits just over it, which is an argument against running the full 20-module target continuously.",
+    "USB 2.0 only (480 Mbps), which is what this board needs - the ESP32-C6's native USB Serial/JTAG shares this connector with PD. The 24-position variants in the same series add USB4 and are not needed.",
+    "The contact-to-pad assignment does not extract from either the LCSC drawing or the Hirose catalogue - both are images. Take the pad names from the EasyEDA symbol for C3198004 when writing the netlist.",
+    "Alternatives evaluated and rejected: C7431072 (SHOU HAN TYPE-C 16PIN 5A 143) and C19189138 (hanxia, same) both solve the current problem at 5 A and $0.13 but are specified 'RATING 20V 5A' in their own datasheets. Their 100 V figure is a dielectric withstanding test, not a working rating. No other receptacle in the LCSC catalogue was found with a documented rating above 20 V."
+  ]
+}

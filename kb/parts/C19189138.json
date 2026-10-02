@@ -1,0 +1,43 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19189138",
+  "@type": "Component",
+  "lcscId": "C19189138",
+  "mpn": "HX TYPE-C 16PIN 5A 143",
+  "manufacturer": "hanxia",
+  "description": "USB-C (USB TYPE-C) Receptacle Connector 16 Position Surface Mount, Right Angle",
+  "category": "connector",
+  "package": "SMD",
+  "stock": 2185,
+  "priceUsd": 0.1309,
+  "parameters": {
+    "Protocol Standard": "USB 3.1",
+    "Number of Ports": "1",
+    "Supplementary Features": "-",
+    "Number of Contacts": "16P",
+    "Connector Type": "Type-C",
+    "Center Height": "1.68mm",
+    "Voltage Rating": "20V",
+    "Operating Temperature": "-30℃~+80℃",
+    "Length": "7.8mm",
+    "Mounting Type": "Surface Mount, Right Angle",
+    "Gender": "Female"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/545403b3f9957bf009ceb7b49a87b7f2.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - 20 V working rating, same as C7431072.",
+  "notes": [
+    "hanxia HX TYPE-C 16PIN 5A 143, an equivalent of C7431072 with an eighth of the stock. Same RATING 20V 5A. Superseded by Hirose CX90B-16P (C3198004)."
+  ]
+}

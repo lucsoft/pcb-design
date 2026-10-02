@@ -53,7 +53,7 @@ fatigue. Affected, and still to be revisited:
 | MCU | ESP32-C6-WROOM-1-N8 (C5366877) | from brief |
 | Ethernet | **W5500 module** (W5500 Lite / WIZ850io class), soldered down | the brief said W5500; this design first read that as the bare chip. A finished module carries the PHY front end, the crystal and the magnetics, which retires two blocking open questions and the hardest routing on the board |
 | Current sense | **INA226** (C49851), **low-side** | specified 0-36 V operating (40 V absolute), so on a 36 V bus there is no operating margin at all; the shunt goes in the ground return where common mode is ~0 V |
-| Module connector | **Wago picoMAX 3.5** (2091 series), 4-pole: **+36V / GND / A / B** | 10 A, push-in spring, integrated locking latch. Spring force does not relax like a screw; the latch stops it walking out. Sourced from Reichelt/Mouser, not LCSC |
+| Module connector | **Wago picoMAX 3.5** (2091 series), 4-pole: **+36V / GND / A / B** | 10 A, push-in spring, integrated locking latch. Spring force does not relax like a screw; the latch stops it walking out. Reichelt 2091-1424 board side, 2091-1104 cable side; not LCSC |
 | Data link | **differential pair**, MAX3485 (C6395158) x2 | one per channel. Removes the single-ended distance limit and the level shifting at this end |
 | Status-LED level shift | **74AHCT541** (C84548) | the SK6812 chain needs 5 V logic off a 3.3 V GPIO. Octal and only one channel used — oversized, see KB |
 
@@ -765,9 +765,24 @@ Active parts. Passives are listed below the table.
 | R1 | FRM252WFR010TN | C7419995 | 1 | 10 mΩ 1% shunt, low-side | 0.058 |
 | R2,R3 | 10 mΩ 1% ≥0.5 W | — | 2 | LM5069 current-sense. Rated for the **6.5 A worst-case trip** (0.42 W for up to one fault timeout), not the 0.059 W steady state | — |
 | R4 | 10 kΩ 0.25 W | — | 1 | bus bleeder, controller-side capacitance only | — |
-| J1 | **REJECTED** — see open question 1 | — | 1 | USB-C: C19274016 is 3.0 A / 5.0 V, needs 5 A / 36 V | — |
-| J2,J3 | Wago picoMAX 3.5 4-pole | — | 2 | module output, Reichelt/Mouser | — |
+| J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.99 |
+| J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
 | LED1-8 | SK6812MINI-E | C5149201 | 8 | status chain | 0.081 |
+
+**Not from LCSC/JLCPCB.** Three line items are hand-fitted, so the board is not
+fully JLCPCB-assemblable. Order numbers so the build is reproducible:
+
+| Ref | Part | Source | Order no. | Price |
+|---|---|---|---|---|
+| U3 | JOY-IT SBC-USR-ES1, W5500 module | Reichelt | **DEBO SPI RJ45** (art. 305766) | €12.30 |
+| J2,J3 | Wago picoMAX 3.5, pin header **angled**, 4-pole — board side | Reichelt | **WAGO 2091-1424** (art. 136753) | €0.77 |
+| — | Wago picoMAX 3.5, **spring plug** 4-pole — cable side, 2 per module hop | Reichelt | **WAGO 2091-1104** (art. 136715) | — |
+
+The straight-pin alternative is **2091-1524** (art. 136759, €3.10); angled is the
+default because the cable then leaves parallel to a wall-mounted board rather
+than standing off it. The spring plug is not a board part — it is counted here
+because a 20-module run needs 20 of them and they are easy to forget when
+ordering.
 
 Passives, standard values, final selection at layout:
 
@@ -1430,13 +1445,10 @@ would do without this cost.
 
 ### Blocking the netlist
 
-1. **The USB-C receptacle is over its ratings on both axes.** C19274016's
-   datasheet note 4-1 gives **3.0 A / 5.0 V**; the design needs **5 A at 36 V** —
-   1.67x the current rating. No adequately qualified part has been found in
-   JLCPCB's catalogue. This is the single highest-stress component on the board.
-   Whatever replaces it must be explicitly rated 5 A / 50 V for EPR, and the
-   netlist must parallel **all four VBUS and all four GND contacts** (a Type-C
-   contact is 1.25 A) and tie DP1/DN1 to DP2/DN2 for flip support.
+1. **The Ethernet module's pin 1 end and the `WT` pad.** Both are layout-time
+   checks rather than design work — confirm pin 1 from the square pad, ring out
+   `WT` to MISO — but they have to happen before the board is ordered, because
+   neither survives fabrication. See Ethernet module.
 
 2. **The module is not an LCSC/JLCPCB assembly part.** Like the picoMAX
    connectors it is sourced and fitted by hand, so the board is no longer fully
@@ -1525,6 +1537,11 @@ Kept so they are not re-opened:
 - **Channel count** — two, verified against three and four. See Why two channels.
 - **Module BOM** — extracted from the .epro2 with `tools/epro.py`. The project is
   titled V2 but is V3.
+- **USB-C receptacle** — **CX90B-16P** (C3198004), Hirose CX series, **5 A /
+  48 V AC/DC**, 16-position USB 2.0. Closes the longest-standing blocking
+  question. Note LCSC's parameter table says 20 V for it and is **wrong**; the
+  48 V comes from Hirose's own series catalogue. Reaching 5 A needs all four
+  VBUS and all four GND contacts paralleled — 1.25 A per contact.
 - **Channel switching** — one **LM5069** hot-swap controller per channel driving
   an **NSS085N100S**, after four discrete gate networks failed. Ramp, current
   limit, power limit, fast turn-off and dV/dt immunity are integrated; the

@@ -1,0 +1,43 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7431072",
+  "@type": "Component",
+  "lcscId": "C7431072",
+  "mpn": "TYPE-C 16PIN 5A 143",
+  "manufacturer": "SHOU HAN",
+  "description": "USB-C (USB TYPE-C) Receptacle Connector 16 Position Surface Mount, Right Angle",
+  "category": "connector",
+  "package": "SMD",
+  "stock": 17100,
+  "priceUsd": 0.1265,
+  "parameters": {
+    "Protocol Standard": "USB 3.1",
+    "Number of Ports": "1",
+    "Supplementary Features": "-",
+    "Number of Contacts": "16P",
+    "Connector Type": "Type-C",
+    "Center Height": "-",
+    "Voltage Rating": "20V",
+    "Operating Temperature": "-30℃~+80℃",
+    "Length": "7.35mm",
+    "Mounting Type": "Surface Mount, Right Angle",
+    "Gender": "Female"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/698d745629a652fd890a5b7613d095a3.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - 20 V working rating against a 36 V bus. Current was fine; voltage was not.",
+  "notes": [
+    "SHOU HAN TYPE-C 16PIN 5A 143. Datasheet states RATING 20V 5A. The 100V AC R.M.S. figure elsewhere in the same document is the dielectric withstanding test (1 minute), not a continuous rating - reading it as one is the trap this part invites. Superseded by Hirose CX90B-16P (C3198004) at 48V AC/DC."
+  ]
+}

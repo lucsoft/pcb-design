@@ -36,10 +36,11 @@
     "category": "manual",
     "pins": ""
   },
-  "designVerdict": "REJECTED - 3.0 A / 5.0 V rated, needs 5 A / 36 V",
+  "designVerdict": "REJECTED - 3.0 A / 5.0 V rated, needs 5 A / 36 V. Superseded by Hirose CX90B-16P (C3198004).",
   "notes": [
     "Datasheet note 4-1: CURRENT RATING 3.0 A, VOLTAGE RATING 5.0 V. The design needs 5 A at 36 V - 1.67x over on current, which was never flagged; only the voltage was. Highest-stress part on the board. A replacement must be explicitly qualified 5 A / 50 V for EPR.",
     "16-pin Type-C, $0.070, 7.9k stock. 16 pins is the minimum that carries CC1/CC2 for PD AND D+/D- for the ESP32-C6's native USB. The 6-pin parts in the catalogue are power-only and will not work here.",
-    "UNVERIFIED: whether it is rated for EPR voltages. The USB-C spec allows 50 V on VBUS for EPR, but cheap receptacles are often qualified only to 20 V. At a 36 V bus this matters. Read the datasheet before committing."
+    "UNVERIFIED: whether it is rated for EPR voltages. The USB-C spec allows 50 V on VBUS for EPR, but cheap receptacles are often qualified only to 20 V. At a 36 V bus this matters. Read the datasheet before committing.",
+    "SUPERSEDED by C3198004 (Hirose CX90B-16P), which is rated 5 A and 48 V AC/DC by its manufacturer. This part was the single highest-stress component on the board for several design rounds and is no longer fitted."
   ]
 }
