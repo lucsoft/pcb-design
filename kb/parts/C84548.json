@@ -151,5 +151,34 @@
     "CORRECTION: the earlier RECONSIDER verdict said \"the data path no longer needs it\", which was true of the module data path - that moved to MAX3485 differential - but not of the status-LED chain, which is why the README carries it as settled. The note about covering both data channels with spare capacity is also obsolete for the same reason.",
     "NOT DELETABLE BY ANY LED CHOICE. Three SK6812 variants were compared (C5149201, C2909058, C2890041) and every one wants VIH >= 0.6-0.65 x VDD, i.e. 3.0-3.25 V on a 5 V rail; the fitted SK6812-EC20 is the most permissive at 0.6 x VDD = 3.00 V, and the ESP32-C6's guaranteed V_OH of 0.8 x 3.3 = 2.64 V still does not reach it; the fitted SK6812-EC20 is the most permissive at 0.6 x VDD = 3.00 V, and the ESP32-C6's guaranteed V_OH of 0.8 x 3.3 = 2.64 V still does not reach it, against the ESP32-C6's guaranteed V_OH of 0.8 x VDD = 2.64 V. Even the most permissive is out of reach."
   ],
-  "designVerdict": "SELECTED as U9 - the SK6812 status chain needs 5 V logic from a 3.3 V GPIO. Oversized (octal, one channel used) but the cheapest available part that does the level shift."
+  "designVerdict": "SELECTED as U9 - the SK6812 status chain needs 5 V logic from a 3.3 V GPIO. Oversized (octal, one channel used) but the cheapest available part that does the level shift.",
+  "rules": [
+    {
+      "id": "vcc-decoupling",
+      "appliesTo": [
+        "VCC"
+      ],
+      "requires": "decoupling",
+      "severity": "error",
+      "note": "100 nF at the pin; C23."
+    },
+    {
+      "id": "oe0-connected",
+      "appliesTo": [
+        "OE0_N"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "active-low output enable; tie to GND or the buffer never drives."
+    },
+    {
+      "id": "oe1-connected",
+      "appliesTo": [
+        "OE1_N"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "the second active-low output enable - both halves must be enabled."
+    }
+  ]
 }

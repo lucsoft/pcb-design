@@ -1,0 +1,70 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C720477",
+  "@type": "Component",
+  "lcscId": "C720477",
+  "mpn": "TS-1088-AR02016",
+  "manufacturer": "XUNPU",
+  "description": "Tactile Switch SPST 160gf 2mm SMD (SMT) Tab 4mm x 3mm Surface Mount",
+  "category": "switch",
+  "package": "SMD,4x3mm",
+  "stock": 622830,
+  "priceUsd": 0.0528,
+  "parameters": {
+    "with Bracket": "Without Bracket",
+    "Length": "3.9mm",
+    "Height": "2mm",
+    "Operating Force": "1.6N",
+    "Voltage Rating": "12V",
+    "Switching Life": "100,000 cycles",
+    "Width": "3mm",
+    "Operating Temperature": "-30℃~+80℃",
+    "Termination Style": "SMD(SMT) Tab",
+    "Actuator Style": "Round Button",
+    "With Lamp": "-",
+    "Mounting Type": "Surface Mount,Vertical",
+    "Circuit": "SPST",
+    "Actuator/Cap Color": "Black",
+    "IP Rating": "-",
+    "Contact Current": "50mA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0475ac02febf455ca9ddcfb380b0df0d.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "3",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "4",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "SPST tactile switch, two internally-paired contacts: pads 1/2 common, pads 3/4 common"
+  },
+  "designVerdict": "SELECTED as SW1 (BOOT, GPIO9 to GND) and SW2 (EN to GND). 3.9 x 3 mm SMD tactile.",
+  "notes": [
+    "Recovery hardware. Programming is over the ESP32-C6 native USB-Serial-JTAG on the same USB-C connector that carries PD, so these two are only needed when the firmware will not come up: SW1 holds GPIO9 low at reset to enter the download ROM, SW2 resets.",
+    "SPST with two pads per contact. Either pad of a pair may be wired; both are given a pin entry so a netlist that uses all four does not trip K3."
+  ]
+}

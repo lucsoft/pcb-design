@@ -55,7 +55,7 @@ fatigue. Affected, and still to be revisited:
 | MCU | ESP32-C6-WROOM-1-N8 (C5366877) | from brief |
 | Ethernet | **W5500 module** (W5500 Lite / WIZ850io class), soldered down | the brief said W5500; this design first read that as the bare chip. A finished module carries the PHY front end, the crystal and the magnetics, which retires two blocking open questions and the hardest routing on the board |
 | Current sense | **INA226** (C49851), **low-side** | specified 0-36 V operating (40 V absolute), so on a 36 V bus there is no operating margin at all; the shunt goes in the ground return where common mode is ~0 V |
-| Module connector | **Wago picoMAX 3.5** (2091 series), 4-pole: **+36V / GND / A / B** | 10 A, push-in spring, integrated locking latch. Spring force does not relax like a screw; the latch stops it walking out. Reichelt 2091-1424 board side, 2091-1104 cable side; not LCSC |
+| Module connector | **Wago picoMAX 3.5** (2091 series), 4-pole: **+36V / LED_RTN / A / B** | 10 A, push-in spring, integrated locking latch. Spring force does not relax like a screw; the latch stops it walking out. Reichelt 2091-1424 board side, 2091-1104 cable side; not LCSC |
 | Data link | **differential pair**, MAX3485 (C6395158) x2 | one per channel. Removes the single-ended distance limit and the level shifting at this end |
 | Status-LED level shift | **74AHCT541** (C84548) | the SK6812 chain needs 5 V logic off a 3.3 V GPIO. Octal and only one channel used — oversized, see KB |
 
@@ -80,8 +80,8 @@ flowchart LR
 
     subgraph CH["output channels"]
         direction TB
-        SW1["ch1 switch<br/>+ ramp"] --> CN1["picoMAX 4-pole<br/>+36V / GND / A / B"] --> M1["10 modules"]
-        SW2["ch2 switch<br/>+ ramp"] --> CN2["picoMAX 4-pole<br/>+36V / GND / A / B"] --> M2["10 modules"]
+        EF1["ch1 eFuse<br/>+ ramp"] --> CN1["picoMAX 4-pole<br/>+36V / LED_RTN / A / B"] --> M1["10 modules"]
+        EF2["ch2 eFuse<br/>+ ramp"] --> CN2["picoMAX 4-pole<br/>+36V / LED_RTN / A / B"] --> M2["10 modules"]
     end
 
     RAILS["TPS54360B -> 5 V<br/>SY8089 -> 3.3 V"]
@@ -225,7 +225,7 @@ That is a real gain over the ~5 m the single-ended link would have been held to.
 
 Practice for the pair:
 
-- **Twist A and B together.** The connector pinout is +36V / GND / A / B so the
+- **Twist A and B together.** The connector pinout is +36V / LED_RTN / A / B so the
   pair is adjacent and away from the power conductor.
 - **120 Ω termination at the far end**, on the first converter board.
 - Keep the pair away from the +36 V conductor and its converter switching noise.
@@ -1058,11 +1058,12 @@ Active parts. Passives are listed below the table.
 | D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
 | L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.228 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
-| R1 | FRM252WFR010TN | C7419995 | 1 | 10 mΩ 1% shunt, low-side | 0.058 |
-| R2 | 10 kΩ 0.25 W 1206 | — | 1 | bus bleeder, jellybean, final selection at layout | — |
+| R1,R2 | see Passives | — | — | the shunt and the bleeder are listed with the other passives below | — |
 | J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.99 |
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
 | LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.111 |
+| SW1,SW2 | TS-1088-AR02016 | C720477 | 2 | **BOOT** (GPIO9 to GND) and **EN** (reset) — recovery only; programming is over the ESP32-C6's native USB on J1 | 0.023 |
+| TP1-TP3 | — | — | 3 | UART0 TX / RX / GND, bare pads. A footprint, not a part: the console is a fallback for when USB enumeration itself is what is broken | — |
 
 **Not from LCSC/JLCPCB.** Two board items are hand-fitted — the Ethernet module
 and the picoMAX headers — so the board is not fully JLCPCB-assemblable. The third
@@ -1081,26 +1082,63 @@ than standing off it. The spring plug is not a board part — it is counted here
 because a 20-module run needs 20 of them and they are easy to forget when
 ordering.
 
-Passives, standard values, final selection at layout:
+Passives. Every one is a stocked LCSC part with a knowledge-base record — the importer resolves by `Supplier Part` alone, so a passive without a C-number cannot go into the netlist at all, and omitting it instead trips the decoupling and pull-up rules that check for it.
 
-- **120 Ω** differential termination (far end, on the converter board — not here)
-- **910 kΩ x3** on HUSB238A ADDR, DEBUG_N **and EN_HVDCP/OUT1**, per datasheet
-  p.4-5 and p.11 Table 7, to keep standby current low. Three parts, not two —
-  all three pins are dual-function and become push-pull outputs after
-  initialisation, which is why the resistor cannot be omitted on any of them
-- **TPS16630 support, per channel**: R_ILIM **3.24 kΩ** 1%, C_dVdT **220 nF**,
-  UVLO/OVP string **732 kΩ / 255 kΩ / 30.0 kΩ** 1%, C_IN **100 nF** ≥100 V. All
-  derived in Channel switching and inrush
-- **10 kΩ** pull-down on each TPS16630 SHDN pin plus **1 kΩ** in series with the
-  driving GPIO. The pull-down makes reset the off state; the series resistor lets
-  the FAULT transistor override a driven-high GPIO. 100 kΩ would not be enough —
-  see Enable
-- **10 kΩ pull-down** on each FAULT interlock gate — a pull-*up* here would latch
-  both channels into shutdown permanently, and the HUSB238A table's "BSS138 gate
-  pull-up" row belongs to the VBUS follower, which is a different one of the three
-  BSS138s, **4.7 kΩ** I2C pull-ups, **10 kΩ** on
-  INT_N, **10 kΩ** on the shared PGD line
-- **100 nF 0402** per supply pin, plus bulk per rail
+**Resistors** — 44 parts, 0402 1% unless stated.
+
+| Ref | Value | LCSC | Role |
+|---|---|---|---|
+| R1 | **10 mΩ 1% 2512** | C7419995 | low-side current-sense shunt, shared return |
+| R2 | **10 kΩ 1206 250 mW** | C17902 | 36 V bus bleeder — 130 mW, which is why it is not an 0402 |
+| R3,R4 | **3.24 kΩ 1% 0402** | C11457 | R_ILIM, one per eFuse → 5.56 A |
+| R5,R6 | **732 kΩ 1% 0402** | C5159692 | R_UV1, upper leg of each eFuse divider |
+| R7,R8 | **255 kΩ 1% 0402** | C270623 | R_UV2, between the UVLO and OVP taps |
+| R9,R10 | **30.0 kΩ 1% 0402** | C2909347 | R_UV3, bottom leg — sets OVP |
+| R11,R12 | **1 kΩ 1% 0402** | C11702 | GPIO → SHDN series, lets FAULT override a driven-high GPIO |
+| R13,R14 | **10 kΩ 1% 0402** | C25744 | SHDN pull-down — makes reset the off state |
+| R15,R16 | **10 kΩ 1% 0402** | C25744 | FAULT interlock gate pull-down (a pull-*up* latches both channels off) |
+| R17,R18 | **4.7 kΩ 1% 0402** | C25900 | I²C pull-ups, SDA and SCL |
+| R19 | **10 kΩ 1% 0402** | C25744 | HUSB238A INT_N pull-up |
+| R20 | **10 kΩ 1% 0402** | C25744 | shared PGOOD pull-up (both eFuses wire-ORed) |
+| R21-R23 | **910 kΩ 1% 0402** | C25800 | HUSB238A ADDR, DEBUG_N, EN_HVDCP/OUT1 — the datasheet's 900 kΩ is not an E96 value |
+| R24 | **100 kΩ 1% 0402** | C25741 | TPS54360B RT, ~1 MHz |
+| R25 | **53.6 kΩ 1% 0402** | C53398 | TPS54360B feedback, upper |
+| R26 | **10.2 kΩ 1% 0402** | C11660 | TPS54360B feedback, lower |
+| R27 | **4.7 kΩ 1% 0402** | C25900 | TPS54360B COMP series |
+| R28 | **100 kΩ 1% 0402** | C25741 | SY8089 feedback, upper |
+| R29 | **22.1 kΩ 1% 0402** | C43473 | SY8089 feedback, lower |
+| R30 | **100 kΩ 1% 0402** | C25741 | SY8089 EN pull-up — the datasheet forbids leaving it floating |
+| R31 | **470 kΩ 1% 0402** | C25790 | bus-voltage ADC divider, upper |
+| R32 | **27 kΩ 1% 0402** | C25771 | bus-voltage ADC divider, lower → 36 V reads 1.96 V |
+| R33,R34 | **499 Ω 1% 0402** | C4125 | SK6812 data series, in and out of the chain |
+| R35-R38 | **33 Ω 1% 0402** | C25105 | MAX3485 A/B series — slows the edge without disturbing the 120 Ω far-end termination |
+| R39 | **10 kΩ 1% 0402** | C25744 | ESP32-C6 EN pull-up (with C17 forms the reset delay) |
+| R40 | **10 kΩ 1% 0402** | C25744 | GPIO8 strapping pull-up |
+| R41 | **10 kΩ 1% 0402** | C25744 | GPIO15 strapping pull-up — the pin may not be left high-Z |
+| R42,R43 | **10 kΩ 1% 0402** | C25744 | MAX3485 DI pull-down, one per transceiver |
+| R44 | **10 kΩ 1% 0402** | C25744 | BSS138 follower gate pull-up |
+
+**Capacitors** — 33 parts.
+
+| Ref | Value | LCSC | Role |
+|---|---|---|---|
+| C1,C2 | **220 nF 50 V X7R 0603** | C64705 | C_dVdT, one per eFuse — sets the ramp |
+| C3,C4 | **100 nF 100 V X7R 0805** | C28233 | C_IN at each eFuse — §10.2.2 minimum, at a rating the 36 V bus needs |
+| C5 | **100 nF 50 V X7R 0402** | C1525 | TPS54360B BOOT — required for operation |
+| C6 | **33 nF 50 V X7R 0402** | C106862 | TPS54360B COMP series |
+| C7 | **150 pF 50 V C0G 0402** | C1527 | TPS54360B COMP parallel |
+| C8,C33 | **4.7 µF 100 V X7R 1210** | C2840282 | 36 V bus bulk, one at the converter and one at the USB-C inlet |
+| C9,C14 | **100 nF 50 V X7R 0402** | C1525 | regulator input decoupling |
+| C10,C11 | **10 µF 50 V X5R 1206** | C13585 | TPS54360B output |
+| C12,C13 | **10 µF 25 V X5R 0805** | C15850 | SY8089 input and output |
+| C15 | **22 µF 25 V X5R 0805** | C45783 | ESP32-C6 local bulk — the 382 mA TX peak |
+| C16,C19,C20 | **100 nF 50 V X7R 0402** | C1525 | ESP32-C6, HUSB238A and INA226 supply decoupling |
+| C17,C18 | **1 µF 25 V X5R 0402** | C52923 | ESP32-C6 EN delay, and HUSB238A VDD |
+| C21,C22 | **100 nF 50 V X7R 0402** | C1525 | MAX3485 supply decoupling, one per transceiver |
+| C23,C32 | **100 nF 50 V X7R 0402** | C1525 | 74AHCT541 and the Ethernet module's 3V3 feed |
+| C24-C31 | **100 nF 50 V X7R 0402** | C1525 | one per SK6812 — the datasheet calls the inter-LED decoupling essential |
+
+Not on this board: the **120 Ω** differential termination belongs at the far end of each chain, on the first converter board — see Differential link.
 
 ## Network protocol
 
@@ -1215,7 +1253,7 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7045 mm2.**
 
-Component area estimates at **~2345 mm2** — the Ethernet module made the board
+Component area estimates at **~2375 mm2** — which now counts the passives individually rather than as an allowance, the itemised list being in the BOM.  — the Ethernet module made the board
 slightly *bigger*, 575 mm2 against the ~496 it replaced, and an earlier 2310
 figure predates that swap. At 45% utilisation (2-layer, relaxed) that is roughly
 **72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
@@ -1229,6 +1267,8 @@ The largest items are where any further shrink comes from:
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
 | 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
+| 77 passives | ~205 | 55 are 0402 at ~1.5 mm² with pads; the outliers are the 2512 shunt (25), two 1210 bulk (8 each) and six 1206 (6 each) |
+| SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
 
 **The PPTCs are already gone** — there is no PPTC line in the BOM, and this
@@ -1330,10 +1370,12 @@ and this constraint replaces it.
 
 **The low-side shunt forces a split return, and nothing else in this document
 says so.** R1 sits in the ground return so that both channels' current passes
-through it before joining board ground. If the netlist calls J2/J3 pin 2 `GND` —
-which is what the connector pinout says in six places — the shunt is shorted by
-the ground pour and **the current sense reads zero**. The output connectors'
-return must be its own net, joined to board ground only at the shunt. **No ERC
+through it before joining board ground. If the netlist calls J2/J3 pin 2 `GND`,
+the shunt is shorted by the ground pour and **the current sense reads zero**. The
+output connectors' return is therefore a net of its own, **`LED_RTN`**, joined to
+board ground only at the shunt — and the connector pinout is written
+`+36V / LED_RTN / A / B` everywhere in this document for exactly that reason. It
+used to say `GND`, which is the name whoever wrote the netlist would have typed. **No ERC
 rule catches this** - S6 sees a part shorted by its own two pins, not a connector
 wired to the wrong net one component away - so it is a layout-discipline item
 with no automated backstop.
@@ -2192,7 +2234,7 @@ build.
 Kept so they are not re-opened:
 
 - **Module connector** — Wago picoMAX 3.5 (2091 series), 4-pole, 10 A per
-  contact, pinout **+36V / GND / A / B**. Push-in spring and an integrated
+  contact, pinout **+36V / LED_RTN / A / B**. Push-in spring and an integrated
   locking latch, chosen for the vibration environment. At 10 A the worst case is
   28% of rating, so the connector stopped being a binding constraint.
   (Supersedes the Wurth WR-PHD 2.54 mm at 3 A, and the Micro-Fit alternative.)

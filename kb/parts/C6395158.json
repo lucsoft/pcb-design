@@ -93,5 +93,25 @@
     "LCSC PARAMETERS ARE WRONG HERE, and kb.py add will reimpose them on every refresh: 'Quiescent Supply Current 500uA' is 4x optimistic (p.4 gives I_CC max 2000 uA with DE high, 1500 uA with DE low; the 500 uA is p.1 prose for a DISABLED driver), and 'Features: Enable shutdown' has no basis - there is no shutdown mode, no shutdown current and no RE/DE combination with a reduced-current rating anywhere in the document. 'Data Rate 12Mbps' is the TYP column; the guaranteed figure is the 10 Mbps minimum.",
     "NO GUARANTEES AWAY FROM 25 C. Both the DC and AC tables are headed 'VCC = 3.3V, TA = 25C'; Maxim's original specifies over TMIN-TMAX. The -40/+85 C in Recommended Operating Conditions is a functional range with nothing electrical behind it. There is also no theta-JA, no package derating and no thermal-shutdown trip point despite p.1 claiming the feature - so a junction-temperature calculation on this part cannot be closed from its own datasheet, on a board whose thermal section already calls the enclosure case over budget.",
     "V_OD is specified only at 50 ohm (1.0 V min) and 27 ohm (0.6 V min). There is no 54 ohm or 120 ohm figure, the two minima are not physically self-consistent, and p.9's prose claim of '>1.5 V at 54 ohm' contradicts the p.4 table. The link works - 1.0 V against a +/-200 mV threshold - by inference, not by spec. The argument that actually holds for WS2812 timing is t_SKEW 10 ns max against a +/-150 ns window, not the data-rate headline."
+  ],
+  "rules": [
+    {
+      "id": "vcc-decoupling",
+      "appliesTo": [
+        "VCC"
+      ],
+      "requires": "decoupling",
+      "severity": "error",
+      "note": "100 nF at the pin; C21/C22."
+    },
+    {
+      "id": "de-tied",
+      "appliesTo": [
+        "DE"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "driver enable must be driven or strapped; this design ties DE high and RE low, so the line is never idle."
+    }
   ]
 }

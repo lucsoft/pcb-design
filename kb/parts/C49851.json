@@ -97,5 +97,43 @@
     "Used LOW SIDE instead - shunt in the ground return, common mode near 0 V, so the 40 V rating is irrelevant. Costs the ability to detect an output short to ground, and lifts the load ground by 50 mV at 5 A through a 10 mOhm shunt.",
     "The 85 V parts that would have allowed high-side sensing (INA228, INA238) are both at zero stock at LCSC, which is what forced this. Low-side turned out to be the better answer anyway."
   ],
-  "designVerdict": "SELECTED - current sense, LOW SIDE"
+  "designVerdict": "SELECTED - current sense, LOW SIDE",
+  "rules": [
+    {
+      "id": "vs-decoupling",
+      "appliesTo": [
+        "VS"
+      ],
+      "requires": "decoupling",
+      "severity": "error",
+      "note": "datasheet: a 0.1 uF bypass at VS. C20."
+    },
+    {
+      "id": "alert-pullup",
+      "appliesTo": [
+        "ALERT"
+      ],
+      "requires": "pullup",
+      "severity": "error",
+      "note": "open-drain output - it cannot assert high without R19's class of pull-up. Configured as a shunt-overvoltage comparator it is the only sub-millisecond hardware shed path on the board."
+    },
+    {
+      "id": "a0-tied",
+      "appliesTo": [
+        "A0"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "address pins set the I2C address and must be strapped, not left floating."
+    },
+    {
+      "id": "a1-tied",
+      "appliesTo": [
+        "A1"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "address pins set the I2C address and must be strapped, not left floating."
+    }
+  ]
 }

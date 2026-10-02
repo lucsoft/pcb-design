@@ -93,5 +93,34 @@
     "RETIRED REASON: an earlier note argued the low-bus sag is self-correcting because the modules' XL1509 is also in pass-through at 5 V so WS2812 thresholds track. That tracking argument is void - the controller's 5 V rail and the modules' 5 V rail share no signal path, only a 3.3 V differential pair. What the sag actually threatens is this board's own 74AHCT541 supply minimum, which the rail reaches exactly at 4.50 V.",
     "RESOLVED: the hold-up capacitor and its series Schottky are deleted from the design, so the bus feeds VIN directly and the dropout table above is the operative one. The Schottky would have cost 0.35-0.45 V and put VIN under this part's 4.5 V minimum at the bottom of vSafe5V."
   ],
-  "designVerdict": "SELECTED - bus 5-36 V to the 5 V rail"
+  "designVerdict": "SELECTED - bus 5-36 V to the 5 V rail",
+  "rules": [
+    {
+      "id": "boot-cap",
+      "appliesTo": [
+        "BOOT"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "datasheet p.26: the BOOT capacitor must be connected for proper operation - it is the high-side gate supply, not an option. C5, 100 nF."
+    },
+    {
+      "id": "vin-decoupling",
+      "appliesTo": [
+        "VIN"
+      ],
+      "requires": "decoupling",
+      "severity": "error",
+      "note": "high-side input ceramic; C9 plus the C8 bulk."
+    },
+    {
+      "id": "comp-connected",
+      "appliesTo": [
+        "COMP"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "the loop compensation network is external; C6/C7/R27."
+    }
+  ]
 }

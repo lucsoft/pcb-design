@@ -170,5 +170,43 @@
     "CONSTANT INRUSH IS THE REAL WIN. Equations 1 and 2 have no V_IN term in the current, so 0.72 A holds at 5 V as at 36 V and both channels can be released together (1.44 A against a 5 A contract). Ramp time has no C_OUT term either - 165 ms at 10 or 20 modules - BUT that is a 25 C figure: Eq. 3 puts the inrush power at 13 W per channel, and above the Figure 13 boundary the thermal regulation loop overrides the slew and starts a 1.25 s timeout. At 45 C ambient regulation will engage.",
     "THE OVP RELEASE THRESHOLD STRADDLES THE MAXIMUM BUS. V(OVPF) 1.09/1.122/1.15 V puts recovery at 37.0-39.0 V on the comparator spread and 36.2-39.7 V with 1% resistors, against a compliant source that may sit at 37.8 V indefinitely. A low-corner part that trips would not re-enable on a healthy bus. Raising the trip raises the release with it, so the recovery path is firmware cycling SHDN - which the datasheet states resets a latched device - not a divider retune.",
     "FIGURE 16'S 15 mF IS AT 24 V WITH dVdT OPEN, i.e. 4.32 J. Ours is 2.14 J at 3.3 mF and 36 V, so 2.0x inside TI's demonstrated case rather than the 4x a capacitance comparison suggests - and 1.0x at the 20-module growth case. The thermal loop responds to energy and power, not farads."
+  ],
+  "rules": [
+    {
+      "id": "p-in-tied",
+      "appliesTo": [
+        "P_IN"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "datasheet p.25 §10.2.1: 'Always connect P_IN to IN directly'. P_IN is the sense tap for the internal FET; leaving it off IN makes the current limit read nothing."
+    },
+    {
+      "id": "in-decoupling",
+      "appliesTo": [
+        "IN"
+      ],
+      "requires": "decoupling",
+      "severity": "error",
+      "note": "datasheet §10.2.2: a minimum of 0.1 uF at IN. Fitted as C3/C4, 100 nF 100 V."
+    },
+    {
+      "id": "gnd-not-only-pad",
+      "appliesTo": [
+        "GND"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "datasheet p.25: do not use the PowerPAD as the only electrical connection to GND. The GND pin is wired as well as the pad."
+    },
+    {
+      "id": "shdn-defined",
+      "appliesTo": [
+        "SHDN"
+      ],
+      "requires": "connected",
+      "severity": "error",
+      "note": "floating SHDN is undefined. R13/R14 pull it down so reset is the off state; the GPIO drives it through R11/R12."
+    }
   ]
 }
