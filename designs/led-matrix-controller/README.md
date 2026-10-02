@@ -1635,6 +1635,37 @@ PARLIO unit is the clean answer if the status chain ever needs to join them.
 
 ## Recovery and debug
 
+### Flashing: plug in the USB-C port, same as a devkit
+
+GPIO12/13 carry the ESP32-C6's **native USB Serial/JTAG** and go straight to the
+connector's D+/D−, so a host sees the chip without a bridge chip and without
+buttons. A factory-fresh part enumerates from ROM; after that `esptool` puts it
+into download mode over the same link. The HUSB238A's own D+/D− are deliberately
+unconnected, so nothing contends for the pair.
+
+**Bus-powered current is the one number that differs from a devkit**, because
+this board reaches 3.3 V through two conversions rather than one LDO:
+
+| | from USB 5 V | legacy USB-A (500 mA) |
+|---|---|---|
+| Flashing — WiFi off, Ethernet idle | **~80 mA** | 16% |
+| Full operation — WiFi TX peak + Ethernet | **~464 mA** | **93%** |
+
+Flashing is trivially within any port. Running the whole board from a laptop is
+not: 464 mA against a legacy 500 mA port is 93%, and that is before the status
+LEDs. On a USB-C host the default Rp advertises at least 1.5 A and it is a
+non-issue; on an old USB-A port, bring up WiFi *or* Ethernet, not both.
+
+**The LED channels stay dark on USB power, by design.** The LM5069 UVLO does not
+release until ~28 V, so a 5 V bus holds both channel switches off no matter what
+firmware does. That is what makes it safe to develop with the wall connected.
+
+**No PD contract forms on a PC port.** The HUSB238A presents Rd and stays idle
+until firmware pulls EN_N low; a non-PD host simply never answers, and the bus
+stays at vSafe5V. Nothing needs disabling to flash.
+
+### Recovery
+
 Absent from the design and worth fixing before layout: there is **no way to
 recover the board if firmware misbehaves**. Native USB Serial/JTAG covers normal
 flashing, but it lives on GPIO12/13 and disappears the moment firmware
