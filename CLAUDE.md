@@ -69,6 +69,18 @@ One part, one check:
 true stock; `kb.py list` then shows it. Stock in jlcsearch output is a hint, not
 a fact.
 
+**Check the whole BOM at once before ordering, not part by part.**
+
+    ./tools/stock.py designs/<name>/README.md    # every C-number the doc names
+    ./tools/stock.py --kb                        # every part in the knowledge base
+    ./tools/stock.py --refresh <file>            # also write stock back into kb/
+
+Exit status is 1 if anything is at zero, so it gates a BOM the way `erc.py`
+gates a netlist. This exists because a sourcing pass that trusted the mirror put
+**five dead part numbers into a BOM at once** — including the 100 nF 0402 used in
+eighteen places, which the mirror listed at six figures and the live endpoint at
+zero. One part checked by hand proves nothing about the other fifty.
+
 The **`jlcpcb` MCP server is the right tool for parametric search** — filter by
 voltage, current, package, stock, basic-tier. The keyword APIs above cannot do
 that, and relying on them means guessing part numbers: doing so here produced a
@@ -269,6 +281,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets)
     │   ├── plot.py            chart helper: palette and house style
     │   ├── stale.py           find superseded values after a numeric change
+    │   ├── stock.py           check a BOM against live LCSC stock
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
     └── tests/test_erc.py      regression tests
 
