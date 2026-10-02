@@ -328,15 +328,30 @@ materials** -- the artefact you order from -- pointing at the section that
 disagreed with it.
 
 Prose has no type checker, so this is the substitute. It greps `designs/`,
-`kb/` and `rules/` and prints every hit with context. A hit is not automatically a bug:
-the same digits appear legitimately elsewhere, and
+`kb/` and `rules/` and prints every hit with context. A hit is not automatically
+a bug -- the same digits appear legitimately elsewhere. Adjudicate each one;
+require zero unexplained hits.
+
+**Retire a value in the commit message, not in the document.** An earlier
+version of this file said the opposite: that
 
 > An earlier version of this section said 100 W, which was wrong by 1.4x because
 > it mistook the BV_DSS wall for the power line.
 
-is the *correct* way to retire a value -- it teaches the next reader why the
-obvious reading is wrong. What the tool buys is that no occurrence goes unseen.
-Adjudicate each one; require zero unexplained hits.
+belonged in the prose, because it teaches the next reader why the obvious
+reading is wrong. It does teach that, and it cost more than it was worth. Over
+five review cycles this design accumulated more than twenty such notes, and the
+effect is that **every corrected value appears twice** -- once as the current
+figure and once as the retired one. `stale.py` flags both, a reviewer reading
+for contradictions finds both, and the document grew 15% while the signal got
+worse rather than better.
+
+So: the document states the current value and nothing else. The *why it is not
+the obvious value* goes in the commit body, which is already the right length
+for it and is what `git log -S '<value>'` searches. The one exception is a
+correction a reader would otherwise re-make while using the document -- a
+datasheet whose own prose contradicts its equation tags, say. That is not
+history, it is a live trap, and it stays.
 
 Commit messages follow the nixpkgs convention used in the home-manager
 repository:
