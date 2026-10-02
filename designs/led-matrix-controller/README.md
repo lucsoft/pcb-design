@@ -283,6 +283,23 @@ the first:
 instantaneously — which is what makes a predictive limiter viable at all, and is
 worth stating because the earlier wording argued the opposite way.
 
+**And "61% brightness" is not 61% of the current, continuously.** The WS2812
+dims by duty-cycling its constant-current sinks at roughly **400 Hz**, so at 61%
+a module draws its *full-white* 3.98 A for 61% of each 2.5 ms period and nothing
+for the rest. What reaches the bus is set by a current divider: the channel's
+3.3 mF bank is **0.121 Ω** at 400 Hz against roughly **0.35 Ω** of cable, switch
+and sense resistance, so the bank absorbs about **74%** of the swing and the bus
+sees the remaining quarter — on the order of **±0.5 A per channel** of 400 Hz
+ripple on top of the average.
+
+Every current figure in this document is a frame average, which is the right
+basis for the thermal and contract budgets and the wrong one for the INA226's
+alert threshold and for anything about PD source behaviour. **Whether the ripple
+adds or averages across a chain depends on whether the modules' PWM phases stay
+correlated** — they re-latch every frame, so they plausibly do — and nothing here
+establishes which. Treat ±0.5 A as the working figure and the correlation as
+unverified.
+
 **The INA226 is the slow loop**: calibrating the model, noticing the module
 count changed, and acting as a safety net. Not the first line of defence.
 
