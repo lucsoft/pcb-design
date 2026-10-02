@@ -64,6 +64,6 @@
     "VCE is 9.8 V in normal operation and 31.9 V during a 58.1 V TVS clamp, against 160 V. The BSS138's 50 V was only 1.6x that event.",
     "Base current is the cost: 13 uA at hFE 60, which R44 must supply. R44 is 4.7 kOhm rather than 10 kOhm so that IR drop is 63 mV instead of 133 mV - 70 mV of the 12 V margin, for 37 mW of board heat.",
     "THE ONLY V_BE FIGURE IN THE DATASHEET IS V_BE(sat) <= 1.0 V at I_C = 10 mA with a forced beta of 10. That is deep saturation and does NOT bound the active-region value at 800 uA. Do not reach for it.",
-    "The transistor never saturates here: R44 is the only path into the base, so the base sits below the collector by exactly I_B x R44 ~ 50 mV at every bus voltage, pinning V_BC a hair negative. Always just inside the active region, which is what makes the V_BE assumption applicable."
+    "The transistor never saturates here: R44 is the only path into the base, so on any contract the Zener does not clamp the base sits below the collector by exactly I_B x R44 ~ 63 mV (at hFE 60; 47 mV at the datasheet's 80 min). At 28 V and 36 V the clamp holds the base 7-10 V below the collector instead - the same conclusion with more room. V_BC is never positive, so the part is always inside the active region, which is what makes the V_BE assumption applicable."
   ]
 }
