@@ -27,81 +27,126 @@
     {
       "number": "A1",
       "name": "GND",
-      "type": "power_in"
+      "type": "power_in",
+      "contact": "A1"
     },
     {
       "number": "A4",
       "name": "VBUS",
       "type": "power_in",
-      "vMax": 48.0
+      "vMax": 48.0,
+      "contact": "A4"
     },
     {
       "number": "A5",
       "name": "CC1",
-      "type": "bidirectional"
+      "type": "bidirectional",
+      "contact": "A5"
     },
     {
       "number": "A6",
       "name": "DP1",
-      "type": "bidirectional"
+      "type": "bidirectional",
+      "contact": "A6"
     },
     {
       "number": "A7",
       "name": "DN1",
-      "type": "bidirectional"
+      "type": "bidirectional",
+      "contact": "A7"
+    },
+    {
+      "number": "A8",
+      "name": "SBU1",
+      "type": "bidirectional",
+      "contact": "A8"
     },
     {
       "number": "A9",
       "name": "VBUS",
       "type": "power_in",
-      "vMax": 48.0
+      "vMax": 48.0,
+      "contact": "A9"
     },
     {
       "number": "A12",
       "name": "GND",
-      "type": "power_in"
+      "type": "power_in",
+      "contact": "A12"
     },
     {
       "number": "B1",
       "name": "GND",
-      "type": "power_in"
+      "type": "power_in",
+      "contact": "B1"
     },
     {
       "number": "B4",
       "name": "VBUS",
       "type": "power_in",
-      "vMax": 48.0
+      "vMax": 48.0,
+      "contact": "B4"
     },
     {
       "number": "B5",
       "name": "CC2",
-      "type": "bidirectional"
+      "type": "bidirectional",
+      "contact": "B5"
     },
     {
       "number": "B6",
       "name": "DP2",
-      "type": "bidirectional"
+      "type": "bidirectional",
+      "contact": "B6"
     },
     {
       "number": "B7",
       "name": "DN2",
-      "type": "bidirectional"
+      "type": "bidirectional",
+      "contact": "B7"
+    },
+    {
+      "number": "B8",
+      "name": "SBU2",
+      "type": "bidirectional",
+      "contact": "B8"
     },
     {
       "number": "B9",
       "name": "VBUS",
       "type": "power_in",
-      "vMax": 48.0
+      "vMax": 48.0,
+      "contact": "B9"
     },
     {
       "number": "B12",
       "name": "GND",
-      "type": "power_in"
+      "type": "power_in",
+      "contact": "B12"
     },
     {
-      "number": "S1",
+      "number": "0",
       "name": "SHELL",
-      "type": "passive"
+      "type": "passive",
+      "contact": "shield tab"
+    },
+    {
+      "number": "1",
+      "name": "SHELL",
+      "type": "passive",
+      "contact": "shield tab"
+    },
+    {
+      "number": "2",
+      "name": "MID1",
+      "type": "passive",
+      "contact": "mid-plate tab"
+    },
+    {
+      "number": "3",
+      "name": "MID1",
+      "type": "passive",
+      "contact": "mid-plate tab"
     }
   ],
   "provenance": {
@@ -111,7 +156,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "Hirose CX series catalogue, Product Specifications block: power contacts named A1/A4/A9/A12/B1/B4/B9/B12 at 1.25 A each, B5 is VCONN on a plug and CC2 on a receptacle - this is a receptacle, so the pin map below reads B5 = CC2. USB Type-C 16-position contact set. NOTE: these are CONTACT designations; the EasyEDA symbol pad numbers must be reconciled at netlist time"
+    "pins": "EasyEDA Pro symbol CX90B-16P read with tools/eda.py (pin numbers); Hirose CX series catalogue Product Specifications (names, ratings). The symbol numbers the 16 signal contacts by Hirose designation A1..B12, so those keys need no translation - but it numbers the shield tabs 0 and 1 and the mid-plate tabs 2 and 3, which no datasheet pin table states. B5 is VCONN on a plug and CC2 on a receptacle; this is a receptacle, so B5 = CC2."
   },
   "designVerdict": "SELECTED as J1, the USB-C receptacle. Resolves the longest-standing blocking open question: 5 A and 48 V AC/DC rated, against a 5 A / 37.8 V requirement.",
   "notes": [

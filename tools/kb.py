@@ -296,9 +296,17 @@ def cmd_check() -> int:
 
 
 def parse_pin_spec(spec: str) -> dict:
-    """Parse `number:name:type[:vmax=V][:vmin=V][:imax=mA]`.
+    """Parse `number:name:type[:vmax=V][:vmin=V][:imax=mA][:contact=D]`.
 
     Example: 2:VOUT:power_out:vmax=7.0
+
+    `number` is the pin number the **EasyEDA symbol** uses, because that is
+    what a netlist keys `pins` by. `contact` is the designation printed on the
+    part or given in its datasheet, where the two differ -- the WIZ850io's
+    header pins are silkscreened `J1-1 ... J2-6` and numbered 1-12 by the
+    symbol, in opposite directions on the J2 side. Recording both is what lets
+    a netlist be written from the symbol and a board still be assembled from
+    the silkscreen.
     """
     parts = spec.split(":")
     if len(parts) < 3:
@@ -313,6 +321,11 @@ def parse_pin_spec(spec: str) -> dict:
             raise ValueError(f"'{extra}' should look like vmax=7.0")
         key, _, val = extra.partition("=")
         key = key.strip().lower()
+        if key == "contact":
+            # Free text, not a measurement: it is a designation like "J1-1" or
+            # "A5", so it must not go through float().
+            pin["contact"] = val.strip()
+            continue
         field = {"vmax": "vMax", "vmin": "vMin", "imax": "iMaxMa"}.get(key)
         if not field:
             raise ValueError(f"unknown pin attribute '{key}'")
