@@ -1104,9 +1104,26 @@ module without it would be useless — and it sits exactly where both official
 variants put it. That is sound but weaker than a datasheet line, so it carries
 provenance `inferred` in the knowledge base.
 
-Two checks at layout, each worth a minute: confirm **pin 1 from the square pad**
-rather than from reading direction, and **ring out `WT` to the W5500's MISO**.
-Both guard the one error class that survives fabrication.
+**Neither WIZnet's documentation nor the LCSC datasheet states which physical
+end is pin 1** — the wiki page carries a pinmap image and links an external
+dimension PDF, and the LCSC file is an export of that page. So the handedness of
+the clone against the official footprint cannot be settled on paper.
+
+It can be settled with a multimeter in under a minute, with no power applied.
+**All grounds are common**, so ringing J2 position 1 against the two G pads on J1
+identifies which end of J1 is the ground end — and that, with the signal order
+already read off the silkscreen, fixes the orientation completely.
+
+**And the layout should make a mismatch visible rather than invisible.** Put the
+signal name next to every pad on the controller's silkscreen — `MOSI`, `SCLK`,
+`SCSn`, `INTn`, `RSTn`, `MISO`, `3V3`, `GND`. Then at assembly the two
+silkscreens are read against each other and a mirrored module is obvious before
+it is soldered. This costs nothing and converts the one error class that survives
+fabrication into one that cannot survive assembly.
+
+**This does not block the netlist.** The netlist maps pin *names* to nets; it is
+the **footprint** that carries pad geometry. If the clone turned out mirrored,
+the fix is a mirrored footprint, not a different netlist.
 
 **Symbol, footprint and 3D model come free, via the official part.** The clone
 has no EasyEDA library entry, but it does not need one: put **C3198004's
@@ -1216,9 +1233,9 @@ here.
 
 ### Still unresolved in this section
 
-- The Ethernet module's pin 1 end, to be confirmed from the square pad at layout,
-  and a continuity check of `WT` to MISO — see Ethernet module. Neither blocks
-  the netlist.
+- The Ethernet module's handedness, which no datasheet settles — resolve it with
+  a ground-continuity check and a labelled silkscreen. See Ethernet module. It
+  affects the footprint, not the netlist.
 - D1 is **selected**: BZT52C20 (C19077415). See the note below on why 20 V
   rather than Hynetek's 28 V.
 - **The hold-up capacitor's series element.** See Known electrical limits: the
@@ -1507,20 +1524,23 @@ would do without this cost.
 
 ### Blocking the netlist
 
-1. **The Ethernet module's pin 1 end and the `WT` pad.** Both are layout-time
-   checks rather than design work — confirm pin 1 from the square pad, ring out
-   `WT` to MISO — but they have to happen before the board is ordered, because
-   neither survives fabrication. See Ethernet module.
+**None.** Every item that used to sit here is resolved: the USB-C receptacle
+(CX90B-16P), the Ethernet front end (module, which retired the crystal and
+magnetics questions), the gate network (LM5069), and the HUSB238A's supply at
+vSafe5V. What remains below is verification and accepted trade-offs.
 
-2. **The module is not an LCSC/JLCPCB assembly part.** Like the picoMAX
-   connectors it is sourced and fitted by hand, so the board is no longer fully
-   JLCPCB-assemblable. The official WIZ850io (C134462) *is* on LCSC at **$22.89**
-   against roughly $3-6 for a clone and $4.65 for the discrete parts it replaces,
-   so buying official costs about five times the discrete BOM for this block.
+**So `designs/led-matrix-controller/netlist.json` can now be written**, and
+`tools/erc.py` has never run on this design.
 
 ### Verification, not design
 
-3. **The SOA margin rests on a graphical reading, now taken by pixel.** The
+1. **The Ethernet module's handedness.** Ring J2 position 1 against the two G
+   pads on J1 to find which end of J1 is ground, and read the controller's
+   silkscreen against the module's at assembly. Needs the physical module, not a
+   datasheet — WIZnet does not publish the pin-1 end. Affects the **footprint**,
+   not the netlist.
+
+2. **The SOA margin rests on a graphical reading, now taken by pixel.** The
    NSS085N100S's Fig. 12 p.4 has no 100 ms curve, so the 61-96 ms ramp is bounded
    by the **DC** line: a constant-power asymptote at ~72 W at Vds 36 V, giving
    **1.8x** over the 39.8 W power limit and **1.46x** at the PWR_ILM max corner.
@@ -1531,7 +1551,7 @@ would do without this cost.
    The thermal half of this is no longer open: Fig. 13 p.6 gives single-pulse
    transient thermal impedance, and at 96 ms it puts the junction rise at ~81 °C.
 
-4. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
+3. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
    not observed. Testable for free using the XL1509's own thermal shutdown: run
    one module at full white for 15 minutes and watch for the LEDs cutting out and
    recovering. The TSD threshold is unspecified, so a pass means "below some
@@ -1539,16 +1559,23 @@ would do without this cost.
 
 ### Depends on the converter board
 
-5. **The differential receiver footprint and 120 Ω termination** must exist on
+4. **The differential receiver footprint and 120 Ω termination** must exist on
    the first converter board of each chain. Populating only the controller end is
    useless.
 
-6. **The module's inductor, catch diode and input bulk capacitor** are unknown —
+5. **The module's inductor, catch diode and input bulk capacitor** are unknown —
    the .epro2 converter sheet has no LCSC parts assigned. None of them block the
    controller: the inrush ramp was sized for a worst case beyond what it can
    power.
 
 ### Accepted
+
+6. **The board is not fully JLCPCB-assemblable.** Three line items are hand
+   fitted — the W5500 module and the two picoMAX headers — so a PCBA order
+   covers everything else and these three are soldered afterwards. Order numbers
+   are in the sourcing table. This is a consequence of choosing a finished
+   Ethernet module and a latching connector, both of which were the right call
+   for their own reasons.
 
 7. **No overvoltage protection above 28 V**, inherent to the HUSB238A topology.
     The SMAJ36CA and the ADC divider carry it.
