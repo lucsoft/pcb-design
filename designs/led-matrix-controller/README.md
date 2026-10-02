@@ -692,8 +692,10 @@ current's own IR drop out of the margin:
 | 28 V | F2, flat | 22.40 V | 24.85 V | +2.45 V |
 | 36 V | F2, flat | 22.40 V | 24.85 V | +2.45 V |
 
-Worked at V_BE = 0.80 V, h_FE = 60 and the BZT52C27's low corner. **12 V is the
-pinch point** — it sits just inside the 86% band, where the required offset is at
+Worked at V_BE = 0.80 V, h_FE = **60** and the BZT52C27's low corner. The 60 is
+deliberately below the datasheet's 80 min at I_C = 1.0 mA, which is the row that
+brackets this operating point; at 80 the 12 V margin is 0.23 V rather than 0.22 V,
+so every figure in the table is the pessimistic one. **12 V is the pinch point** — it sits just inside the 86% band, where the required offset is at
 its smallest — and 0.22 V of margin on a 10.32 V threshold is 2%. Carried in
 Known electrical limits rather than claimed as solved.
 
@@ -2076,7 +2078,7 @@ and the module's header footprint and mechanical retention.
 
 ## Thermal budget
 
-At the 72 x 74 mm envelope the board is 53 cm2.
+At the 72 x 74 mm envelope the board is 53.3 cm2.
 
 | Source | W | Note |
 |---|---|---|
