@@ -2626,6 +2626,53 @@ build.
     and 2.7 V under the modules' absolute rating. Retuning the divider to
     732k/255k/30.0k closed it.
 
+## Next: from here to a board
+
+The design questions are closed. What remains is mechanical, in order, with the
+reason each step comes before the next.
+
+**1. Read the pad numbers off the EasyEDA library.** C134462 (the W5500 module)
+and C3198004 (the USB-C receptacle) are keyed in `kb/` by contact designation —
+`J1-1 … J2-6` and `A1 … B12` — because that is what their datasheets give. A
+netlist keys `pins` by **pad number**, so twenty-seven pins need translating.
+Open each symbol in EasyEDA, read the pad numbering, and `kb.py set-pins` both
+records with the pad numbers as keys and the contact name in the `name` field.
+This is the one thing blocking the netlist and it is a lookup, not a decision.
+
+**2. Decide what to do about J2/J3.** The picoMAX headers have no LCSC number,
+so the importer resolves them to nothing. Either leave them out of the netlist
+and draw both connectors by hand, or give them a placeholder C-number and fix it
+on the canvas. The failure mode if neither is chosen is silent: the parts appear
+to import and `LED_RTN`, `A` and `B` lose their connector-side pins.
+
+**3. Write `netlist.json`.** Keys `gge1 … ggeN` with no gaps, field names
+lowercase except `Designator` and `Supplier Part`, and `Supplier Part` is the
+*only* field the importer resolves by — a wrong C-number silently places a
+different part with nothing in the property table to correct it. The BOM tables
+above are the source; 58 distinct parts, 84 passives.
+
+**4. Run `./tools/erc.py designs/led-matrix-controller/netlist.json`.** This has
+never run against this design. Expect `P1-undervoltage` on U9.20 — that one is
+deliberate and documented under Rail architecture. Iterate until nothing else
+remains, then re-run `./tools/stock.py` on the BOM before ordering.
+
+**5. Import, then verify by diffing.** Netlist Rebuild in EasyEDA Pro, then
+export the netlist back out and diff it against the JSON that went in. The
+failure modes that matter are invisible on the canvas: pins that look wired but
+carry no net port, and separate nets silently merged. EasyEDA's DRC checks
+geometry, not intent.
+
+**6. Layout.** Everything in Layout constraints applies: 2 oz (70 µm) copper,
+the trace widths at the 2.80 A worst case, the split `LED_RTN` return joined to
+ground only at the shunt, D15/D16 and C34/C35 within a few mm of the eFuse OUT
+pins, the eFuse PowerPADs on a soldered pour with vias, and the module's
+18 × 6 mm antenna keep-out copper-free on every layer.
+
+Worth running before the board is ordered, and not done yet: EasyEDA Pro's
+**ngspice** on the two regulators and on the differential link. It will not tell
+you whether the board works — only a board does that — but a regulator is
+exactly the kind of block where it earns its time.
+
 ## Resolved
 
 Kept so they are not re-opened:
