@@ -205,7 +205,7 @@
       ],
       "requires": "connected",
       "severity": "warning",
-      "note": "datasheet p.11 Table 7: GND via 900 kOhm = BC1.2 only; floating = BC1.2 + HVDCP. With D+/D- unconnected, HVDCP detection cannot work, so tie to GND via 900 kOhm."
+      "note": "datasheet p.11 Table 7: GND via 900 kOhm = BC1.2 only; floating = BC1.2 + HVDCP. With D+/D- unconnected, HVDCP detection cannot work, so tie to GND. Fitted value is 910 kOhm (C25800): 900 kOhm is not an E96 value and is not stocked."
     },
     {
       "id": "vdd-to-3v3",

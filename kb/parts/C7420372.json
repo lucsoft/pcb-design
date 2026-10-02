@@ -50,8 +50,8 @@
   },
   "designVerdict": "SELECTED - ESD on data lines",
   "notes": [
-    "H5VL10B, DFN1006-2L, 12.9M stock, $0.0065. Low-capacitance ESD clamp for USB D+/D-, the CC lines, and the two WS2812 data outputs.",
-    "Low capacitance matters on D+/D- (USB 2.0 full speed) and on an 800 kbps WS2812 line driven down metres of cable. A general-purpose TVS would load both.",
+    "H5VL10B, DFN1006-2L, 12.9M stock, $0.0065. Low-capacitance ESD clamp for USB D+/D- and the CC lines. (An earlier note here added 'the two WS2812 data outputs' - this board drives no WS2812; the module link is a MAX3485 differential pair with its own SMAJ7.0CA clamps.)",
+    "Low capacitance matters on D+/D- (USB 2.0 full speed) and the four parts fitted are D3-D6, all on the USB-C side. A general-purpose TVS would load both.",
     "SCOPE CORRECTED: used on USB-C D+/D- and CC1/CC2 only. The output pairs are differential and carry SMAJ7.0CA (C19077529), not this part."
   ]
 }

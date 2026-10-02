@@ -48,7 +48,7 @@
     "category": "lcsc-api",
     "pins": "two-terminal TVS bidirectional, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
-  "designVerdict": "SELECTED - D9-D11, the only fast overvoltage protection on the bus.",
+  "designVerdict": "SELECTED - D7-D9, the only fast overvoltage protection on the bus.",
   "notes": [
     "Carries the OVP role that the HUSB238A loses above 28 V to its clamp topology. The 470k/27k ADC divider is the slow software check beside it, at tau = 2.55 ms.",
     "Vrwm 36 V against a 37.8 V maximum PDO (+5%) is the uncomfortable part: the standoff is at or just under the normal operating maximum, so leakage at the top of the PDO tolerance is not characterised. SMAJ40CA (C19077552) stands off further but clamps at ~64 V; SMAJ33CA clamps lower but cannot stay off at 36 V. Open, and recorded as such in the README.",

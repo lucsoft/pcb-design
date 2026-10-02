@@ -66,7 +66,7 @@
   },
   "notes": [
     "CORRECTED: the SY8089 is sized against the ESP32-C6's 382 mA worst-case TX peak (datasheet Table 13, 802.11b at 20.5 dBm), not the '~500 mA' an earlier note used - that figure is IVDD, the minimum current the external supply must be able to deliver, a different quantity. An LDO would burn ~0.6 W, not 0.8 W.",
-    "Input range 2.5-5.5 V, which suits the 4.60-5.00 V rail it runs from."
+    "Input range 2.5-5.5 V, which suits the 4.56-5.00 V rail it runs from."
   ],
   "designVerdict": "SELECTED - 5 V rail to the 3.3 V rail"
 }

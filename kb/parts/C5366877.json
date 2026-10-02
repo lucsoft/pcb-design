@@ -185,7 +185,7 @@
   "notes": [
     "Datasheet p.3 peripheral list confirms Parallel IO (PARLIO), RMT TX/RX, SPI, I2S and GDMA. PARLIO with DMA is the right peripheral for N synchronised WS2812 lines; RMT TX has only a couple of channels on C6.",
     "Has a native USB Serial/JTAG controller, so no UART bridge IC is needed. PD runs on CC1/CC2, not D+/D-, so there is no contention for the data pair.",
-    "GPIO BUDGET, corrected: the module exposes exactly 23 pads (0-13, 15-23; GPIO14 does not exist on this package). The design needs 19, not the 17 first counted - that omitted the status chain and the bus-voltage ADC. Four pins are not freely assignable (12/13 USB, 8 strap-high, 9 BOOT, 15 strap), leaving ONE spare after a UART0 console. See the design README for the full assignment.",
+    "GPIO BUDGET, corrected: the module exposes exactly 23 pads (0-13, 15-23; GPIO14 does not exist on this package). The design needs 20, not the 17 first counted - that omitted the status chain and the bus-voltage ADC. Four pins are not freely assignable (12/13 USB, 8 strap-high, 9 BOOT, 15 strap), leaving ONE spare after a UART0 console. See the design README for the full assignment.",
     "MANDATORY EXTERNALS (module datasheet Figure 7 p.28, Tables 3-4 and 7): EN needs a 10 kOhm + 1 uF RC and must not float; GPIO8 needs a 10 kOhm pull-up because it has NO internal pull and GPIO8=0 with GPIO9=0 is an invalid strap combination; GPIO15 must be driven by external circuitry, not left high-Z; 3V3 wants 22 uF + 0.1 uF."
   ],
   "designVerdict": "SELECTED - MCU"

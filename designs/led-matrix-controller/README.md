@@ -143,8 +143,10 @@ of eight is used.
 48 V is supported by the PD chip (p.16 Figure 6) but **destroys the modules** - the XL1509
 is 40 V operating, 45 V absolute. 240 W would need every module respun onto a 60 V-class
 buck. The controller's bus-side parts are rated **60 V class**, which does not leave room
-for 48 V — that would want 100 V throughout, where only the channel switch is
-100 V today. Since 48 V needs every module respun
+for 48 V — that would want 100 V throughout, and **nothing on this board is
+100 V**. The eFuse is 60 V with a 67 V absolute, the TPS54360B and the SS36 are
+60 V parts, and the 100 V figure belonged to the discrete NSS085N100S that the
+eFuse replaced. The argument is stronger for it, not weaker. Since 48 V needs every module respun
 anyway, the door is closed by the modules, not by this board.
 
 ### Why not 28 V
@@ -241,7 +243,7 @@ ones for the bar, and it does not pay:
 
 | | power | GPIOs | parts | cost |
 |---|---|---|---|---|
-| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **9** | $1.13 |
+| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **9** | $1.11 |
 | 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W | 1 | 17 | **$0.15** |
 | 2 addressable + 6 plain, driven directly | 0.070 W | 7 — none spare | 14 | — |
 
@@ -254,7 +256,7 @@ genuinely buildable: YLED0805R (C19171391) at 127k stock and 0.8 ¢.
 Two things decide it, and they pull opposite ways. **Part count favours
 addressable** — nine against seventeen, because the shift-register version needs
 eight current-limiting resistors where the SK6812s have drivers built in, and on
-a small run that outweighs 98 ¢. **And colour has become load-bearing.** The bar
+a small run that outweighs 96 ¢. **And colour has become load-bearing.** The bar
 reads watts across 180 W, so on a 36 W contract one LED lights whether the wall
 is dark or the supply is small; without colour there is no way to tell those
 apart. That did not matter while 36 V was the only normal case — since the UVLO
@@ -367,7 +369,7 @@ worth stating because the earlier wording argued the opposite way.
 
 **And "61% brightness" is not 61% of the current, continuously.** The WS2812
 dims by duty-cycling its constant-current sinks at roughly **400 Hz**, so at 61%
-a module draws its *full-white* 3.98 A for 61% of each 2.5 ms period and nothing
+a channel draws its *full-white* 3.98 A for 61% of each 2.5 ms period and nothing
 for the rest. What reaches the bus is set by a current divider, and it is a **phasor** divider
 — an earlier version of this paragraph added a resistance to a reactance as
 scalars and got the wrong fraction. The channel's 3.3 mF bank is **0.121 Ω** at
@@ -416,7 +418,7 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
 
 1. Plug in. VBUS is at vSafe5V (5 V), both channel switches are off, no LED power.
 2. The TPS54360B runs straight off that 5 V — this is exactly why ~100% duty
-   pass-through was a selection criterion — giving ~4.85 V, and the SY8089 makes
+   pass-through was a selection criterion — giving **4.81 V**, and the SY8089 makes
    3.3 V from it.
 3. The MCU boots. EN_N is still high (internal pull-up), so the PD chip is idle.
 4. Firmware pulls EN_N low and the HUSB238A negotiates. **It is powered from
@@ -446,11 +448,19 @@ is the behaviour we want.
 The board must run from a 5 V bus as well as 36 V, with software holding back
 what it cannot power. That constrains the rails more than the 36 V case does.
 
-**And the LED output follows them all the way.** The TPS16630 operates from
-**4.5 V**, so there is no PD level at which the rails work and the wall does not —
-including a plain laptop port at vSafe5V. Earlier revisions set this threshold at
-28 V and then 8 V, each of which made this sentence true of the rails and false of
-the load.
+**The controller follows them all the way; the modules do not.** The TPS16630
+operates from **4.5 V**, so there is no PD level at which the board fails to power
+up and switch its channels on — including a plain laptop port at vSafe5V. Earlier
+revisions set this threshold at 28 V and then 8 V, each of which made that true of
+the rails and false of the load.
+
+What does *not* follow all the way down is the light. Each module regulates its
+own 5 V with an **XL1509**, whose datasheet p.1 states a **minimum dropout of
+1.5 V** and p.7 a saturation voltage of **1.2 V typ / 1.4 V max at 2 A**. The
+module therefore needs about **6.5 V in** to hold 5 V out at load — which no 5 V
+bus can give it. Below that the XL1509 sits at 100% duty as a pass-through and
+the module rail follows the bus down, minus whatever the switch drops at the
+current drawn. See Recovery and graceful degradation for what that leaves.
 
 ```mermaid
 flowchart LR
@@ -484,7 +494,7 @@ electrical table gives 92 mΩ typ / **190 mΩ max**, and the datasheet adds that
 values *"must include tolerance … at their maximum operating temperature"*. At
 190 mΩ the rail is **4.52 V** on a 4.75 V bus — still over the 74AHCT541's 4.5 V
 minimum, which the lower-DCR inductor bought — and D14 then holds the VBUS pin at
-**4.15 V**, cutting both 4.0 V margins from 0.19 V to **0.145 V**. The corner is flagged for the thresholds; the 4.50 V row
+**4.15 V**, cutting both 4.0 V margins from 0.19 V to **0.15 V**. The corner is flagged for the thresholds; the 4.56 V row
 itself should be read as typical, not as the floor.
 
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
@@ -501,7 +511,7 @@ and D14 holds the HUSB238A VBUS pin at **4.19 V**.
 **Neither is fatal, and here is why.** The 74AHCT541 only drives the status LED
 chain; a marginal rail during the few seconds of the 5 V phase means the
 indicators may misbehave before negotiation, not that the board fails to start.
-And 4.19 V still clears the VBUS pin's 3.15 V minimum by 0.98 V. What it does
+And 4.19 V still clears the VBUS pin's 3.15 V minimum by 1.04 V. What it does
 erode is the margin against two 4.0 V thresholds — see Known electrical limits.
 
 **The sag at low bus voltage matters locally, not across the cable.** An earlier
@@ -511,11 +521,11 @@ tracking argument is void here — the controller's 5 V rail and the modules' 5 
 rail no longer share a signal path, only a differential pair at 3.3 V logic.
 
 What the sag actually threatens is the **SK6812 status chain on this board**:
-its VIH is 0.65 x VDD, so at a 4.56 V rail the threshold is 2.96 V and the
+its VIH is 0.6 x VDD, so at a 4.56 V rail the threshold is 2.74 V and the
 74AHCT541 drives it comfortably. The binding constraint is the buffer's own
 4.5 V supply minimum, which the rail clears by 0.06 V — see the dropout table.
 
-**SY8089** (C479074, SOT-23-5, 100k stock) for 3.3 V rather than an LDO. At 4.85 V in,
+**SY8089** (C479074, SOT-23-5, 100k stock) for 3.3 V rather than an LDO. At 4.81 V in,
 3.3 V out, and the ESP32-C6's **382 mA** worst-case transmit peak, an LDO would burn ~0.6 W; a
 synchronous buck burns under 0.1 W and avoids a thermal problem in a small package.
 
@@ -528,9 +538,11 @@ HUSB238A's VDD, and 5 V for the 74AHCT541, the SK6812 status chain and **D14**.
 paragraph argued from the WS2812's 0.7 x VDD = 3.5 V threshold — but the
 controller does not drive any WS2812. It drives two MAX3485s at 3.3 V, and the
 3.3 -> 5 V shift lives on the converter board, which the module record states
-outright. The governing number is the **status chain's 0.65 x 5.0 = 3.25 V** on
-the controller's own rail, which a 3.3 V GPIO clears by only 50 mV — margin, plus
-the rail's own sag, is what justifies the buffer.
+outright. The governing number is the **status chain's 0.6 x 5.0 = 3.00 V** on the
+controller's own rail, against the ESP32-C6's *guaranteed* V_OH of 0.8 x VDD =
+**2.64 V**. The GPIO does not clear it at all — not by a thin margin, by 360 mV
+the wrong way. That is what justifies the buffer, and it holds even before the
+rail's own sag is counted.
 
 **What the 3.3 V rail actually carries**, which until now was a bare "~2.3 W":
 
@@ -592,7 +604,7 @@ What protects the load, in order of speed:
    electrical limits: against a 5.0 A *total* contract the PD source acts first
    on a hard short, so "one chain sheds, the other keeps running" is **not
    reliably obtainable**
-2. **TPS16630 OVP**, a hardware overvoltage cut-off at 40.9 V typ, needing no firmware
+2. **TPS16630 OVP**, a hardware overvoltage cut-off at 40.68 V typ, needing no firmware
 3. the PD source limiting at the negotiated level
 4. HUSB238A FAULT into the interlock transistors, pulling both SHDN pins low on
    OTP or an adapter-capability fault (OVP/UVP do not survive the clamp topology
@@ -658,15 +670,15 @@ well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 | | Follower alone | With D14 |
 |---|---|---|
 | Pin at a 4.75 V bus | 3.05 – 3.75 V | **4.19 V** |
-| Against the 3.15 V minimum | **fails at the low corner** | 1.08 V margin |
+| Against the 3.15 V minimum | **fails at the low corner** | 1.04 V margin |
 
 **Two residuals at the bottom of vSafe5V, and they are tighter than they look.**
 Both are 4.0 V thresholds against the 4.19 V the Schottky delivers:
 
 | Threshold | Value | Margin at 4.19 V |
 |---|---|---|
-| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.6) | +0.19 V on typ, **−0.27 V on max** |
-| VBUS UV falling, vVBUV_F1 | **80% of the requested voltage** = 4.0 V on a 5 V RDO (p.6) | +0.19 V |
+| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.6) | +0.19 V on typ, **−0.21 V on max** |
+| VBUS UV falling, vVBUV_F1 | **not specified at a 5 V RDO.** p.6 bands it 86% for 26 V > RDO > 10 V and 80% for 10 V ≥ RDO > 5 V — 5 V itself falls in no band. At the adjacent 86% the threshold is 4.30 V and the pin is **0.11 V short**, not 0.19 V over | **unknown; treat 4.30 V as the bound** |
 
 The first decides whether VBUS-present is seen; the second is the under-voltage
 detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
@@ -761,7 +773,7 @@ that sets the output slew rate directly.
 flowchart LR
   VBUS[VBUS 4.5-60 V] ==> U["TPS16630<br/>integrated FET"]
   U ==> OUTN[channel bus]
-  DIV["divider<br/>723k / 249k / 29.4k"] --> U
+  DIV["divider<br/>732k / 255k / 30.0k"] --> U
   RIL["R_ILIM 3.24k"] --> U
   CDV["C_dVdT 220 nF"] --> U
   MCU[ESP32-C6 GPIO] -->|"1k series"| U
@@ -811,7 +823,7 @@ independently as `1/(20.8e3 × 2 µA) = 24.0`.
 |---|---|---|
 | R_ILIM | **3.24 kΩ** 1% | the datasheet tabulates 3 kΩ → 6 A and 4.02 kΩ → 4.5 A, i.e. I·R ≈ 18 kΩ·A, so 3.24 kΩ gives **5.56 A**. Clears the 4.0 A white-flash peak by 1.29x at the low end of its ±7% spread |
 | C_dVdT | **220 nF** | Eq. 2 gives t = 20.8e3 × 36 × 220 nF = **165 ms**; Eq. 1 gives inrush = 3.3 mF × 36 / 165 ms = **0.72 A**. Carrying I(dVdT) 1.775-2.225 µA and GAIN 23.5-26 V/V, the spread is **137-190 ms** and **0.63-0.87 A** before C_dVdT's own ±10% |
-| UVLO/OVP string | **723 kΩ / 249 kΩ / 29.4 kΩ** 1% | IN → R1 → **UVLO** → R2 → **OVP** → R3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.32 V**, **OVP 40.9 V**, and draws 38 µA |
+| UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.28 V**, **OVP 40.68 V**, and draws 35.4 µA. The E192 values this string first carried (723 k / 249 k / 29.4 k) are not stocked in 0402 — see Bill of materials |
 | C_IN | **100 nF** | §10.2.2 "a minimum of 0.1 µF is recommended" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain; both channels wire-ORed onto one GPIO |
 
@@ -836,8 +848,10 @@ is what replaces the LM5069's multi-second insertion timer.
 TI publishes the part powering into **15 mF** (Figure 16) — but at V_IN = 24 V
 and with dVdT *open*, so ½CV² = **4.32 J**. Ours is ½ × 3.3 mF × 36² = **2.14 J**,
 i.e. **2.0×** inside TI's demonstrated case, not the 4× a capacitance comparison
-suggests. At the 20-module growth case it is **4.28 J ≈ 1.0×** — equal to the
-demonstration, not a quarter of it.
+suggests. At 20 modules *on a single channel* it is **4.28 J ≈ 1.0×** — equal to
+the demonstration, not a quarter of it. Note that case is a 40-module wall, which
+is outside the 180 W budget; it is carried as the growth bound, not the design
+point.
 
 **And the 165 ms ramp is never actually realised.** Equation 3 gives the inrush power:
 
@@ -851,10 +865,14 @@ then the FET turns off and MODE decides latch or retry.
 
 Reading Figure 13 properly — the curves extracted rather than estimated — gives:
 
-| P_D | 0 °C | **25 °C** | 85 °C |
+Figure 13 is a *per-device* boundary, so both rows below are one eFuse. The
+module counts are therefore **per channel**, not wall totals — 10 per channel is
+the 20-module design point.
+
+| P_D per device | 0 °C | **25 °C** | 85 °C |
 |---|---|---|---|
-| 13 W (10 modules) | 475 ms | **120 ms** | 58 ms |
-| 26 W (20 modules) | 68 ms | 38 ms | 14 ms |
+| 13 W (10 modules on the channel) | 475 ms | **120 ms** | 58 ms |
+| 26 W (20 modules on the channel) | 68 ms | 38 ms | 14 ms |
 
 **So the programmed 165 ms slew is never realised at any ambient.** At 25 °C the
 boundary at 13 W is 120 ms, *below* the ramp — an earlier version of this section
@@ -869,40 +887,59 @@ capacitor.** C_dVdT sets the *intended* slew and the loop overrides it whenever
 the ramp would overheat the die, which is always here. The real bound is
 `t(Treg_timeout)` = **1.25 s**, and the question is whether the output comes up
 inside it. On energy it does: the 25 °C curve reads ~7 W at 1.25 s, so 8.75 J
-against the 2.14 J needed at 10 modules and 4.28 J at 20. At 85 °C the same curve
-is near 4 W, about 5 J — **which is marginal against 4.28 J**, and that is the
-case to watch.
+against the **2.14 J** one channel needs at the 10-modules-per-channel design
+point, and 4.28 J at twenty. At 85 °C the same curve is near 4 W, about 5 J. So
+the design point has **2.3x** margin even hot; it is the 20-per-channel growth
+case that is marginal at 5 J against 4.28 J, and that case is already outside the
+power budget. An earlier version of this paragraph compared the hot curve against
+4.28 J and called the design point marginal — it is not.
 
 One caveat the datasheet attaches and this design cannot close: Figure 13 is
 *"taken on VQFN device on EVM board"*, and the fitted part is the HTSSOP-20. Both
 the package and the copper differ, in the unhelpful direction.
 
-**Thresholds.** UVLO at 4.32 V sits just under the part's own 4.5 V minimum
+**Thresholds.** UVLO at 4.28 V sits just under the part's own 4.5 V minimum
 operating voltage, so **the device's own floor is the binding one** and the LED
 output follows the rails down to vSafe5V. Its hysteresis is 78 mV typ, so it
 falls out at 4.06 V — still under that floor, which is why the hysteresis does
 not need designing around.
 
-**OVP cuts off at 40.9 V, and that number closes an accepted limit.** The
+**OVP cuts off at 40.68 V, and that number closes an accepted limit.** The
 reference is **±2%** (1.176/1.2/1.224 V), not the ±10% of the LM5069 comparator
 this design previously carried. With 1% resistors the trip lands between
-**39.2 V and 42.5 V** — above the 37.8 V maximum bus by 1.4 V and below the
-modules' 45 V absolute by 2.5 V. The window the old part could not fit into is
+**39.1 V and 42.3 V** — above the 37.8 V maximum bus by 1.3 V and below the
+modules' 45 V absolute by 2.7 V. The window the old part could not fit into is
 comfortable for this one.
 
 **The release threshold is not comfortable, and closing the trip point did not
-close it.** V(OVPF) is 1.09/1.122/1.15 V against a nominal divider ratio of 34.06, so the
-channel re-enables at **37.1-39.2 V** on the comparator spread alone and
-**36.4-39.9 V** once the 1% resistors are carried. A compliant source may sit at **37.8 V indefinitely** —
+close it.** V(OVPF) is 1.09/1.122/1.15 V against a nominal divider ratio of 33.9, so the
+channel re-enables at **37.0-39.0 V** on the comparator spread alone and
+**36.2-39.7 V** once the 1% resistors are carried. A compliant source may sit at **37.8 V indefinitely** —
 which is inside that band. A low-corner part that trips on an excursion would
-then **not re-enable on a healthy bus**: it needs the bus below 36.4 V, which a
+then **not re-enable on a healthy bus**: it needs the bus below 36.2 V, which a
 36 V contract never reaches.
 
-The lever is the same divider. Raising the trip raises the release with it, so
-the fix is to accept a manual recovery — firmware can cycle SHDN, which the
-datasheet states resets a latched device — rather than to retune. **Recorded as a
-known limit**; the trip point still protects the modules, which is what the
-accepted item was about.
+**And cycling SHDN does not clear it.** An earlier version of this section said
+it did. OVP is not a latch: p.7 gives it a rising threshold V(OVPR) and a falling
+one V(OVPF), so it is a hysteretic comparator that re-enables the FET on its own
+once the OVP pin falls below V(OVPF) and *not before*. The SHDN-reset sentence in
+the datasheet, and Table 1's latch/auto-retry choice, belong to the overload and
+thermal fault class — a different mechanism. Toggling SHDN while the bus still
+sits above the release point simply re-enters OVP shutdown within
+`OVP_toff(dly)` = 11 µs.
+
+**The recovery that does work is a PD renegotiation.** Firmware commands the
+HUSB238A down to a lower fixed PDO — 20 V or 28 V — which drops the bus far below
+even the low release corner, the eFuse re-enables, and firmware then renegotiates
+back to 36 V. The bus returns to at most 37.8 V, which is under the *trip*
+corner of 39.1 V, so the channel stays up. This costs no parts: the HUSB238A and
+the I2C link it needs are already on the board for the initial negotiation.
+
+Retuning the divider instead was worked and rejected. Clearing 37.8 V on the
+release corner needs a divider ratio of at least 34.68, which pushes the trip's
+high corner to about 44.1 V — above the modules' XL1509 **40 V operating** rating,
+though still inside its 45 V absolute. Trading a recoverable stall for an
+overvoltage the modules are not rated to see is the wrong direction.
 
 ### Enable
 
@@ -1047,12 +1084,12 @@ ordering.
 Passives, standard values, final selection at layout:
 
 - **120 Ω** differential termination (far end, on the converter board — not here)
-- **900 kΩ x3** on HUSB238A ADDR, DEBUG_N **and EN_HVDCP/OUT1**, per datasheet
+- **910 kΩ x3** on HUSB238A ADDR, DEBUG_N **and EN_HVDCP/OUT1**, per datasheet
   p.4-5 and p.11 Table 7, to keep standby current low. Three parts, not two —
   all three pins are dual-function and become push-pull outputs after
   initialisation, which is why the resistor cannot be omitted on any of them
 - **TPS16630 support, per channel**: R_ILIM **3.24 kΩ** 1%, C_dVdT **220 nF**,
-  UVLO/OVP string **723 kΩ / 249 kΩ / 29.4 kΩ** 1%, C_IN **100 nF** ≥100 V. All
+  UVLO/OVP string **732 kΩ / 255 kΩ / 30.0 kΩ** 1%, C_IN **100 nF** ≥100 V. All
   derived in Channel switching and inrush
 - **10 kΩ** pull-down on each TPS16630 SHDN pin plus **1 kΩ** in series with the
   driving GPIO. The pull-down makes reset the off state; the series resistor lets
@@ -1128,7 +1165,7 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V** — stays off at the PDO's +5% and clamps under the FET's 60 V rating |
+| USB-C VBUS, both output +36 V | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V** — stays off at the PDO's +5% and clamps under the eFuse's 67 V absolute, though only by 1.15x; the 60 V parts it does *not* clear are the TPS54360B and the SS36 |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
@@ -1251,7 +1288,7 @@ longer once the thermal regulation loop takes over.
 
 **Downward renegotiation is new and untested.** With UVLO at 28 V the channels
 opened at 26.2 V on any 36 → 28 → 20 V transition, isolating the module banks.
-At the eFuse's 4.32 V they stay closed throughout, so the modules' 6.6 mF now rides the
+At the eFuse's 4.28 V they stay closed throughout, so the modules' 6.6 mF now rides the
 transition. The attach-time isolation argument still holds — at attach the bus is
 5 V, and the inrush is dV/dt-limited in any case — but the renegotiation case is not covered
 by it and the 15 ms tSnkNewPower paragraph predates the change.
@@ -1288,7 +1325,7 @@ TPS16630 dissipates 0.27 W steady per channel and far more during the ramp,
 with the device regulating its own junction temperature — which it can only
 do if the pad has somewhere to put the heat. TI's HTSSOP-20 PowerPAD wants a
 soldered pour with thermal vias. An earlier version of this section worked
-through a discrete FET's "1 in² of 2 oz copper" requirement; that part is gone,
+through a discrete FET's "1 in² of 2 oz copper" (645 mm², 70 µm) requirement; that part is gone,
 and this constraint replaces it.
 
 **The low-side shunt forces a split return, and nothing else in this document
@@ -1532,7 +1569,7 @@ The clone drops into that footprint because it is the same one.
 
 **Mark it do-not-fit for assembly.** The netlist exists to place the part on the
 schematic; it must not end up on a JLCPCB PCBA order, or they will fit a $22.89
-WIZ850io where a $4 clone was intended. Treat it like J2/J3, which are in the
+WIZ850io where the €12.30 JOY-IT clone in the sourcing table was intended. Treat it like J2/J3, which are in the
 BOM but hand-fitted.
 
 Whether EasyEDA actually carries C134462 is a one-click check in the editor and
@@ -1564,11 +1601,11 @@ design is built around had no entry.
 | **VDD (pin 5) to 3V3** | tie it, do not leave it on VBUS alone | p.4: VDD is an **input supply**, "recommended to tie this pin to … a 3.3 V power rail". This is what makes the follower's drop survivable — see below |
 | VDD decoupling | **1 µF ceramic** | p.4, pin 5 — and an error-severity rule in the part's KB record |
 | D14, 5V rail → VBUS pin | **RB751V-40** (C7502691) | lifts the VBUS pin at vSafe5V; reverse-biased once the follower takes over |
-| ADDR, DEBUG_N | 900 kΩ each | p.4-5, keeps standby current low |
+| ADDR, DEBUG_N | 910 kΩ each | p.4-5 calls for 900 kΩ, which is not an E96 value; 910 kΩ is the nearest stocked one. Keeps standby current low |
 | INT_N pull-up | 10 kΩ | p.5, open-drain |
 | BSS138 gate pull-up | 10 kΩ | same source |
 | Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
-| EN_HVDCP/OUT1 (pin 7) | **900 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
+| EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest E96 value that is stocked. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
 | FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V). Its only function is disabling the GATE driver, and GATE is unconnected, so a defined low is the whole requirement |
 
 Pin 17 is the exposed pad and the **only** GND connection.
@@ -1592,14 +1629,14 @@ table is the schematic checklist.
 |---|---|---|
 | R_ILIM, ILIM→GND | **3.24 kΩ** 1% | §10.2.2.1 — sets the 5.56 A overload limit |
 | C_dVdT, dVdT→GND | **220 nF** | §10.2.2.3 — sets the output slew, and so the inrush |
-| UVLO/OVP string | **723 kΩ / 249 kΩ / 29.4 kΩ** 1% | IN → R1 → **UVLO** → R2 → **OVP** → R3 → GND, 1.2 V on both pins. UVLO is the **upper** tap — swapping them gives a part that never turns on |
+| UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, 1.2 V on both pins. UVLO is the **upper** tap — swapping them gives a part that never turns on |
 | C_IN, IN→GND | **100 nF** ≥100 V | §10.2.2 "a minimum of 0.1 µF is recommended" |
 | SHDN pull-down | **10 kΩ** to GND | active-low shutdown. 100 kΩ sits at 0.77 V against a 0.8 V threshold against the pin's own source — see Enable |
 | SHDN series from GPIO | **1 kΩ** | lets the FAULT transistor win without shorting the GPIO |
 | **P_IN (pin 6) to IN** | direct, no element | p.4 Pin Functions: "Always connect P_IN to IN directly" |
 | **GND (pin 9)** | wired, **in addition to** the PowerPAD | p.5: "Do not use PowerPad as the only electrical connection to GND" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain |
-| MODE | tie per the latch/auto-retry choice | p.4 — **not yet decided**, see open questions |
+| MODE | **leave open** = latch off | p.24 Table 1: open latches off after `tCL_PLIM(dly)`, GND auto-retries after `t(TSD_retry)`. Latch is chosen because firmware already owns SHDN and reads PGOOD, so it can implement a retry policy with back-off and reporting — where auto-retry would re-pulse 13 W per channel blindly into a board that is already hot. Reset by toggling SHDN |
 
 **IMON is unused.** The part outputs a current-proportional voltage per channel,
 which is exactly the per-channel sensing the shared low-side shunt cannot give —
@@ -1666,8 +1703,9 @@ reflection returns ~110 ns after the edge, inside a 400 ns pulse.
   LED. The *value* is from the **WS2812D-F8** p.5 (`104`); SK6812MINI-E p.9 shows
   one capacitor per LED with no value and says only that "the decoupling
   capacitance between each LED is essential". The 500 Ω series figure on that
-  page is verbatim. Note its VIH is **0.65 × VDD**, not the 0.7 × VDD that
-  applies to the WS2812D-F8.
+  page is verbatim. Note the **SK6812-EC20** fitted here specifies VIH as
+  **0.6 × VDD** — the most permissive of the three SK6812 variants
+  evaluated, and not the 0.7 × VDD that applies to the WS2812D-F8.
 - **INA226 ALERT** is worth more than an interrupt line. Configured as a
   shunt-overvoltage comparator it fires within one conversion — **140 µs to
   1.1 ms** — which is faster than the eFuse's own fault response and far
@@ -1779,21 +1817,36 @@ not: 464 mA against a legacy 500 mA port is 93%, and that is before the status
 LEDs. On a USB-C host the default Rp advertises at least 1.5 A and it is a
 non-issue; on an old USB-A port, bring up WiFi *or* Ethernet, not both.
 
-**The LED channels now work on USB power, software-limited.** The TPS16630
-operates from **4.5 V**, and vSafe5V is 4.75-5.5 V, so the channels come up on a
-plain laptop port. What is left for the LEDs is the port's budget minus the
-controller:
+**The LED channels come up on USB power. How much light that buys is a
+different question.** The TPS16630 operates from **4.5 V** and vSafe5V is
+4.75-5.5 V, so the channels switch on from a plain laptop port. The port's budget
+minus the controller leaves
 
     15 W port − 2.3 W controller = 12.7 W
 
-That is **one module at 88% of full-white power**, or a few modules dimmer — the
-same software cap that governs every other contract. It is not a lot of light,
-but it is the difference between developing against a dark board and developing
-against a real one.
+at the connector — but that 12.7 W is **not convertible into light**, because the
+module's XL1509 needs 6.5 V in to regulate and gets at most 5 V. It runs as a
+saturated pass-through instead, so the module rail is the bus minus the switch
+drop at whatever current flows. At the full 2.5 A the drop is the datasheet's
+1.2-1.4 V and the module rail lands near **3.3 V** — at or below the WS2812D-F8's
+**3.5 V** supply minimum. The LEDs do not work there.
+
+At low current they do. The drop falls with current, and the datasheet only
+characterises it at 2 A, so the usable point has to be bounded rather than
+calculated: scaling the 1.2 V linearly puts the module rail above 4.2 V — enough
+for the blue channel to stay in regulation — somewhere under **0.6 A**, roughly
+**a quarter of one module at full white**. That is an estimate from one datasheet
+point and wants a measurement before it is quoted as a number.
+
+**That is still the difference between developing against a dark board and a lit
+one**, which is what matters here. But the honest floor for *full* operation is
+the **9 V PDO** — the lowest contract that clears the module converter's 6.5 V
+input — not vSafe5V.
 
 **This is why the channel switch changed.** The LM5069 it replaced needed 8 V to
-operate, so a laptop port lit nothing whatever firmware did. Running one module
-from the same cable that flashes the board was the requirement that moved it.
+operate, so a laptop port powered nothing downstream whatever firmware did. The
+TPS16630 lets the controller run, the channels switch and a module glow from the
+same cable that flashes the board.
 
 **A laptop port and a laptop charger are different things.** A MacBook *sinks*
 100 W or more; as a *source* its USB-C port offers 5 V only, up to 15 W on the
@@ -1804,8 +1857,8 @@ Measured against 20 modules, where full white is 288 W:
 
 | Source | PDO | for LEDs | perceived brightness |
 |---|---|---|---|
-| MacBook port, as a source | 5 V / 15 W | 12.7 W | **~24%** — or one module at 94% |
-| 9 V PDO | 8.55–9.45 V | — | marginal; a worst-case part wants 9.1 V |
+| MacBook port, as a source | 5 V / 15 W | 12.7 W at the connector | **not convertible** — the module buck cannot regulate below 6.5 V in; roughly a quarter of one module glows, see Recovery |
+| 9 V PDO | 8.55–9.45 V | 15 W | **~20%** — the lowest PDO that clears the module converter's 6.5 V input, so the first one that produces full-colour light |
 | 12 V PDO | 11.4–12.6 V | 31 W | ~37% |
 | Apple 96 W charger | 20.5 V / 4.7 A | 91 W | **59%** |
 | Apple 140 W charger | 28 V / 5 A | 135 W | **71%** |
@@ -1862,8 +1915,12 @@ At the 72 x 74 mm envelope the board is 53 cm2.
 | **total** | **4.10** | TVS leakage not counted |
 
 The rows sum to 4.10 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
-53 cm², so **1.17x headroom** — down from 1.29x, and the integrated eFuse is why:
-31 mΩ against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced — and that is at **25 °C ambient**. Inside an
+53 cm², so **1.17x headroom** — down from 1.29x. The eFuse is most of that
+change but not all of it: of the 0.39 W added, **0.31 W** is the eFuse's 31 mΩ
+against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
+lower-DCR inductor, and **0.12 W** is the status-LED row, which the 3.71 W figure
+simply did not count. On the eFuse alone the headroom would be 1.21x. And that is
+at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
 the switched path is 0.66 W, and the two largest rows are the MCU and that path.
@@ -1997,14 +2054,14 @@ flash peak, i.e. fewer modules per channel.
 
 **The TVS and the eFuse's OVP now overlap, which is better than the ordering the
 previous part had.** The SMAJ36CA's V_BR is **40.0-44.2 V** and the TPS16630's OVP
-cut-off lands between **39.2 V and 42.5 V** with 1% resistors. So the eFuse often
-trips first — at its low corner it is a full 0.8 V below the TVS's breakdown
+cut-off lands between **39.1 V and 42.3 V** with 1% resistors. So the eFuse often
+trips first — at its low corner it is a full 0.9 V below the TVS's breakdown
 minimum — rather than always after it, which is what the 43.8 V setting before
 the retune would have given.
 
 **It is still not a clean ordering, and OVP could not fully fix it anyway.** OVP
 sheds the **channels**, while the TVS, the rails and the PD front end all sit
-**upstream** of the eFuses. On a sustained overvoltage above ~42.5 V the TVS
+**upstream** of the eFuses. On a sustained overvoltage above ~42.3 V the TVS
 conducts continuously — an SMA part rated 400 W at 10/1000 µs, i.e. a surge
 device, not a sustained one — and nothing on this board disconnects the upstream
 node. Accepted.
@@ -2106,9 +2163,10 @@ build.
 
 ### Accepted
 
-6. **The board is not fully JLCPCB-assemblable.** Two board items are hand
-   fitted — the W5500 module and the two picoMAX headers — so a PCBA order
-   covers everything else and these three are soldered afterwards. Order numbers
+6. **The board is not fully JLCPCB-assemblable.** Two kinds of board item are
+   hand fitted — the W5500 module and the two picoMAX headers, three parts in
+   all — so a PCBA order covers everything else and those three are soldered
+   afterwards. Order numbers
    are in the sourcing table. This is a consequence of choosing a finished
    Ethernet module and a latching connector, both of which were the right call
    for their own reasons.
@@ -2124,10 +2182,10 @@ build.
 9. **(closed) The overvoltage trip now protects the modules too.** This entry
     said the window was mutually exclusive — above 37.8 V at the low extreme and
     below 45 V at the high one — and it was, for the LM5069's ±10% comparator.
-    The TPS16630's OVP reference is **±2%**, so a 40.9 V nominal trip lands
-    between **39.2 V and 42.5 V** with 1% resistors: 1.4 V over the maximum bus
-    and 2.5 V under the modules' absolute rating. Retuning the divider to
-    723k/249k/29.4k closed it.
+    The TPS16630's OVP reference is **±2%**, so a 40.68 V nominal trip lands
+    between **39.1 V and 42.3 V** with 1% resistors: 1.3 V over the maximum bus
+    and 2.7 V under the modules' absolute rating. Retuning the divider to
+    732k/255k/30.0k closed it.
 
 ## Resolved
 
