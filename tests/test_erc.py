@@ -68,8 +68,8 @@ def rules(findings) -> set:
 # A correct LDO stage: both caps present, nothing floating.
 GOOD_LDO = {
     **comp("gge1", "U1", "C5446", {"1": "GND", "2": "VCC_3V3", "3": "VBUS"}),
-    **comp("gge2", "C1", "C1525", {"1": "VBUS", "2": "GND"}),
-    **comp("gge3", "C2", "C1525", {"1": "VCC_3V3", "2": "GND"}),
+    **comp("gge2", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    **comp("gge3", "C2", "C131394", {"1": "VCC_3V3", "2": "GND"}),
 }
 
 CASES = []
@@ -202,8 +202,8 @@ def _():
 def _():
     n = {
         **comp("gge1", "U1", "C5446", {"1": "GND", "2": "VCC_3V3", "3": "SDA"}),
-        **comp("gge2", "C1", "C1525", {"1": "VCC_3V3", "2": "GND"}),
-        **comp("gge3", "C2", "C1525", {"1": "SCL", "2": "GND"}),
+        **comp("gge2", "C1", "C131394", {"1": "VCC_3V3", "2": "GND"}),
+        **comp("gge3", "C2", "C131394", {"1": "SCL", "2": "GND"}),
     }
     assert "B2-i2c-no-pullup" in rules(run(n, I2C_DESIGN))
 
