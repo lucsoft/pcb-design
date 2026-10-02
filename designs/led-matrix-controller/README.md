@@ -422,7 +422,7 @@ What protects the load, in order of speed:
 5. software via the INA226, as a slow safety net
 
 **What is still unprotected is the bus node upstream of the two controllers.**
-The rails, the PD front end and the hold-up capacitor sit there with only the TVS
+The rails and the PD front end sit there with only the TVS
 and the PD source's own limiting between them and a fault.
 
 **Current sensing is low-side.** The shunt sits in the ground return, so
@@ -1055,13 +1055,15 @@ Supporting pieces:
   **τ = 2.55 ms**, so this cannot see an OV event faster than ~10 ms. It is a
   slow check, not fast protection, which matters because it is carrying the OVP
   role the HUSB238A lost.
-- **100 uF hold-up on the rail input, behind a series Schottky.** Two things
-  broke the earlier version. Topologically there is no switch between VBUS and
-  the bus at all, so a capacitor there discharges backwards into a collapsed
-  source the moment VBUS falls — exactly the case it was meant to cover. Arithmetically, the 29 ms figure
-  assumed only the 2.2 W rail load; sharing the bus with 5 A of LEDs drains
-  36 V to 5 V in **0.62 ms**. A series Schottky between VBUS and the rail input,
-  with the capacitor on the rail side, isolates it from both.
+- **No hold-up capacitor.** Three versions of one were designed and all three
+  failed. On the bus it discharges backwards into a collapsed source — there is
+  no switch between VBUS and the bus — and its 29 ms figure assumed only the
+  2.2 W rail load, where sharing the bus with 5 A of LEDs drains 36 V to 5 V in
+  **0.62 ms**. Behind a series Schottky it isolates correctly but costs 0.35-0.45 V
+  on every start, putting the TPS54360B under its 4.5 V minimum at the bottom of
+  vSafe5V. **Deleted.** A PD collapse now takes the controller down with the LEDs,
+  which is a recoverable event on an LED wall rather than a failure, and it
+  removes the largest single contributor to the Type-C bypass-capacitance limit.
 - PD renegotiation gives a sink ~15 ms (tSnkNewPower) to reduce draw. One frame
   at 90 fps is 11.1 ms, so firmware can react **only if it is already watching**;
   blocking on a network read would miss the window. The FAULT interlock is the
@@ -1298,9 +1300,6 @@ here.
 - The Ethernet module's handedness, which no datasheet settles — resolve it with
   a ground-continuity check and a labelled silkscreen. See Ethernet module. It
   affects the footprint, not the netlist.
-- The hold-up capacitor decision, which is a **blocking** item — see Open
-  questions.
-
 ## GPIO assignment
 
 The module exposes **exactly 23** GPIO pads (datasheet Table 3, pp.10-11):
@@ -1487,26 +1486,6 @@ that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
 roughly 2.4 W, and the board is at **0.65x** — over budget, not merely tight.
 This is the largest unquantified risk left in the thermal section.
 
-**The hold-up Schottky breaks the 5 V cold start — and the recommendation is to
-delete the hold-up.** The dropout table is computed with the bus feeding VIN
-directly. A 0.35-0.45 V series Schottky puts VIN at **4.35 V** on a 4.75 V bus —
-below the TPS54360B's 4.5 V minimum and inside its UVLO band (4.1/4.3/4.48 V), so
-the board may not start at all. At a nominal 5.00 V bus the 5 V rail lands at
-**4.43 V**, under the 74AHCT541's 4.5 V floor.
-
-One optional part is causing three separate defects: this cold-start
-contradiction, a missing BOM line nobody could fill because the topology was
-unsettled, and the Type-C bypass-capacitance overrun below. What it buys is
-ride-through of a PD renegotiation — and if the bus collapses, the LEDs go dark
-regardless; all the capacitor protects is the controller from a brownout reset,
-which on an LED wall is a recoverable event rather than a failure.
-
-**Recommended: drop the hold-up and its Schottky**, and let the FAULT interlock
-shed the channels. If ride-through is wanted later it needs an ideal-diode
-controller, not a Schottky, because the forward drop is the whole problem.
-Flagged as a recommendation rather than applied, because it trades a behaviour
-the brief never pinned down.
-
 **The channel body diodes back-feed the USB-C receptacle.** An N-channel
 high-side switch has its body diode anode on the channel bus, so it conducts
 module→bus→VBUS regardless of gate state — the switch change did not fix this.
@@ -1568,14 +1547,14 @@ overdrive to sink the ~97 µA needed to pull the UVLO node below 2.5 V. It
 probably works and should not be assumed to. A logic-level MOSFET, or a small
 pull-up on the FAULT line, would remove the question. **Open.**
 
-**The bus bypass capacitance is over the Type-C limit.** USB Type-C bounds a
-sink's VBUS bypass capacitance to **10 µF** so that attach inrush stays within
-what a source tolerates. With the pass FET gone, CIN, three SMAJ36CA and the
-100 µF hold-up all sit directly on VBUS, on the order of **100 µF**. The module
-banks are *not* part of this — at attach the bus is 5 V, below the LM5069's 8 V
-minimum VIN, so both channel switches are held off and the 6.6 mF is genuinely
-isolated. The overrun is the hold-up almost entirely, which is the fourth reason
-to delete it: without it the bus sits at a few µF and inside the limit.
+**The bus bypass capacitance is now inside the Type-C limit, but only just.**
+USB Type-C bounds a sink's VBUS bypass capacitance to **10 µF** so attach inrush
+stays within what a source tolerates. Deleting the hold-up removed ~100 µF from
+that node, leaving CIN (≥3 µF effective after derating), three SMAJ36CA and
+decoupling — a few µF. The module banks were never part of it: at attach the bus
+is 5 V, below the LM5069's 8 V minimum VIN, so both channel switches are held off
+and the 6.6 mF is genuinely isolated. **Worth re-checking once CIN is finally
+sized**, because ≥3 µF effective can mean 10 µF or more of nameplate.
 
 **L1 saturates before the converter current-limits.** 2.9 A Isat against a
 4.5 A minimum open-loop limit, so any 5 V-rail overload saturates the inductor
@@ -1592,26 +1571,13 @@ would do without this cost.
 
 ### Blocking the netlist
 
-**One, and it is a decision rather than a question.** Everything else that used
-to sit here is resolved: the USB-C receptacle (CX90B-16P), the Ethernet front end
-(module, which retired the crystal and magnetics questions), the gate network
-(LM5069), and the HUSB238A's supply at vSafe5V.
+**None.** The USB-C receptacle (CX90B-16P), the Ethernet front end (module,
+which retired the crystal and magnetics questions), the gate network (LM5069),
+the HUSB238A's supply at vSafe5V, and the hold-up capacitor — deleted, see Known
+electrical limits — are all settled.
 
-1. **Keep the hold-up capacitor, or delete it?** Known electrical limits
-   recommends deleting it, because one optional part causes three separate
-   defects — it breaks the 5 V cold start through its series Schottky, it leaves
-   a BOM line nobody can fill while the topology is unsettled, and it is almost
-   the whole of the Type-C bypass-capacitance overrun. What it buys is
-   ride-through of a PD renegotiation, and if the bus collapses the LEDs go dark
-   regardless; all it protects is the controller from a brownout reset.
-
-   This blocks the netlist because it decides **two components and a node**, and
-   it was previously filed under "still unresolved in this section" where it did
-   not look like a blocker. Deleting it is a one-line change; keeping it needs an
-   ideal-diode controller, not a Schottky.
-
-Once that is answered, `designs/led-matrix-controller/netlist.json` can be
-written — and `tools/erc.py` has never run on this design.
+**So `designs/led-matrix-controller/netlist.json` can be written**, and
+`tools/erc.py` has never run on this design.
 
 ### Verification, not design
 
@@ -1700,6 +1666,14 @@ Kept so they are not re-opened:
 - **Channel count** — two, verified against three and four. See Why two channels.
 - **Module BOM** — extracted from the .epro2 with `tools/epro.py`. The project is
   titled V2 but is V3.
+- **No hold-up capacitor.** Three designs for one all failed, and it was causing
+  three separate defects at once: the 5 V cold start through its series Schottky,
+  an unfillable BOM line, and almost the whole Type-C bypass-capacitance overrun.
+  What it bought was ride-through of a PD renegotiation — and the LEDs go dark on
+  a bus collapse regardless, so all it protected was the controller from a
+  brownout reset. **Do not re-add it as a Schottky**; that is the forward drop
+  that broke the cold start. If ride-through is ever wanted it needs an
+  ideal-diode controller.
 - **HUSB238A supply at vSafe5V** — **VDD (pin 5) tied to 3V3**, plus **D14**
   (RB751V-40) from the 5 V rail to the VBUS pin. VDD is an input supply, not an
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
