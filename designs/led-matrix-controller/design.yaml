@@ -19,13 +19,19 @@ rails:
   # every margin in this design is worked against 37.8 V.
   VBUS:
     voltage: 36.0
+    # Every margin in this design is worked against the +5% a compliant fixed
+    # PDO may sit at, so the overvoltage check has to see it too. Declaring only
+    # the nominal would pass a pin that the tolerance breaks.
+    voltageMax: 37.8
 
   # Channel outputs, downstream of the TPS16630 eFuses. Same voltage as the
   # bus; separate nets so a short on one chain is visibly one chain.
   CH1_36V:
     voltage: 36.0
+    voltageMax: 37.8
   CH2_36V:
     voltage: 36.0
+    voltageMax: 37.8
 
   # Rails. The 5 V stage runs in near-100% duty pass-through at vSafe5V, so
   # it is 4.56 V at the bottom of the USB-C tolerance - see the dropout
@@ -54,6 +60,8 @@ rails:
   # follower is the whole reason that pin survives.
   PD_VBUS_SENSE:
     voltage: 26.3
+    # The Zener's high corner (28.35 V) less the follower's low V_BE (0.6 V).
+    voltageMax: 27.75
 
   # The module return. NOT GND: R1, the 10 mOhm shunt, sits between them, and a
   # netlist that calls J2/J3 pin 2 GND shorts the shunt through the ground pour

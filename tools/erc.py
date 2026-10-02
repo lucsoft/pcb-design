@@ -138,8 +138,8 @@ class Design:
         """The worst case a rail actually reaches, for undervoltage checks.
 
         A rail declared at its nominal hides the case that matters. This
-        project's 5 V rail is nominal 5.0 V and sags to 4.50 V in pass-through
-        at the bottom of vSafe5V — right on the 74AHCT541's supply floor — so
+        project's 5 V rail is nominal 5.0 V and sags to 4.48 V in pass-through
+        at the bottom of vSafe5V — just under the 74AHCT541's supply floor — so
         comparing a pin's vMin against the nominal says nothing. Declare
         `voltageMin` alongside `voltage` and the check uses it; without one it
         falls back to the nominal, which is the old behaviour.
@@ -147,6 +147,20 @@ class Design:
         rec = self.rails.get(net)
         if isinstance(rec, dict) and rec.get("voltageMin") is not None:
             return float(rec["voltageMin"])
+        return self.rail_voltage(net)
+
+    def rail_voltage_max(self, net: str) -> float | None:
+        """The worst case upward, for overvoltage checks.
+
+        The mirror of `rail_voltage_min`, and it exists for the same reason:
+        this project declares its PD bus at a nominal 36 V while every margin
+        in the design is worked against the 37.8 V a compliant fixed PDO may
+        actually sit at. Comparing a pin's vMax against the nominal would
+        silently pass a pin that the +5% tolerance breaks.
+        """
+        rec = self.rails.get(net)
+        if isinstance(rec, dict) and rec.get("voltageMax") is not None:
+            return float(rec["voltageMax"])
         return self.rail_voltage(net)
 
     def is_ground(self, net: str) -> bool:
@@ -450,11 +464,13 @@ class Check:
                 if not rec:
                     continue
                 vmax = rec.get("vMax")
-                if vmax is not None and v > float(vmax) + 1e-9:
+                vhigh = self.design.rail_voltage_max(net)
+                if vmax is not None and vhigh is not None and vhigh > float(vmax) + 1e-9:
                     sev = "warning" if self.unverified(comp, "pins", pin) else "error"
                     self.add("P1-overvoltage", sev,
                              f"{comp.designator}.{pin} ({rec.get('name', pin)}) is "
-                             f"rated {vmax} V max but sits on '{net}' at {v} V",
+                             f"rated {vmax} V max but '{net}' reaches {vhigh} V"
+                             + ("" if vhigh == v else f" (nominal {v} V)"),
                              where=f"{comp.designator}.{pin}",
                              hint="this exceeds the absolute maximum rating"
                                   + (" (pin data is unverified, confirm against "

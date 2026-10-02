@@ -307,6 +307,21 @@ def _():
     assert "P1-undervoltage" in rules(run(n, design))
 
 
+@case("P1-overvoltage reads a rail's declared worst case, not its nominal")
+def _():
+    # The mirror of the undervoltage case. A PD bus declared at its nominal
+    # hides the +5% a compliant fixed PDO may actually sit at, which is the
+    # voltage every margin in this design is worked against. The BZT52C20's
+    # pins are rated 20 V, so a 19 V nominal passes and a 21 V worst case
+    # does not.
+    base = DESIGN.replace("V12: {voltage: 12.0}", "V19: {voltage: 19.0}")
+    worst = DESIGN.replace("V12: {voltage: 12.0}",
+                           "V19: {voltage: 19.0, voltageMax: 21.0}")
+    n = comp("gge1", "D1", "C19077415", {"1": "V19", "2": "GND"})
+    assert "P1-overvoltage" not in rules(run(n, base))
+    assert "P1-overvoltage" in rules(run(n, worst))
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:

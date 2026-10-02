@@ -16,7 +16,10 @@ Judge each one -- the tool's job is to make sure none goes unseen.
 """
 import argparse, pathlib, re, sys
 
-ROOTS = ["designs", "kb", "rules"]
+# tools/ is in here because a numeric claim can hide in a docstring: the
+# rail_voltage_min() comment in erc.py carried a retired 4.50 V through two
+# review rounds, structurally invisible to the one check that exists for it.
+ROOTS = ["designs", "kb", "rules", "tools"]
 SKIP_SUFFIX = {".pdf", ".txt", ".png", ".svg", ".epro2"}
 
 

@@ -46,7 +46,7 @@ a suppressed rule is a decision, not a cleanup.
 
 | id | severity | catches |
 |----|----------|---------|
-| `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax` |
+| `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax`. Compared against the rail's `voltageMax` when `design.yaml` declares one, otherwise its nominal `voltage` — a bus stated only at nominal passes a pin that the source's +5% tolerance breaks |
 | `P1-undervoltage` | warning | rail below a pin's `vMin`. Compared against the rail's `voltageMin` when `design.yaml` declares one, otherwise its nominal `voltage` — a rail stated only at nominal hides the sag that crosses the floor |
 | `P2-no-decoupling` | error | a supply rail with no capacitor to ground |
 | `P2-thin-decoupling` | warning | fewer capacitors than supply pins on a rail |

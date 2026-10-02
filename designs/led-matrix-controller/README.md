@@ -233,8 +233,7 @@ So **power is now the only constraint: 0.5 mm², up to about 9 m** at 5% drop �
 That is a real gain over the ~5 m the single-ended link would have been held to.
 
 **The design's reference run is 10 m on 0.5 mm².** The 11 m that the ESD and
-edge-rate sections work at is the retired AWG-era figure — 1.8 V across 20 AWG at
-the balanced 2.43 A — kept because it is the *longer* case and therefore the
+edge-rate sections work at is deliberately the *longer* case, and therefore the
 conservative one for EMC. It is not a limit: 0.75 mm² reaches 14.0 m.
 
 Practice for the pair:
@@ -441,7 +440,7 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
 4. Firmware pulls EN_N low and the HUSB238A negotiates. **It is powered from
    VDD**, which step 2 already brought up. It cannot self-power from VBUS the way
    the datasheet's standalone application implies: behind the Figure 6 follower the VBUS pin
-   sees only 3.05-3.75 V at vSafe5V, under the 4.5 V the chip needs when VDD is
+   sees only 3.89-4.09 V at vSafe5V, under the 4.5 V the chip needs when VDD is
    absent. D14 holds the pin at ~4.19 V and VDD does the supplying.
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
@@ -524,9 +523,12 @@ is the discriminator: the no-fan case is already under the floor at this corner,
 so §Cooling's 50 mA bound is about the *typical* part, not the worst one. And the
 1.25-1.30× ratio is read off a curve, not published — see Assumptions.
 
-At 190 mΩ the rail is 4.515 V and D14 then holds the VBUS pin at
-**4.15 V**, which takes `VBUS_OK` to **+0.15 V** and leaves the under-voltage detector at **+0.15 V on the adjacent F1 band, 0.15 V short on the pessimistic F0 reading** — see the residual table. The corner is flagged for the thresholds; the 4.56 V row
-itself should be read as typical, not as the floor.
+At the applicable 0.24 Ω corner the rail is 4.48 V and D14 then holds the VBUS
+pin at **4.11 V**, which takes `VBUS_OK` to **+0.11 V** on typ and −0.29 V on max,
+and leaves the under-voltage detector at **+0.11 V on the adjacent F1 band,
+0.19 V short on the pessimistic F0 reading** — see the residual table. At the
+non-applicable 190 mΩ reading the rail is 4.515 V and the pin 4.15 V; the 4.56 V
+row is the typical, not the floor.
 
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
 |---|---|---|
@@ -554,7 +556,9 @@ no longer share a signal path, only a differential pair at 3.3 V logic.
 What the sag actually threatens is the **SK6812 status chain on this board**:
 its VIH is 0.6 x VDD, so at a 4.56 V rail the threshold is 2.74 V and the
 74AHCT541 drives it comfortably. The binding constraint is the buffer's own
-4.5 V supply minimum, which the rail clears by 0.06 V — see the dropout table.
+4.5 V supply minimum, which the rail clears by 0.06 V on a **typical** part and
+misses by about 20 mV at the applicable worst-case on-resistance — see the
+dropout table.
 
 **SY8089** (C479074, SOT-23-5, 100k stock) for 3.3 V rather than an LDO. At 4.81 V in,
 3.3 V out, and the ESP32-C6's **382 mA** worst-case transmit peak, an LDO would burn ~0.6 W; a
@@ -750,15 +754,16 @@ margin. The 5 V case is untouched: the Zener does not conduct at a 5 V bus, so
 the pin still comes from D14 at 4.19 V.
 
 This replaces the earlier assumption of a resistor-plus-Zener shunt, and the
-difference matters: a follower holds the pin near (Vgate − Vth) with low output
+difference matters: a follower holds the pin near (V_base − V_BE) with low output
 impedance, where a series resistor would drop voltage with load current.
 
-#### The follower is too lossy at 5 V, and the fix is two parts
+#### The follower does not reach the thresholds at 5 V, and the fix is two parts
 
-The follower costs one Vgs, and it costs it exactly where there is no room. At
-the bottom of vSafe5V — a **4.75 V** bus — it delivers only **3.05-3.75 V**,
-against a VBUS-pin minimum of 4.5 V when VDD is unpowered. The chip would not
-reliably come up.
+The follower costs one V_BE, and it costs it where there is least room. At the
+bottom of vSafe5V — a **4.75 V** bus — the base sits 63 mV below the rail
+(I_B × R44) and the emitter one V_BE below that, so the pin gets
+**3.89 – 4.09 V**. Against a VBUS-pin minimum of **4.5 V** with VDD unpowered,
+the chip would not reliably come up.
 
 **First: VDD (pin 5) is an input supply, so tie it to 3V3.** The datasheet is
 explicit — *"It is recommended to tie this pin to the single cell battery or a
@@ -771,30 +776,38 @@ once:
 | VBUS pin range **3.15 – 29.4 V** | 4.5 – 29.4 V |
 | VBUS pin current **330 µA typ / 800 µA max** | 4.5 mA |
 
-The requirement drops by 1.35 V and the current by **5.6x**, which also shrinks
-the follower's own Vgs. Sequencing makes this safe: nothing has to happen until
+The requirement drops by 1.35 V and the current by **5.6x**, and 3.89 V now
+clears it by 0.74 V. That alone would do — but it is not what decides, because
+two *threshold* figures sit above the minimum and the follower misses both. Sequencing makes this safe: nothing has to happen until
 firmware pulls EN_N low, and by then the 5 V and 3.3 V rails are both up, because
 they are fed from the bus directly.
 
 **Second: a Schottky from the 5 V rail to the VBUS pin.** At a 4.75 V bus the
-rail sits at **4.56 V** (the dropout table), and an RB751V-40 drops **0.37 V max
-at 1 mA** (p.2), so the pin is held at **4.19 V** — and the follower, seeing its
-source above (Vgate − Vth), simply stops conducting. Once the bus rises the
+rail sits at **4.56 V** typical (the dropout table), and an RB751V-40 drops
+**0.37 V max at 1 mA** (p.2), so the pin is held at **4.19 V** — and the follower,
+seeing its emitter above (V_base − V_BE), simply stops conducting. At the
+converter's applicable worst-case on-resistance the rail is 4.48 V and the pin
+**4.11 V**, which is the figure the residuals below have to be read at. Once the bus rises the
 follower takes the pin to ~26.3 V and the Schottky is reverse-biased by 21.3 V,
 well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 
 | | Follower alone | With D14 |
 |---|---|---|
-| Pin at a 4.75 V bus | 3.05 – 3.75 V | **4.19 V** |
-| Against the 3.15 V minimum | **fails at the low corner** | 1.04 V margin |
+| Pin at a 4.75 V bus | 3.89 – 4.09 V | **4.19 V** typ, **4.11 V** at the R_DS corner |
+| Against the 3.15 V minimum | +0.74 V | +1.04 V |
+| Against the 4.0 V thresholds | **−0.11 V at the low corner** | +0.19 V typ, **+0.11 V** at the R_DS corner |
+
+So D14 is not rescuing a part that fails its supply minimum — the follower clears
+that by 0.74 V since VDD was tied to 3V3. It is buying the margin on the two 4.0 V
+*threshold* figures, which the follower alone misses at its low corner.
 
 **Two residuals at the bottom of vSafe5V, and they are tighter than they look.**
-Both are 4.0 V thresholds against the 4.19 V the Schottky delivers:
+Both are 4.0 V thresholds against the **4.11 V** the Schottky delivers at the applicable R_DS corner (4.19 V on a typical part):
 
 | Threshold | Value | Margin at 4.19 V |
 |---|---|---|
-| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.7) | +0.19 V on typ, **−0.21 V on max** |
-| VBUS UV falling | **not specified at a 5 V RDO.** p.7 bands it 86% for 26 V > RDO > 10 V (F0) and 80% for 10 V ≥ RDO > 5 V (F1) — 5 V itself falls in no band. The **adjacent** band is F1 at 80%, which ends exactly at 5 V; F0 starts at 10 V, one band further up. At 80% the bound is **4.00 V** and the pin clears by **+0.19 V**. At F0's 86% it would be 4.30 V and 0.11 V short | **+0.19 V on the adjacent band, −0.11 V on the pessimistic one** |
+| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.7) | at the R_DS corner **+0.11 V** on typ, **−0.29 V** on max (a typical converter gives +0.19 / −0.21) |
+| VBUS UV falling | **not specified at a 5 V RDO.** p.7 bands it 86% for 26 V > RDO > 10 V (F0) and 80% for 10 V ≥ RDO > 5 V (F1) — 5 V itself falls in no band. The **adjacent** band is F1 at 80%, which ends exactly at 5 V; F0 starts at 10 V, one band further up. At 80% the bound is **4.00 V**; at F0's 86% it would be 4.30 V | at the R_DS corner **+0.11 V** on the adjacent band, **−0.19 V** on the pessimistic one |
 
 The first decides whether VBUS-present is seen; the second is the under-voltage
 detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
@@ -805,8 +818,9 @@ the `AttachWait.SNK → Attached.SNK` transition on VBUS detection, which is wha
 vVBPRS_R implements, and the UV detector was not mentioned at all.
 
 **Honest position: two margins, both thin, and one of them unspecified.**
-`VBUS_OK` rising clears by **+0.19 V** on a typical part and misses by 0.21 V on
-a max one. The under-voltage detector publishes no band covering a 5 V RDO at
+`VBUS_OK` rising clears by **+0.11 V** at the converter's applicable worst-case
+on-resistance (+0.19 V on a typical one) and misses by 0.29 V on a max-threshold
+part. The under-voltage detector publishes no band covering a 5 V RDO at
 all; its **adjacent** band is F1 at 80%, giving a 4.00 V bound that the 4.19 V pin
 clears by **+0.19 V** — numerically the same figure by coincidence, since
 vVBPRS_R typ is 4.0 V and 80% of 5 V is also 4.0 V. Reading the *next* band up
@@ -1254,7 +1268,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | R47 | **10 kΩ 1% 0402** | C25744 | W5500 module INTn pull-up — open-drain, same reasoning as the HUSB238A's INT_N |
 | R48 | **0 Ω 0402, do not fit** | C17168 | follower bypass link. Fitted only on a build that never exceeds 28 V, where Q3 and D1 come out and VBUS connects straight through. **DNF** on this board |
 
-**Capacitors** — 35 parts.
+**Capacitors** — 36 parts.
 
 | Ref | Value | LCSC | Role |
 |---|---|---|---|
@@ -1276,6 +1290,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | C21,C22 | **100 nF 50 V X7R 0402** | C131394 | MAX3485 supply decoupling, one per transceiver |
 | C23,C32 | **100 nF 50 V X7R 0402** | C131394 | 74AHCT541 and the Ethernet module's 3V3 feed |
 | C24-C31 | **100 nF 50 V X7R 0402** | C131394 | one per SK6812 — the datasheet calls the inter-LED decoupling essential |
+| C36 | **100 nF 50 V X7R 0402** | C131394 | bus-voltage ADC tap filter. Specified in prose for several revisions with no BOM line — it is what makes the 25.5 kΩ source impedance acceptable to the SAR, τ = 2.55 ms |
 
 Not on this board: the **120 Ω** differential termination belongs at the far end of each chain, on the first converter board — see Cabling.
 
@@ -1407,7 +1422,7 @@ The largest items are where any further shrink comes from:
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
 | 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
-| 83 passives | ~196 | 67 × 0402 at ~1.5 mm² with pads, 8 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
+| 84 passives | ~198 | 68 × 0402 at ~1.5 mm² with pads, 8 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
 | SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
 
@@ -2273,7 +2288,7 @@ undetectable. None of these is all three.
 | Assumption | Rests on | If wrong | Settled by |
 |---|---|---|---|
 | **Q3 V_BE = 0.6-0.8 V** at 800 µA | silicon junction over −20…+85 °C. The MMBT5551 datasheet publishes no V_BE(on) at any current; its only V_BE figure is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
-| **h_FE = 60** at 800 µA | deliberately below the datasheet's 80 min at I_C = 1.0 mA | nothing — every margin in the table is the pessimistic one | already settled; the datasheet row brackets the operating point |
+| **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.86 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.19 V at β 40, 0.09 V at β 20, zero near β 10 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
 | **C134462 / C3198004 pad numbers** | the KB keys them by *contact* designation (`J1-1 … J2-6`, `A1 … B12`); a netlist keys by pad number | `K3` fires on 27 pins, or worse, a netlist that imports onto the wrong pads | **a desk task.** Open the EasyEDA library symbol and read them. Must happen before the netlist regardless |
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
@@ -2592,7 +2607,7 @@ Kept so they are not re-opened:
   (RB751V-40) from the 5 V rail to the VBUS pin. VDD is an input supply, not an
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
   draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.19 V on a
-  4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: `VBUS_OK`
+  4.75 V bus where the follower alone gives 3.89-4.09 V. Residual: `VBUS_OK`
   rising clears by **+0.19 V** on a typical part, and the under-voltage detector
   publishes no band covering a 5 V RDO — its adjacent band (F1, 80%) puts the
   bound at 4.00 V, which the pin clears by the same 0.19 V. Works on a typical

@@ -40,6 +40,6 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "SELECTED as the board's general-purpose 100 nF, 17 places: C5, C14, C16, C19-C23, C24-C31, C32. 50 V 0402 X7R. Replaces C1525, which is 16 V and at zero stock. NOT used at C9 - that one sits on the 36 V bus and takes the 100 V C28233.",
+  "designVerdict": "SELECTED as the board's general-purpose 100 nF, 18 places: C5, C14, C16, C19-C23, C24-C31, C32, C36. 50 V 0402 X7R. Replaces C1525, which is 16 V and at zero stock. NOT used at C9 - that one sits on the 36 V bus and takes the 100 V C28233.",
   "notes": []
 }
