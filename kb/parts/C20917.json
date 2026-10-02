@@ -1,0 +1,65 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C20917",
+  "@type": "Component",
+  "lcscId": "C20917",
+  "mpn": "AO3400A",
+  "manufacturer": "AOS",
+  "description": "N-Channel 30V Surface Mount SOT-23-3L",
+  "category": "transistor",
+  "package": "SOT-23",
+  "stock": 539925,
+  "priceUsd": 0.0898,
+  "parameters": {
+    "Output Capacitance(Coss)": "75pF",
+    "Ciss-Input Capacitance": "630pF",
+    "Pd - Power Dissipation": "1.4W",
+    "Configuration": "-",
+    "Operating Temperature": "-55℃~+150℃",
+    "Drain to Source Voltage": "30V",
+    "Current - Continuous Drain(Id)": "5.7A",
+    "Reverse Transfer Capacitance (Crss)": "50pF",
+    "RDS(on)": "48mΩ@2.5V",
+    "Number": "1 N-channel",
+    "Gate Charge(Qg)": "7nC@10V",
+    "Vgs": "±12V",
+    "Gate Threshold Voltage (Vgs(th))": "1.45V",
+    "Type": "N-Channel"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/130876b936da464599428c58fd8de8f6.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "G",
+      "type": "input"
+    },
+    {
+      "number": "2",
+      "name": "S",
+      "type": "passive"
+    },
+    {
+      "number": "3",
+      "name": "D",
+      "type": "passive",
+      "vMax": 30.0
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "datasheet p.1 SOT23 Top View: single lead D, pair G and S - pin 1 G, pin 2 S, pin 3 D (same as the BSS138 already in this BOM)"
+  },
+  "designVerdict": "NOT FITTED. Worked up as the low-side switch for a larger cooling fan, then not needed: a fan of 70 mA or less needs no switch at all, and there is no spare GPIO to drive one with. Kept because the analysis is the thing worth keeping, not the part.",
+  "notes": [
+    "Chosen over reusing the BSS138 already in this BOM (C7420339), which is rated 200 mA continuous - a 150 mA fan with startup inrush sits right on that. The AO3400A is 5.7 A and R_DS(on) < 48 mOhm at V_GS = 2.5 V, so a 3.3 V GPIO drives it fully on with no gate-drive question at all.",
+    "V_DS is only 30 V, which is fine because the fan hangs on the 5 V rail, not the bus. Do NOT reuse this part anywhere on the 36 V side.",
+    "Low-side switching also gives PWM speed control for free. A mini fan at full tilt in a living space is its own problem; above ~20 kHz the PWM is inaudible."
+  ]
+}

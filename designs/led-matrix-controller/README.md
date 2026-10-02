@@ -1159,6 +1159,7 @@ Active parts. Passives are listed below the table.
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
 | LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.111 |
 | SW1,SW2 | TS-1088-AR02016 | C720477 | 2 | **BOOT** (GPIO9 to GND) and **EN** (reset) — recovery only; programming is over the ESP32-C6's native USB on J1 | 0.023 |
+| J4 | PZ254V-11-02P | C492401 | 1 | **fan header, do not fit by default** — 1x2 2.54 mm across the 5 V rail. See Cooling | 0.013 |
 | TP1-TP3 | — | — | 3 | UART0 TX / RX / GND, bare pads. A footprint, not a part: the console is a fallback for when USB enumeration itself is what is broken | — |
 
 **Not from LCSC/JLCPCB.** Two board items are hand-fitted — the Ethernet module
@@ -1375,6 +1376,44 @@ The largest items are where any further shrink comes from:
 | 81 passives | ~188 | 67 × 0402 at ~1.5 mm² with pads, 6 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25. An earlier version of this row said 205 mm² from sub-counts that did not add up to their own total |
 | SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
+
+### Cooling
+
+**A fan is not in the thermal budget and the board is not designed to need one.**
+4.11 W against 4.80 W of free-air capacity is 1.17x at 25 °C ambient — and that
+margin is gone by 45 °C, which an enclosure on a wall can reach without trying.
+The enclosure is not designed. **J4** is the cheap insurance against finding that
+out after the boards arrive: a 1x2 2.54 mm header across the 5 V rail, not fitted
+by default, into which a mini fan plugs directly.
+
+**It needs no switch, and that is a constraint rather than a convenience.** The
+fan hangs on the 5 V rail unswitched, so it runs whenever the board is powered —
+including at vSafe5V, where that rail is in pass-through and every milliamp costs
+voltage directly. The binding limit is the 74AHCT541's **4.5 V** supply minimum:
+
+| fan | 5 V rail at a 4.75 V bus, R_DS typ | at the 190 mΩ corner |
+|---|---|---|
+| none | 4.569 V | 4.520 V |
+| 25 mm, ~50 mA | 4.559 V | 4.507 V |
+| **30 mm, ~70 mA** | 4.556 V | **4.502 V** |
+| 40 mm, ~100 mA | 4.550 V | 4.494 V — **under the floor** |
+
+So **fit a fan of 70 mA or less**, which is a 25-30 mm part. At 36 V none of this
+applies: the rail is a real buck off a 3.5 A converter and the fan is free. The
+constraint exists only at the bottom of vSafe5V, where there is no heat to move
+anyway — the board makes 2.3 W there.
+
+**A larger fan would need a low-side switch, and there is no GPIO for it.** All
+23 pads are assigned (see GPIO assignment), and EN_N cannot be strapped because
+firmware has to pull it low for the PD chip to negotiate at all. An AO3400A
+(C20917) was worked up for the job and is recorded in the knowledge base, but
+fitting it means freeing a pin — realistically the UART0 console — and that is a
+worse trade than choosing a smaller fan.
+
+**The thermal protection does not depend on the fan.** The eFuses regulate their
+own junction temperature and shut down on it, and firmware caps brightness from
+the INA226. A fan that fails, or is never fitted, degrades performance rather
+than safety.
 
 **The PPTCs are already gone** — there is no PPTC line in the BOM, and this
 section is the record of why. They were specified when the connector was 3 A; at

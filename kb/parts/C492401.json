@@ -1,0 +1,60 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C492401",
+  "@type": "Component",
+  "lcscId": "C492401",
+  "mpn": "PZ254V-11-02P",
+  "manufacturer": "XFCN",
+  "description": "Through Hole 250V 1 2.54mm Square pin 3A 2.5mm 6.1mm 2P -40℃~+105℃ 3mm Gold Black 1x2P Through Hole,P=2.54mm Headers, Male Pins ",
+  "category": "connector",
+  "package": "Through Hole,P=2.54mm",
+  "stock": 1245000,
+  "priceUsd": 0.0188,
+  "parameters": {
+    "Connector Type": "Through Hole",
+    "Voltage Rating (Max)": "250V",
+    "Contact Material": "Brass",
+    "Number of Rows": "1",
+    "Pitch": "2.54mm",
+    "Circluar Pins/Square Pins": "Square pin",
+    "Current Rating": "3A",
+    "Insulation Height": "2.5mm",
+    "Length of Mating Pin": "6.1mm",
+    "Number of PINs": "2P",
+    "Operating Temperature": "-40℃~+105℃",
+    "Length of End Connection Pin": "3mm",
+    "Contact Plating": "Gold",
+    "Color": "Black",
+    "Pin Structure": "1x2P",
+    "Row Spacing": "-"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/3b85a1cdf6ed945f2e278f00c1e42442.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "1x2 2.54 mm pin header, 3 A per contact"
+  },
+  "designVerdict": "SELECTED as J4, the fan header. 1x2 2.54 mm, 3 A per contact.",
+  "notes": [
+    "Optional part. The board is designed to pass its thermal budget without a fan - 4.11 W against 4.80 W of free-air capacity at 25 C ambient - but that margin is 1.17x and it is gone by 45 C, and the enclosure is not designed. This header is the cheap insurance against finding that out late.",
+    "2.54 mm because mini fans ship with bare wires or a 2-pin 2.54 housing more often than anything else, and because a through-hole header is the one part on this board that can be fitted after the fact without a stencil."
+  ]
+}
