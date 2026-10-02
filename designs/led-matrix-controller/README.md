@@ -1,7 +1,8 @@
 # LED matrix controller — status
 
-Design brief in `BRIEF.md`. Nothing laid out yet. Requirements are settled;
-several items under Open questions still block the netlist.
+Design brief in `BRIEF.md`. Nothing laid out yet. Requirements are settled and
+nothing under Open questions blocks the netlist any more — what remains there is
+verification, converter-board dependencies and accepted trade-offs.
 
 ## What the board does
 
@@ -9,7 +10,8 @@ Negotiates USB PD, supplies a chained set of LED matrix modules over a
 high-voltage bus, and runs an ESP32-C6 that drives the chain over Ethernet
 (W5500) or USB. Brightness is capped in software to whatever PD actually
 negotiated, so modules can be added freely within the power budget — the eFuse's
-ramp does not depend on how much capacitance hangs on it — and the board divides the
+programmed ramp has no capacitance term, though the thermal regulation loop is
+what actually bounds start-up — and the board divides the
 available power between them.
 
 ## Environment
@@ -116,7 +118,7 @@ flowchart LR
         RS485["2x MAX3485<br/>differential, 3.3 V"] -->|"A/B"| CN1["ch1 connector"]
         RS485 -->|"A/B"| CN2["ch2 connector"]
         BUF["HCT buffer<br/>3.3 V -> 5 V"]
-        BUF -->|status| LEDS["8x SK6812D-EC3210R<br/>side-emitting"]
+        BUF -->|status| LEDS["8x SK6812-EC20"]
     end
 
     SW1["ch1 load switch"]
@@ -155,7 +157,7 @@ so the extra front-end complexity is worth it.
 
 180 W, less **5 W** for the controller, leaves **175 W** for modules. 5 W is the
 figure every calculation and `figures.py` actually use; the thermal budget's
-3.98 W is the computed total and the 1.0 W difference is deliberate headroom.
+4.10 W is the computed total and the 0.9 W difference is deliberate headroom.
 Perceived brightness applies a gamma of 2.2.
 
 | Modules | Power | Perceived | fps (2 ch) | Binds on |
@@ -231,7 +233,7 @@ would be 32% of the supply; at 36 V it is 4.5%.
 
 ## Status indication
 
-Eight SK6812D-EC3210R in a chain on ONE GPIO, level-shifted through a 74AHCT541.
+Eight SK6812-EC20 in a chain on ONE GPIO, level-shifted through a 74AHCT541.
 
 **Why all eight are RGB when only two need colour for their own job.** The
 obvious saving is two addressable LEDs for the fault indicators plus six plain
@@ -239,9 +241,9 @@ ones for the bar, and it does not pay:
 
 | | power | GPIOs | parts | cost |
 |---|---|---|---|---|
-| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **9** | $0.87 |
+| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **9** | $1.13 |
 | 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W | 1 | 17 | **$0.15** |
-| 2 addressable + 6 plain, driven directly | 0.070 W | 7 — none spare | 10 | — |
+| 2 addressable + 6 plain, driven directly | 0.070 W | 7 — none spare | 14 | — |
 
 **GPIO count is a tie, not a win**, and an earlier version of this section said
 otherwise. A 74HC595 shares SCLK and MOSI with the Ethernet module and needs only
@@ -252,7 +254,7 @@ genuinely buildable: YLED0805R (C19171391) at 127k stock and 0.8 ¢.
 Two things decide it, and they pull opposite ways. **Part count favours
 addressable** — nine against seventeen, because the shift-register version needs
 eight current-limiting resistors where the SK6812s have drivers built in, and on
-a small run that outweighs 72 ¢. **And colour has become load-bearing.** The bar
+a small run that outweighs 98 ¢. **And colour has become load-bearing.** The bar
 reads watts across 180 W, so on a 36 W contract one LED lights whether the wall
 is dark or the supply is small; without colour there is no way to tell those
 apart. That did not matter while 36 V was the only normal case — since the UVLO
@@ -274,49 +276,46 @@ glance and a colour-coded bar is read twice.
   LED rather than one per time window: bright red = limiting now, orange = within
   5 min, dim yellow = within 10 min, off = clean for 10+ min.
 
-Selected: **SK6812D-EC3210R** (C2890041), a **side-emitting** 3.2 × 1.1 mm part.
+Selected: **SK6812-EC20** (C2909058), 2 × 2 mm top-view.
 
-**Side-emitting is the point.** In an enclosure a top-view indicator needs a
-window in the lid; a side-view one shines out the board edge, which is where
-someone looking at a wall-mounted controller already is. Electrically it is the
-same part family: IDOUT 10.5/12/13.5 mA against the MINI-E's 10/12/14.5 mA, so
-the 0.12 W budget is unchanged.
+**The side-emitting alternative was evaluated and is the better part once the
+enclosure is known.** SK6812D-EC3210R (C2890041) shines out the board edge, which
+saves cutting a window in whatever face the operator looks at. But the enclosure
+is not designed, so neither constraint can be weighed: a top-view part can sit
+anywhere on the board and needs a window; a side-view part needs an unobstructed
+in-plane path and gives edge visibility without one. Which is cheaper depends on
+how the board sits in the box.
 
-| | SK6812MINI-E | **SK6812D-EC3210R** |
-|---|---|---|
-| area each | 12.25 mm² | **3.52 mm²** — saves 70 mm² over eight |
-| emission | top | **side** |
-| price for eight | $0.65 | $0.90 |
-| stock | 187k | 52k |
+**While that is open, the part that constrains nothing is the right default.**
 
-**What side-emitting actually requires is a clear path, not an edge.** The light
-leaves parallel to the board, so nothing tall may stand in front of it. The board
-edge is the natural place because that is where an enclosure opening would be,
-but the constraint is line of sight.
+| | SK6812-EC20 (chosen) | SK6812D-EC3210R | SK6812MINI-E |
+|---|---|---|---|
+| area | 4.0 mm² | 3.52 mm² | 12.25 mm² |
+| emission | top | side | top |
+| placement | anywhere | needs line of sight | anywhere |
+| price for eight | $0.89 | $0.90 | $0.65 |
+| stock | 35k | 52k | 187k |
 
-**And board edge is not scarce.** An earlier version of this section called it
-the binding resource, which was wrong by a factor of six:
+Electrically they are interchangeable: IDOUT 12 mA typ on all three, same supply
+range, and all three need the level shifter (below).
 
-| | |
-|---|---|
-| perimeter at 72 × 74 mm | **292 mm** |
-| committed — USB-C 9, two picoMAX 32, RJ45 16, antenna keep-out 18 | 75 mm, **26%** |
-| free | **217 mm** |
-| eight LEDs at 3.2 mm plus spacing | **34 mm**, 15% of what is free |
+**All three have different pin orders, and no two agree:**
 
-"All four edges are committed" in the mechanical section means each edge carries
-*something*, not that any is full.
+| | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| SK6812MINI-E | GND | DIN | VDD | DOUT |
+| SK6812D-EC3210R | GND | DOUT | DIN | VDD |
+| **SK6812-EC20** | **VDD** | DOUT | GND | DIN |
 
-**The pin order is not the same as the MINI-E's** — 1 GND / 2 DOUT / 3 DIN /
-4 VDD against 1 GND / 2 DIN / 3 VDD / 4 DOUT. A netlist written for one is wrong
-for the other, with DIN and VDD swapped, which is the failure mode the standing
-rule about pin numbers exists for.
+A netlist written for any one of them puts VDD on a data pin of either other.
+This is the clearest illustration in the project of why pin numbers are read and
+never assumed.
 
-**The level shifter stays regardless of which variant is chosen.** Every SK6812
-in this family wants VIH ≥ 0.6-0.65 × VDD, i.e. 3.0-3.25 V on a 5 V rail, and the
-ESP32-C6 guarantees only V_OH ≥ 0.8 × VDD = **2.64 V**. Even the SK6812-EC20
-(C2909058), whose 0.6 × VDD is the most permissive of the three, is out of reach.
-The 74AHCT541 is not a part any LED choice can delete.
+**The level shifter stays whichever is chosen.** Every SK6812 in this family wants
+VIH ≥ 0.6-0.65 × VDD, i.e. 3.0-3.25 V on a 5 V rail, and the ESP32-C6 guarantees
+only V_OH ≥ 0.8 × VDD = **2.64 V**. The EC20's 0.6 × VDD is the most permissive of
+the three and still out of reach. The 74AHCT541 is not a part any LED choice can
+delete.
 
 **The thermal indicator is a model, not a measurement.** There is no temperature sensor
 on the modules - the controller infers thermal state from commanded brightness
@@ -433,8 +432,9 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
    released together: the dV/dt-controlled inrush is 0.72 A per channel, so
    1.44 A against a 5.0 A contract.
 7. Each eFuse turns on after **11.6 ms** (742 µs + 49.5 × C_dVdT in nF) and ramps
-   its own 3.3 mF at a dV/dt-controlled **0.72 A**, taking **165 ms**. The bus is
-   already static, so they ramp into a steady source. The multi-second insertion
+   its own 3.3 mF at a dV/dt-controlled **0.72 A**, taking **165 ms** as
+   programmed — in practice the thermal regulation loop stretches it, see below.
+   The bus is already static, so they ramp into a steady source. The multi-second insertion
    delay the LM5069 imposed is gone with it.
 
 There is no master pass FET — see Channel switching and inrush. A PD
@@ -783,11 +783,11 @@ port. The TPS16630 works from **4.5 V**.
 | stock | 105 | 1141 |
 | inrush | 1.05 A rising to a 5.5 A plateau | **constant 0.72 A** |
 | two channels at once | 11 A — needed staggering | **1.44 A** |
-| ramp vs module count | capacitance-limited at 12.7/channel | **independent** |
+| ramp vs module count | capacitance-limited at 12.7/channel | **bounded by the eFuse's 1.25 s thermal timeout, not by a fault timer** |
 | dissipation | 0.35 W | 0.66 W |
 
 The last row is the cost and it is real: 31 mΩ integrated against 9.5 mΩ discrete
-plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.20x**, on a board
+plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.17x**, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
 **What it buys back is three of this document's own known limits.** The inrush is
@@ -839,7 +839,7 @@ i.e. **2.0×** inside TI's demonstrated case, not the 4× a capacitance comparis
 suggests. At the 20-module growth case it is **4.28 J ≈ 1.0×** — equal to the
 demonstration, not a quarter of it.
 
-**And the 165 ms ramp is a 25 °C figure.** Equation 3 gives the inrush power:
+**And the 165 ms ramp is never actually realised.** Equation 3 gives the inrush power:
 
     P_D(inrush) = 0.5 × V_IN × I_INRUSH = 0.5 × 36 × 0.72 = **13 W** per channel
 
@@ -847,15 +847,35 @@ for 165 ms, 26 W for the pair — six times the board's entire steady budget. Th
 datasheet is explicit that if this exceeds the Figure 13 power-versus-time
 boundary, the **thermal regulation loop** takes over, overrides the programmed
 slew and starts a **1.25 s** `t(Treg_timeout)`; if the output has not come up by
-then the FET turns off and MODE decides latch or retry. Reading Figure 13, 13 W
-sits several hundred milliseconds inside the boundary at 25 °C but only ~40-60 ms
-at 85 °C — on TI's EVM copper, which is better than this board's.
+then the FET turns off and MODE decides latch or retry.
 
-So **regulation will engage during the ramp at the 45 °C ambient this document
-calls realistic**, the ramp will be longer than 165 ms there, and there *is* still
-a start-up ceiling — it is `t(Treg_timeout)` rather than a fault timer, and it is
-much further out than the LM5069's, but "165 ms whatever the load" is a 25 °C
-claim and the 20-module case is where it would bite.
+Reading Figure 13 properly — the curves extracted rather than estimated — gives:
+
+| P_D | 0 °C | **25 °C** | 85 °C |
+|---|---|---|---|
+| 13 W (10 modules) | 475 ms | **120 ms** | 58 ms |
+| 26 W (20 modules) | 68 ms | 38 ms | 14 ms |
+
+**So the programmed 165 ms slew is never realised at any ambient.** At 25 °C the
+boundary at 13 W is 120 ms, *below* the ramp — an earlier version of this section
+read it as "several hundred milliseconds inside the boundary" and was wrong by
+three to four times. Two things make it tighter still: Figure 13 is time-to-*shutdown*
+at T(TSD) = 165 °C, while the regulation loop engages at T(J_REG) = 145 °C typ and
+136 °C minimum, so regulation starts earlier than the plotted time; and the
+inrush tolerance band puts P_D at 11.3-15.7 W rather than exactly 13 W.
+
+**The correct statement is that thermal regulation runs the ramp, not the dVdT
+capacitor.** C_dVdT sets the *intended* slew and the loop overrides it whenever
+the ramp would overheat the die, which is always here. The real bound is
+`t(Treg_timeout)` = **1.25 s**, and the question is whether the output comes up
+inside it. On energy it does: the 25 °C curve reads ~7 W at 1.25 s, so 8.75 J
+against the 2.14 J needed at 10 modules and 4.28 J at 20. At 85 °C the same curve
+is near 4 W, about 5 J — **which is marginal against 4.28 J**, and that is the
+case to watch.
+
+One caveat the datasheet attaches and this design cannot close: Figure 13 is
+*"taken on VQFN device on EVM board"*, and the fitted part is the HTSSOP-20. Both
+the package and the copper differ, in the unhelpful direction.
 
 **Thresholds.** UVLO at 4.32 V sits just under the part's own 4.5 V minimum
 operating voltage, so **the device's own floor is the binding one** and the LED
@@ -871,9 +891,9 @@ modules' 45 V absolute by 2.5 V. The window the old part could not fit into is
 comfortable for this one.
 
 **The release threshold is not comfortable, and closing the trip point did not
-close it.** V(OVPF) is 1.09/1.122/1.15 V, so the channel re-enables at
-**37.5-38.8 V** on the comparator spread alone and **36.4-39.9 V** once the 1%
-resistors are carried. A compliant source may sit at **37.8 V indefinitely** —
+close it.** V(OVPF) is 1.09/1.122/1.15 V against a nominal divider ratio of 34.06, so the
+channel re-enables at **37.1-39.2 V** on the comparator spread alone and
+**36.4-39.9 V** once the 1% resistors are carried. A compliant source may sit at **37.8 V indefinitely** —
 which is inside that band. A low-corner part that trips on an excursion would
 then **not re-enable on a healthy bus**: it needs the bus below 36.4 V, which a
 36 V contract never reaches.
@@ -904,7 +924,8 @@ V(SHUTR) ≤ 2 V, so a 3.3 V GPIO is in range with margin.
 
 **The logic is not inverted.** GPIO high enables, GPIO low or high-Z disables, and
 the pull-down makes reset the off state. The 2N7002s the old arrangement needed
-for the enable path are gone — Q1/Q2 no longer exist.
+in the enable path are gone entirely — the GPIO drives SHDN itself, and the only
+transistors left on this net are the two FAULT interlocks.
 
 ### What is still open here
 
@@ -960,7 +981,9 @@ Two boundaries worth knowing rather than discovering:
 - **Growth is no longer capped by start-up.** The LM5069 that preceded the
   TPS16630 had a fault timer that expired during the ramp above ~12.7 modules per
   channel, because t_start scaled with capacitance. Under dV/dt control the ramp
-  is **165 ms whatever the load**; only the inrush scales, to 1.44 A per channel
+  is **165 ms as programmed** — though in practice the thermal regulation loop
+runs the ramp rather than C_dVdT, see Channel switching and inrush; only the
+inrush scales, to 1.44 A per channel
   at 20 modules. The binding constraint is power again.
 
 - **Frame rate past ~24 modules degrades too**, if the capacitance problem were
@@ -1002,7 +1025,7 @@ Active parts. Passives are listed below the table.
 | R2 | 10 kΩ 0.25 W 1206 | — | 1 | bus bleeder, jellybean, final selection at layout | — |
 | J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.99 |
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
-| LED1-8 | SK6812D-EC3210R | C2890041 | 8 | status chain, **side-emitting**, 3.2 × 1.1 mm | 0.113 |
+| LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.111 |
 
 **Not from LCSC/JLCPCB.** Two board items are hand-fitted — the Ethernet module
 and the picoMAX headers — so the board is not fully JLCPCB-assemblable. The third
@@ -1155,7 +1178,7 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7045 mm2.**
 
-Component area estimates at **~2340 mm2** — the Ethernet module made the board
+Component area estimates at **~2345 mm2** — the Ethernet module made the board
 slightly *bigger*, 575 mm2 against the ~496 it replaced, and an earlier 2310
 figure predates that swap. At 45% utilisation (2-layer, relaxed) that is roughly
 **72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
@@ -1167,7 +1190,7 @@ The largest items are where any further shrink comes from:
 |---|---|---|
 | ESP32-C6-WROOM-1-N8 | 459 | ESP32-C6-MINI-1 is 219 mm2 — saves 240 |
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
-| 8x status LED, side-emitting | 28 | 3.52 mm² each; the top-view part was 98 mm² |
+| 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
 
 
@@ -1223,11 +1246,12 @@ in firmware are still written against 36 V and have to follow:
 **The ramp no longer scales against the contract.** Inrush is `C_OUT × dV/dt` =
 0.72 A per channel whatever the bus voltage, so 1.44 A for both — 29% of a
 36 V/5 A contract and 48% of a 12 V/3 A one. No staggering, and the limiter only
-has to hold the frame down until the 165 ms ramp finishes.
+has to hold the frame down until the ramp finishes — 165 ms as programmed,
+longer once the thermal regulation loop takes over.
 
 **Downward renegotiation is new and untested.** With UVLO at 28 V the channels
 opened at 26.2 V on any 36 → 28 → 20 V transition, isolating the module banks.
-At 7.97 V they stay closed throughout, so the modules' 6.6 mF now rides the
+At the eFuse's 4.32 V they stay closed throughout, so the modules' 6.6 mF now rides the
 transition. The attach-time isolation argument still holds — at attach the bus is
 5 V, and the inrush is dV/dt-limited in any case — but the renegotiation case is not covered
 by it and the 15 ms tSnkNewPower paragraph predates the change.
@@ -1260,8 +1284,8 @@ it is 1.4 mm and routine. 2 oz (70 µm) also halves the copper's contribution to
 thermal path.
 
 **The eFuse's PowerPAD is now the thermal path, and it is not optional.** The
-TPS16630 dissipates 0.27 W steady per channel and far more during the 165 ms
-ramp, with the device regulating its own junction temperature — which it can only
+TPS16630 dissipates 0.27 W steady per channel and far more during the ramp,
+with the device regulating its own junction temperature — which it can only
 do if the pad has somewhere to put the heat. TI's HTSSOP-20 PowerPAD wants a
 soldered pour with thermal vias. An earlier version of this section worked
 through a discrete FET's "1 in² of 2 oz copper" requirement; that part is gone,
@@ -1305,7 +1329,7 @@ around it, and a small board has less of it.
 The TPS16630's integrated FET is **31 mΩ typ / 45 mΩ max at 85 °C**, so at
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
-the price of the part — thermal headroom goes from 1.29x to **1.20x**.
+the price of the part — thermal headroom goes from 1.29x to **1.17x**.
 
 **The ramp is the device's own problem now, by design.** There is no SOA
 calculation to do and no power limit to set: the part regulates its own junction

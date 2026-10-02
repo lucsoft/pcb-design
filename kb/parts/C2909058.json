@@ -31,7 +31,29 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/71bc9889daf7731d2def479e04f99e6c.pdf",
   "retrieved": "2026-10-02",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "VDD",
+      "type": "power_in",
+      "vMax": 6.0
+    },
+    {
+      "number": "2",
+      "name": "DOUT",
+      "type": "output"
+    },
+    {
+      "number": "3",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "4",
+      "name": "DIN",
+      "type": "input"
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -39,11 +61,13 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": ""
+    "pins": "datasheet section 5 Pin Function Description (2x2 mm, 4-pad)"
   },
-  "designVerdict": "REJECTED - evaluated against C2890041 and not chosen.",
+  "designVerdict": "SELECTED as LED1-8, the status chain. 2x2 mm top-view SK6812.",
   "notes": [
-    "SK6812-EC20, 2 x 2 mm top-view. Its VIH of 0.6 x VDD is the most permissive of the three variants evaluated, which raised the question of whether the 74AHCT541 could be deleted - it cannot. 0.6 x 5.0 V = 3.0 V against the ESP32-C6's guaranteed V_OH of 0.8 x VDD = 2.64 V. No SK6812 in this family can be driven directly.",
-    "Rejected in favour of the side-emitting C2890041, which suits an enclosure better. Area is comparable (4.0 mm2 against 3.52) and price nearly identical."
+    "Chosen over the side-emitting SK6812D-EC3210R (C2890041) because the enclosure is not designed. A top-view part sits anywhere on the board and needs a window in whatever face the operator looks at; a side-view part needs an unobstructed in-plane path and saves the window. Which is cheaper depends on how the board sits in the box, and while that is open the part that constrains nothing is the right default.",
+    "PIN ORDER: 1 VDD / 2 DOUT / 3 GND / 4 DIN. All three SK6812 variants evaluated have DIFFERENT pin orders and no two agree - MINI-E is GND/DIN/VDD/DOUT, EC3210R is GND/DOUT/DIN/VDD. A netlist written for any one puts VDD on a data pin of either other.",
+    "VIH is 0.6 x VDD, the most permissive of the three, which raised whether the 74AHCT541 could be deleted. It cannot: 0.6 x 5.0 = 3.0 V against the ESP32-C6's guaranteed V_OH of 0.8 x VDD = 2.64 V.",
+    "IDOUT 12 mA typ, same as the other two, so the 0.12 W budgeted figure (eight, one colour, 25% duty) is unchanged. 4.0 mm2 each against the MINI-E's 12.25."
   ]
 }
