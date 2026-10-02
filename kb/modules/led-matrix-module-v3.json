@@ -123,7 +123,7 @@
   ],
   "provenance": {
     "composedOf": "LEDs and 100nF confirmed from the .epro2 via tools/epro.py; the converter and its parts are from the user's statement, NOT the file",
-    "fullWhiteCurrent": "datasheet C139126 p.3 (IF = 20 mA/channel, read via vision)",
+    "fullWhiteCurrent": "inferred - datasheet C139126 p.3 gives IF = 20 mA/channel as the TEST CONDITION for the LED chip parameters (VF, Iv, lambda-p), not as a specified output drive current. The WS2812D-F8 specifies no drive current anywhere, unlike the SK6812MINI-E which gives IDOUT 10/12/14.5 mA. 20 mA is a sound and conservatively-directed inference, but 14.4 W, 2.16 A, 2.43 A, 4.0 A, every brightness row and the R_SENSE sizing all descend from it",
     "ratedOutputPower": "datasheet C61063 p.1",
     "thermalLimit": "modelled from datasheet C61063 p.5 (RthJA) and p.7 (VCE); NOT measured",
     "sustainableBrightness": "inferred",
@@ -217,7 +217,7 @@
       }
     ],
     "perceivedBrightnessNote": "'perceived' applies a gamma of 2.2. Luminous output is linear with PWM duty, but human brightness perception is not, so halving the power looks like roughly 73% of the brightness rather than 50%. Degradation with module count is far gentler than the raw power numbers suggest.",
-    "mitigation": "Parallel data lines fix the refresh limit but NOT the power limit. Splitting the chain across 4 outputs multiplies the achievable frame rate by 4; available watts are unchanged. An ESP32-C6 has a small number of RMT TX channels, so 2-4 outputs is the realistic range.",
+    "mitigation": "Parallel data lines fix the refresh limit but NOT the power limit. Splitting the chain across 4 outputs multiplies the achievable frame rate by 4; available watts are unchanged. CORRECTED: the controller uses PARLIO, not RMT. The ESP32-C6 has ONE PARLIO TX unit driving both channels as lanes at data_width=2, and only 2 RMT TX channels - too few for two data channels plus the status chain.",
     "verification": "Modelled. The 0.75 efficiency and 0.70 thermal cap are both estimates.",
     "parallelLines": {
       "decision": "2 channels, 10 modules each.",
@@ -237,7 +237,7 @@
           "60": 60
         },
         "note": "Includes a 0.28 ms inter-frame latch. 4 channels hold 100 fps to 36 modules while power caps at ~30, so frame rate never becomes the binding constraint anywhere in the operating envelope.",
-        "nextBottleneck": "Network, not the LED chain. 30 modules at 100 fps is 1080 pixels x 3 bytes x 100 = 2.59 Mbps, roughly 7 Art-Net/sACN universes. The W5500 over SPI is the usual limiter in high-framerate LED projects.",
+        "nextBottleneck": "RETIRED as stated: the README establishes bandwidth is not the limit - 1.56 Mbit/s at the target against 100 Mbit. The real W5500 constraint is BUFFER DEPTH, not throughput: the default 2 kB per-socket RX allocation cannot hold a 20-module frame, which is fixed by setting Sn_RXBUF_SIZE = 8 at init.",
         "inherentFlicker": "WS2812 internal PWM is ~400 Hz (datasheet C139126 p.1). Independent of frame rate, not changeable from the controller, and the reason these flicker on phone video."
       },
       "levelShifting": "NOT on the controller. The link is a differential pair, so the 3.3 V to 5 V shift for the WS2812s lives on the converter boards, after the receiver.",

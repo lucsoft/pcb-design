@@ -155,7 +155,9 @@ so the extra front-end complexity is worth it.
 
 ## Power budget
 
-180 W, less ~4 W for the controller, leaves ~175 W for modules.
+180 W, less **5 W** for the controller, leaves **175 W** for modules. 5 W is the
+figure every calculation and `figures.py` actually use; the thermal budget's
+3.71 W is the computed total and the 1.3 W difference is deliberate headroom.
 Perceived brightness applies a gamma of 2.2.
 
 | Modules | Power | Perceived | fps (2 ch) | Binds on |
@@ -395,7 +397,7 @@ its VIH is 0.65 x VDD, so at a 4.50 V rail the threshold is 2.93 V and the
 4.5 V supply minimum, which the rail reaches exactly — see the dropout table.
 
 **SY8089** (C479074, SOT-23-5, 100k stock) for 3.3 V rather than an LDO. At 4.85 V in,
-3.3 V out, and the ESP32-C6's ~500 mA transmit peaks, an LDO would burn ~0.8 W; a
+3.3 V out, and the ESP32-C6's **382 mA** worst-case transmit peak, an LDO would burn ~0.6 W; a
 synchronous buck burns under 0.1 W and avoids a thermal problem in a small package.
 
 ### Why two conversion stages
@@ -410,6 +412,23 @@ controller does not drive any WS2812. It drives two MAX3485s at 3.3 V, and the
 outright. The governing number is the **SK6812MINI-E's 0.65 x 5.0 = 3.25 V** on
 the controller's own rail, which a 3.3 V GPIO clears by only 50 mV — margin, plus
 the rail's own sag, is what justifies the buffer.
+
+**What the 3.3 V rail actually carries**, which until now was a bare "~2.3 W":
+
+| Load | mA | Note |
+|---|---|---|
+| ESP32-C6, TX peak | 382 | datasheet Table 13, 802.11b at 20.5 dBm, 100% duty — pessimistic as a continuous figure |
+| Ethernet module | 152 | 0.50 W at 3.3 V |
+| 2x MAX3485 | ~29 | 2 mA I_CC each **plus ~12 mA each of line current** — a driver with DE asserted pulls load current 100% of the time |
+| HUSB238A VDD | 4.5 | active sink |
+| INA226 + pull-ups | ~6 | |
+| **total** | **~574 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
+
+The transceivers' line current is the row that was missing: it appears in the
+thermal budget as 0.06 W of *board heat* — correct, since most of it is burned in
+the far-end 120 Ω on the converter board — but it is a real continuous draw on
+the SY8089 either way. Note the datasheet gives neither a loaded I_CC nor a V_OD
+at 120 Ω, so this row is estimated and cannot be verified from it.
 
 Cascading costs almost nothing. The 3.3 V rail delivers ~2.3 W, so:
 
@@ -966,7 +985,7 @@ fixtures.
 
 A plain UDP frame protocol is simpler and smaller:
 
-| Modules | Pixel bytes | Packets at 1400 B MTU | At 90 fps |
+| Modules | Pixel bytes | Packets at 1400 B MTU | packets/s **if run at 90 fps** |
 |---|---|---|---|
 | 10 | 1080 | 1 | 90 pkt/s |
 | 20 | 2160 | 2 | 180 pkt/s |
@@ -1088,6 +1107,59 @@ the picoMAX's 10 A the worst case is 28% of rating and their job evaporated. The
 were also through-hole radial — bulky, and mass on leads in a vibration
 environment. Dropping them saved 192 mm2 and two hand-soldered parts, and the
 per-channel overcurrent role they half-filled is now the LM5069's.
+
+## Layout constraints
+
+Until now this document said "2-layer, relaxed" and "4-layer, dense" as area
+utilisation factors and nothing else — no copper weight, no trace width, no
+return path. For a board carrying 5 A next to a differential pair and an ADC,
+that is the largest remaining gap.
+
+**Copper weight: 2 oz, and it is not a preference.** Trace widths per IPC-2221,
+external layer:
+
+| | 5 A bus | 2.43 A channel |
+|---|---|---|
+| 1 oz, 20 °C rise | 1.82 mm | 0.67 mm |
+| 1 oz, 10 °C rise | 2.77 mm | 1.02 mm |
+| **2 oz, 20 °C rise** | **0.91 mm** | **0.34 mm** |
+| 2 oz, 10 °C rise | 1.38 mm | 0.51 mm |
+
+Both the feed and the return need it. On 1 oz a 10 °C-rise bus trace is 2.8 mm
+wide, which on a 72 × 74 mm board with four committed edges is awkward; on 2 oz
+it is 1.4 mm and routine. 2 oz also halves the copper's contribution to the FET
+thermal path.
+
+**The FET thermal claim assumes copper this board does not budget.** The
+NSS085N100S's R_θJA = 50 °C/W is quoted on its own terms — "1 in² of 2 oz
+copper", confirmed verbatim at p.1 note 2 — which is **645 mm² per device,
+1290 mm² for the pair**, against the mechanical table's 240 mm² for "2x
+NSS085N100S + copper". That is **5.4x short**. Harmless at 0.079 W steady state,
+but it means "the package allows about 2.5 W at 25 °C ambient" is not a figure
+this layout earns, and the 39.8 W ramp leans on the transient curve rather than
+on copper.
+
+**The low-side shunt forces a split return, and nothing else in this document
+says so.** R1 sits in the ground return so that both channels' current passes
+through it before joining board ground. If the netlist calls J2/J3 pin 2 `GND` —
+which is what the connector pinout says in six places — the shunt is shorted by
+the ground pour and **the current sense reads zero**. The output connectors'
+return must be its own net, joined to board ground only at the shunt. No ERC rule
+catches a two-terminal part with identical nets on both pins, so this is a layout
+discipline item with no automated backstop.
+
+On a 2-layer board that also means the bottom layer is **not** a continuous
+ground plane under the SPI bus, the differential pair and the ADC divider. Either
+accept that and route the return deliberately, or go to 4 layers — which the
+area table already shows the board does not need for density.
+
+**The ESP32-C6 module's antenna keep-out is not in the area budget.** Its
+recommended footprint (datasheet Figure 10 p.30) marks an **18 × 6 mm antenna
+area** that must be copper-free on all layers and normally overhangs the board
+edge. The mechanical table lists the module at 459 mm², which is 18 × 25.5 — the
+bare outline with no keep-out allowance. With USB-C, two angled picoMAX, the
+Ethernet module's RJ45 and this keep-out, **all four edges are committed**, and
+the keep-out punches a hole in the return path of a board carrying 5 A.
 
 ## Thermals and the FET choice
 
@@ -1221,6 +1293,12 @@ already budgets — the GPIO assignment does not change.
 | INTn | open-drain interrupt |
 | 3V3, GND | the module regulates its own 1.2 V core internally |
 
+Two things a firmware author needs that the table above does not carry: after
+RSTn returns high the W5500 runs an internal auto-configuration and **the host
+must wait 50 ms** before talking to it (WIZ850io p.2, `TPL ≤ 50 ms`), and the
+part accepts **SPI mode 0 or mode 3** — naming only mode 0 would send someone
+down a clock-polarity rabbit hole.
+
 **Soldered down, not socketed.** This is a soundwall: the same vibration argument
 that chose picoMAX with a latch over screw terminals applies to a stacked
 daughterboard. Pin headers soldered through both boards, no receptacle.
@@ -1240,14 +1318,26 @@ The clone reads as `INT CS SCK MO G G` and `G V V NC RST WT`. The first of those
 is MJ1 right-to-left, which is what reading both headers left-to-right across the
 board produces — **MJ1 and MJ2 sit on opposite edges, so they run in opposite
 directions.** Both readings are therefore consistent with the table above. MJ2
-position 4 being **NC** also settles which family it is: the WIZ550io carries a
-RDY pin there, the WIZ850io does not.
+position 4 being **NC** is not the discriminator an earlier version of this
+paragraph claimed. On the WIZ550io, RDY is **MJ2-3**, MJ2-4 is nRESET, and it is
+a **16-pad** part with MISO on MJ1-4 — so the real discriminator is **pad count,
+12 against 16**, which a 12-pad clone settles outright. Note that pad count alone
+does not exclude the **WIZ820io**, which WIZ850io p.1 says it is hardware
+compatible with and which carries a **W5200** — a different register map. Settle
+that one by chip marking, or by reading `VERSIONR` at bring-up: the W5500 returns
+**0x04**.
 
 **`WT` is MISO by elimination, not by datasheet.** Twelve pads; eleven are
 identified, and the only mandatory SPI signal left unexposed is MISO — a W5500
 module without it would be useless — and it sits exactly where both official
 variants put it. That is sound but weaker than a datasheet line, so it carries
-provenance `inferred` in the knowledge base.
+provenance `inferred` in the knowledge base. **Which it does not yet carry** —
+`provenance.pins` on C134462 reads "datasheet p.2 Pin Description", and the
+by-elimination reasoning for MISO lives only in a free-text note. `erc.py`'s
+`unverified()` reads the structured field, so the one genuinely inferred pin on
+this board would be treated at full error severity. Split the record, or downgrade
+`provenance.pins` to `inferred` and lose the severity on the eleven pins that are
+properly sourced.
 
 **Neither WIZnet's documentation nor the LCSC datasheet states which physical
 end is pin 1** — the wiki page carries a pinmap image and links an external
@@ -1372,7 +1462,20 @@ here.
   a state. 0.1 µF at each VCC. **DI needs a pull-down**, so the line idles low
   and GPIO4/GPIO5 have defined strap levels through MCU reset (MTMS=0/MTDI=0 is
   a valid SDIO combination).
-- **Fail-safe is a converter-board problem, and an earlier note here dismissed
+- **The driver's edge rate is unlimited, and that is a radiated-emissions choice
+nobody made.** p.5 gives t_TD 5 ns typ / 20 ns max and p.1 says it outright: "the
+driver slew rates is not limited". A 5 ns edge has a ~100 MHz knee and occupies
+about 1 m of cable, so an 11 m run is 22 rise-lengths long — on a pair this
+document's own ESD section calls "an antenna". The signal's narrowest feature is
+400 ns, so none of that speed is needed: a slew-limited 2.5 Mbps-class part would
+still place a 400 ns pulse comfortably and cut radiated emissions by roughly an
+order of magnitude. **Series resistors at the driver outputs are the cheap
+partial mitigation** and should be fitted whether or not the part changes.
+Reflections are secondary — one far-end termination is the right topology — but a
+pair pulled from generic 4-conductor cable is 80-120 Ω at best, and a partial
+reflection returns ~110 ns after the edge, inside a 400 ns pulse.
+
+**Fail-safe is a converter-board problem, and an earlier note here dismissed
   it wrongly.** That note said "failsafe biasing is genuinely not needed, since
   DE is permanently asserted and the pair is never idle-floating". That covers
   the **driver** end. The fitted part's fail-safe is **open-circuit only** (p.1,
@@ -1393,10 +1496,22 @@ here.
   power-up, when the 3.3 V rail does not yet exist — so a VDD tie reads as GND
   anyway, or worse is ambiguous against the float-means-GPIO-mode state.
 - **SK6812 chain**: ~500 Ω series resistors on data in and out, plus 100 nF per
-  LED (datasheet p.9). Note its VIH is **0.65 × VDD**, not the 0.7 × VDD that
+  LED. The *value* is from the **WS2812D-F8** p.5 (`104`); SK6812MINI-E p.9 shows
+  one capacitor per LED with no value and says only that "the decoupling
+  capacitance between each LED is essential". The 500 Ω series figure on that
+  page is verbatim. Note its VIH is **0.65 × VDD**, not the 0.7 × VDD that
   applies to the WS2812D-F8.
+- **INA226 ALERT** is worth more than an interrupt line. Configured as a
+  shunt-overvoltage comparator it fires within one conversion — **140 µs to
+  1.1 ms** — which is faster than the LM5069's 350 ms fault timeout and far
+  faster than firmware polling. It gives no per-channel discrimination, since the
+  shunt is in the shared return, but it is the only sub-millisecond hardware shed
+  path on the board and it is already wired to a GPIO. Treating it as "a slow
+  safety net" undersells it.
 - **INA226 ALERT** is open-drain (p.3) and needs a **10 kΩ pull-up**. ERC rule
-  E3 would fire on this.
+  **ERC rule E3 cannot see this yet** — it needs an `open_collector` pin type, and
+  the INA226 has no pin map, so `pin_type()` returns `unspecified` and the rule is
+  inert. An earlier version of this line claimed E3 would fire on it.
 - **LM5069 PGD** outputs are open-drain (p.3); the two are wired together into
   one GPIO with a **10 kΩ pull-up**.
 
@@ -1408,7 +1523,7 @@ here.
 ## GPIO assignment
 
 The module exposes **exactly 23** GPIO pads (datasheet Table 3, pp.10-11):
-0-13, 15-23. GPIO14 does not exist on this package; GPIO24-30 go to the internal
+0-13, 15-23. GPIO14 does not exist on this package; GPIO24-30 serve the internal
 QSPI flash and reach no pad.
 
 The design needs **19**, not the 17 an early count suggested — that count omitted
@@ -1451,7 +1566,7 @@ A workable assignment, which also shows how tight it is:
 | 11 | INA226 ALERT | |
 | 4, 5 | MAX3485 ch1/ch2 DI | |
 | 0, 1 | channel enables | each with a **pull-up to 3V3** — high holds UVLO low, so the channel is OFF through MCU reset. A pull-down here would enable both 36 V channels during reset. Costs the 32.768 kHz crystal option |
-| 15 | SK6812 chain | a pull-down gives both the required strap level and the right idle state |
+| 15 | SK6812 chain | a pull-down gives the right idle state. With factory eFuses GPIO15 selects the JTAG source and is **ignored**, so no strap level is required — only "not high-Z" |
 | 3 | bus-voltage ADC | GPIO2/3 are the **only** ADC pins free of strap, JTAG or 32 kHz conflicts |
 | 12, 13 | USB D-/D+ | fixed |
 | 9 | BOOT button | |
@@ -1518,6 +1633,13 @@ switching to the LM5069 and an N-channel FET moved the whole switched path to
 0.30 W, and the two largest rows are now the MCU and the buck.
 
 **Capping status-LED brightness is a thermal requirement, not a preference.**
+**The datasheet forbids the full-white case this models.** SK6812MINI-E p.3:
+monochrome may use 100% greyscale, but "when illuminating the tricolor light, use
+**70% greyscale**". So capping status-LED brightness is a manufacturer
+restriction, not only a thermal judgement — and at the sanctioned 70% the eight
+LEDs draw **1.01 W typ**, putting the board total at 4.72 W, just inside the
+4.8 W capacity rather than past it.
+
 Eight SK6812MINI-E at full white add **1.44 W typ / 1.74 W max** — the earlier
 2.4 W assumed 20 mA per channel, but this is the 12 mA part — which still takes
 the total past the board's capacity. They are indicators; a few percent duty is plenty. This is the

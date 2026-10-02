@@ -69,7 +69,7 @@ def fig_current(ax, pal):
     ax.set_ylabel("current per output (A)")
     ax.set_ylim(0, 11)
     ax.set_xlim(4, 24)
-    limit_line(ax, CONN_A, "picoMAX 3.5 contact rating 10 A", side="left")
+    limit_line(ax, CONN_A, "picoMAX 3.5 contact rating 10 A", side="right")
     annotate(ax, 20, 2.43, "  20 modules: 2.43 A\n  = 24% of rating", color=pal[0])
     ax.legend(loc="upper left")
 
