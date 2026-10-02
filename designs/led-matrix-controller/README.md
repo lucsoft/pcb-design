@@ -2060,7 +2060,7 @@ build.
 
 ### Accepted
 
-6. **The board is not fully JLCPCB-assemblable.** Three line items are hand
+6. **The board is not fully JLCPCB-assemblable.** Two board items are hand
    fitted — the W5500 module and the two picoMAX headers — so a PCBA order
    covers everything else and these three are soldered afterwards. Order numbers
    are in the sourcing table. This is a consequence of choosing a finished
