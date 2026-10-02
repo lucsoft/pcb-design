@@ -44,6 +44,17 @@ UNVERIFIED = {"inferred", "assumed", "guess", ""}
 SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 
 
+def first_word(source) -> str:
+    """The provenance marker at the head of a source string.
+
+    Sources are written for people — "inferred - by elimination, the only SPI
+    signal left" — so matching the whole string against UNVERIFIED silently
+    treats every annotated guess as datasheet-backed. Only the first word
+    carries the claim.
+    """
+    return str(source or "").strip().lower().split(" ")[0].strip("-:,")
+
+
 @dataclass
 class Finding:
     rule: str
@@ -164,9 +175,25 @@ class Check:
             return "passive"
         return "unspecified"
 
-    def unverified(self, comp: Component, field_name: str) -> bool:
+    def unverified(self, comp: Component, field_name: str, pin: str = None) -> bool:
+        """Is this field's provenance too weak to raise an error on?
+
+        A pin map is usually one claim, but not always: the W5500 module's
+        MISO is identified by elimination while its other eleven pins come
+        straight off the datasheet. Recording that as `inferred` for the whole
+        map would downgrade eleven good pins; recording it as datasheet-backed
+        over-trusts the one guess. So a pin may carry its own `source`, and it
+        wins over `provenance.pins` for rules about that pin.
+        """
+        if pin is not None:
+            for rec in (comp.kb or {}).get("pins", []):
+                if str(rec.get("number")) == str(pin) or rec.get("name") == pin:
+                    own = rec.get("source")
+                    if own is not None:
+                        return first_word(own) in UNVERIFIED
+                    break
         prov = (comp.kb or {}).get("provenance", {})
-        return str(prov.get(field_name, "")).lower() in UNVERIFIED
+        return first_word(prov.get(field_name, "")) in UNVERIFIED
 
     def nets_touching(self, comp: Component) -> set:
         return {n for n in comp.pins.values() if n}
@@ -401,7 +428,7 @@ class Check:
                     continue
                 vmax = rec.get("vMax")
                 if vmax is not None and v > float(vmax) + 1e-9:
-                    sev = "warning" if self.unverified(comp, "pins") else "error"
+                    sev = "warning" if self.unverified(comp, "pins", pin) else "error"
                     self.add("P1-overvoltage", sev,
                              f"{comp.designator}.{pin} ({rec.get('name', pin)}) is "
                              f"rated {vmax} V max but sits on '{net}' at {v} V",

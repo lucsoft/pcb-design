@@ -1,0 +1,50 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7420357",
+  "@type": "Component",
+  "lcscId": "C7420357",
+  "mpn": "MMBT5551",
+  "manufacturer": "R+O",
+  "description": "Bipolar (BJT) Transistor NPN 160V 600mA 100MHz 300mW Surface Mount SOT-23",
+  "category": "transistor",
+  "package": "SOT-23",
+  "stock": 8170250,
+  "priceUsd": 0.0122,
+  "parameters": {
+    "Operating Temperature": "-55℃~+150℃",
+    "Current - Collector Cutoff": "50nA",
+    "Transition frequency(fT)": "100MHz",
+    "Collector - Emitter Voltage VCEO": "160V",
+    "Emitter-Base Voltage VEBO": "6V",
+    "DC Current Gain": "100",
+    "Pd - Power Dissipation": "300mW",
+    "Current - Collector(Ic)": "600mA",
+    "Configuration": "Standalone",
+    "Number": "1 NPN",
+    "type": "NPN",
+    "Vce Saturation(VCE(sat))": "150mV"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/ca1cdce35c0850bb191d1ef467d6eaaf.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "",
+    "vbe": "inferred - silicon junction at 800 uA over temperature; not in the datasheet"
+  },
+  "designVerdict": "SELECTED as Q3, the emitter follower feeding the HUSB238A VBUS pin. MMBT5551, SOT-23, 160 V VCEO.",
+  "notes": [
+    "Replaces the BSS138 (C7420339) in the follower role only - Q1/Q2, the FAULT interlocks, are still BSS138s. The reason is the offset, not the voltage rating. The HUSB238A's undervoltage detector compares its VBUS PIN against a PERCENTAGE of the requested voltage (86% in the 10-26 V band, 80% in 5-10 V), while a follower subtracts a FIXED drop. A fixed offset is a bigger fraction of a smaller contract, so the lower the PDO the worse it gets: the pass condition in the 86% band is V_offset <= 0.09*V, which the BSS138's 1.6 V worst-case V_GS meets only above 17.8 V. The 9 V, 12 V and 15 V contracts all false-disconnected.",
+    "A silicon V_BE is 0.6-0.8 V where that gate is 0.8-1.6 V, which moves the floor below 9 V. Worked at V_BE 0.80 V, hFE 60 and R44 = 4.7 kOhm: margins are +0.49 V at 9 V, +0.22 V at 12 V, +0.49 V at 15 V, +0.94 V at 20 V and +2.45 V at 28/36 V. 12 V is the pinch point because it sits just inside the 86% band.",
+    "V_BE IS NOT IN THIS DATASHEET. It specifies VCEO 160 V, VEBO 6.0 V, hFE 100-300 at 10 mA and VCE(sat), and gives no V_BE(on) at any current. The 0.6-0.8 V used above is a silicon junction at 800 uA over -20 to +85 C - physics, not a published figure - and the 12 V margin rests on it directly. Measure before trusting.",
+    "VEBO 6.0 V covers the power-down case: D14 holds the pin at 4.19 V from the 5 V rail while the bus collapses, so the junction sees up to 4.19 V reversed. The datasheet characterises I_EBO at exactly 4.0 V, so that is a region the part is specified in.",
+    "VCE is 9.8 V in normal operation and 31.9 V during a 58.1 V TVS clamp, against 160 V. The BSS138's 50 V was only 1.6x that event.",
+    "Base current is the cost: 13 uA at hFE 60, which R44 must supply. R44 is 4.7 kOhm rather than 10 kOhm so that IR drop is 63 mV instead of 133 mV - 70 mV of the 12 V margin, for 37 mW of board heat."
+  ]
+}

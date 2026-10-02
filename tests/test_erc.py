@@ -13,6 +13,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+
+def _erc():
+    """Import tools/erc.py directly. The rest of this file shells out to it,
+    which is the right way to test findings; a few checks are about helper
+    behaviour and need the module itself."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    import erc
+    return erc
+
 ROOT = Path(__file__).resolve().parent.parent
 ERC = ROOT / "tools" / "erc.py"
 
@@ -197,6 +206,36 @@ def _():
         **comp("gge3", "C2", "C1525", {"1": "SCL", "2": "GND"}),
     }
     assert "B2-i2c-no-pullup" in rules(run(n, I2C_DESIGN))
+
+
+@case("first_word reads the provenance marker off an annotated source")
+def _():
+    erc = _erc()
+    # The failure this exists for: provenance is written for people, so an
+    # honest "inferred - by elimination" was matched against the whole string
+    # and treated as datasheet-backed.
+    assert erc.first_word("inferred - by elimination, the only SPI signal left") == "inferred"
+    assert erc.first_word("assumed: default for this package") == "assumed"
+    assert erc.first_word("datasheet p.2 PIN ASSIGNMENT") == "datasheet"
+    assert erc.first_word("") == ""
+    assert erc.first_word(None) == ""
+
+
+@case("a pin's own source overrides the record's provenance.pins")
+def _():
+    erc = _erc()
+    # One inferred pin in an otherwise datasheet-backed map must not downgrade
+    # the other eleven, and must not be trusted at full severity either.
+    comp = erc.Component(
+        key="gge1", designator="U1", lcsc="C134462", props={}, pins={},
+        kb={"provenance": {"pins": "datasheet p.2 Pin Description"},
+            "pins": [{"number": "1", "name": "VDD"},
+                     {"number": "6", "name": "MISO",
+                      "source": "inferred - by elimination"}]})
+    check = erc.Check.__new__(erc.Check)
+    assert check.unverified(comp, "pins", "6") is True
+    assert check.unverified(comp, "pins", "1") is False
+    assert check.unverified(comp, "pins") is False
 
 
 def main() -> int:

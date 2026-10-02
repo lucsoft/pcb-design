@@ -36,14 +36,15 @@ rails:
   BUS_3V3:
     voltage: 3.3
 
-  # The HUSB238A's VBUS pin sits behind the Figure 6 BSS138 follower, which
-  # holds it near 25.5 V on a 36 V bus - set by the BZT52C27 gate clamp. It was
+  # The HUSB238A's VBUS pin sits behind the Figure 6 follower - an MMBT5551
+  # emitter follower here, not the vendor's BSS138 - which holds it near 26.3 V
+  # on a 36 V bus - set by the BZT52C27 gate clamp. It was
   # 18.5 V with a 20 V clamp, which is below the part's vVBUV_F2 disconnect
   # threshold of 22.4 V and would have dropped every 36 V contract. Declaring it as its own rail is what
   # stops P1 reading the 36 V bus straight onto a 33 V-absolute pin - the
   # follower is the whole reason that pin survives.
   PD_VBUS_SENSE:
-    voltage: 25.5
+    voltage: 26.3
 
   # The module return. NOT GND: R1, the 10 mOhm shunt, sits between them, and a
   # netlist that calls J2/J3 pin 2 GND shorts the shunt through the ground pour

@@ -12,10 +12,13 @@ check that enforces it.
     ./tools/stock.py C1525 C25744          # named parts
     ./tools/stock.py --refresh <file>      # also write stock back into kb/
 
-Exit status is 1 if any part is out of stock, so it gates a BOM the same way
-erc.py gates a netlist.
+Exit status is 1 if any part is out of stock **or unreachable**, so it gates a
+BOM the same way erc.py gates a netlist. Unreachable matters: the LCSC endpoint
+is unofficial and has moved once already, and an exit of 0 because nothing could
+be read would be the worst possible answer.
 """
 import argparse
+import datetime
 import json
 import pathlib
 import re
@@ -94,6 +97,10 @@ def main():
             if f:
                 d = json.loads(f.read_text(encoding="utf-8"))
                 d["stock"] = stock
+                # Stamp the date too. A fresh number under a stale date is
+                # worse than a stale number, because the date is what the
+                # workflow uses to decide whether to believe the figure.
+                d["retrieved"] = datetime.date.today().isoformat()
                 f.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n",
                              encoding="utf-8")
 
@@ -122,7 +129,13 @@ def main():
         if dead:
             print("\nRe-source the out-of-stock parts before ordering. The "
                   "catalogue mirrors are cached and will not tell you.")
-    return 1 if dead else 0
+        if unknown:
+            print("\nSome parts could not be reached. The LCSC endpoint is "
+                  "unofficial and has moved before — see CLAUDE.md under "
+                  "Maintenance. A clean report here proves nothing.")
+    # Unreachable is not the same as in stock. If the endpoint moves, every
+    # part comes back None and a status of 0 would read as "BOM is fine".
+    return 1 if dead or unknown else 0
 
 
 if __name__ == "__main__":

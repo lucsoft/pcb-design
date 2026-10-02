@@ -45,7 +45,7 @@
     "category": "lcsc-api",
     "pins": "SOD-123 zener: pin 1 cathode (banded), pin 2 anode"
   },
-  "designVerdict": "SELECTED as D1, the BSS138 follower gate clamp. BZT52C27, SOD-123, 25.65-28.35 V.",
+  "designVerdict": "SELECTED as D1, the Q3 emitter-follower base clamp. BZT52C27, SOD-123, 25.65-28.35 V.",
   "notes": [
     "Replaces BZT52C20 (C19077415), which was wrong and would have broken the board. The HUSB238A's undervoltage table (p.7) has THREE bands and the third, vVBUV_F2, applies at any RDO >= 26 V: a flat 22.4 V. A 20 V clamp puts the VBUS pin at 17.4-20.2 V across tolerance - permanently below it - so the part would have dropped every 36 V contract and fallen back to vSafe5V in a loop.",
     "At 25.65-28.35 V the pin lands at 24.1-27.6 V once the BSS138's V_GS (0.8-1.6 V at 800 uA) is taken off: 1.7 V clear of the 22.4 V disconnect at the low corner, 1.8 V under the 29.4 V recommended maximum at the high one. Margin at both ends.",

@@ -1,0 +1,56 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19171391",
+  "@type": "Component",
+  "lcscId": "C19171391",
+  "mpn": "YLED0805R",
+  "manufacturer": "YONGYUTAI",
+  "description": "Red 645nm LED Indication - Discrete 1.8V~2.4V 0805",
+  "category": "led",
+  "package": "0805",
+  "stock": 126900,
+  "priceUsd": 0.0082,
+  "parameters": {
+    "Installation method": "-",
+    "Color Temperature": "-",
+    "Peak Wavelength": "645nm",
+    "Lens Color": "Water Clear",
+    "Luminous Intensity": "120mcd",
+    "Viewing Angle": "120°",
+    "Forward Current": "20mA",
+    "Illumination Color": "Red",
+    "Lamp Holder Type": "-",
+    "Operating Temperature": "-40℃~+85℃",
+    "Voltage - Forward(Vf)": "1.8V~2.4V",
+    "Diode Configuration": "Discrete Diode",
+    "Wavelength": "615nm~630nm"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/889d54aa4c02b14db53803750feaa299.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "A",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "K",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal LED: pin 1 anode, pin 2 cathode"
+  },
+  "designVerdict": "NOT FITTED. Costed alternative only: eight plain 0805 indicators on a 74HC595 instead of the SK6812 chain. Recorded so the comparison in the design README can be checked rather than taken on trust.",
+  "notes": [
+    "The comparison it appears in: 0.053 W against 0.120 W, 18 parts against 19-20, and $0.15 against $1.11. Part count is a wash; the decision rests on colour, which became load-bearing when the PD contract gained more states to signal than a single-colour indicator can carry."
+  ]
+}

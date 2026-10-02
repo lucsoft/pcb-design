@@ -35,7 +35,7 @@
     "category": "manual",
     "pins": ""
   },
-  "designVerdict": "CANDIDATE - 28 V clamp on the BSS138 follower gate",
+  "designVerdict": "CANDIDATE - 28 V clamp on the follower base; the fitted part is the BZT52C27 (C173421)",
   "notes": [
     "SMAJ33CA is 33 V; Hynetek's reference uses a 28 V Zener on the BSS138 gate. Substitute an actual 28 V Zener (BZT52C28 class) rather than this part - recorded only so the requirement is not lost."
   ]

@@ -46,7 +46,7 @@ fatigue. Affected, and still to be revisited:
 | Power budget | **180 W** (36 V x 5 A) | EPR fixed PDO; matches the original brief |
 | PD controller | **HUSB238A-BB001-QN16R** (C24833806) | I2C variant |
 | PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
-| PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind a BSS138 follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
+| PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind an emitter follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **TPS16630** (C1849461) x2 | 60 V / 6 A eFuse with an integrated FET. Works from **4.5 V**, so the LED output follows the rails down instead of dying below a 12 V contract |
 | External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute (1.15x the 58.1 V TVS clamp), and the TPS54360B and SS36 are 60 V, which sets the real limit at 1.03x. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
@@ -72,7 +72,7 @@ flowchart LR
 
     subgraph FE["PD front end"]
         direction TB
-        RZ["BSS138 follower<br/>+ BZT52C27"]
+        RZ["MMBT5551 follower<br/>+ BZT52C27"]
         PD["HUSB238A<br/>PD sink, I2C mode"]
     end
 
@@ -159,7 +159,7 @@ so the extra front-end complexity is worth it.
 
 180 W, less **5 W** for the controller, leaves **175 W** for modules. 5 W is the
 figure every calculation and `figures.py` actually use; the thermal budget's
-4.07 W is the computed total and the 0.9 W difference is deliberate headroom.
+4.11 W is the computed total and the 0.9 W difference is deliberate headroom.
 Perceived brightness applies a gamma of 2.2.
 
 | Modules | Power | Perceived | fps (2 ch) | Binds on |
@@ -243,8 +243,8 @@ ones for the bar, and it does not pay:
 
 | | power | GPIOs | parts | cost |
 |---|---|---|---|---|
-| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **9** | $1.11 |
-| 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W | 1 | 17 | **$0.15** |
+| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **19-20** | $1.11 |
+| 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W | 1 | 18 | **$0.15** |
 | 2 addressable + 6 plain, driven directly | 0.070 W | 7 — none spare | 14 | — |
 
 **GPIO count is a tie, not a win**, and an earlier version of this section said
@@ -561,8 +561,10 @@ rail's own sag is counted.
 | **total** | **~574 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
 
 The transceivers' line current is the row that was missing: it appears in the
-thermal budget as 0.06 W of *board heat* — correct, since most of it is burned in
-the far-end 120 Ω on the converter board — but it is a real continuous draw on
+thermal budget as 0.06 W of *board heat* — correct, but not for the reason an
+earlier version gave. 2 × (2 + 12) mA × 3.3 V is 92 mW total and the far-end
+terminations take 2 × (12 mA)² × 120 Ω = **35 mW**, so 38% leaves the board and
+about 60% stays, which is the 0.06 W row. It is a real continuous draw on
 the SY8089 either way. Note the datasheet gives neither a loaded I_CC nor a V_OD
 at 120 Ω, so this row is estimated and cannot be verified from it.
 
@@ -630,7 +632,7 @@ so no operating margin on a 36 V bus — stops mattering. Forced by both 85 V pa
 it turned out to be the better answer. Costs the ability to detect an output
 short to ground, and lifts the load ground by 50 mV at 5 A through 10 mOhm.
 
-**The Figure 6 "Voltage Regulator" is a BSS138 source follower.** Hynetek
+**The Figure 6 "Voltage Regulator" is a source follower** — a BSS138 in the vendor reference, an NPN emitter follower here, for the reason worked below. Hynetek
 publishes it with values at [hynetek.com/2730.html](https://www.hynetek.com/2730.html)
 — it is not in the datasheet. Gate pulled up through 10 kΩ and clamped by a Zener, source feeding the VBUS pin; a 0 Ω link bypasses it for
 builds at 28 V or below.
@@ -650,24 +652,71 @@ The window is not 3.15-29.4 V at 36 V. The undervoltage table on **p.7** has
 | **vVBUV_F2** | **RDO ≥ 26 V** | **22.4 V, absolute** |
 
 At a 36 V contract the disconnect threshold is a flat **22.4 V** and the clamped
-pin sits at 18.5 V — **3.9 V below it, permanently**. Per the datasheet's UVP
+pin sat at 18.5 V — **3.9 V below it, permanently**. Per the datasheet's UVP
 text the part then *"moves out the Attached.SNK state"*, so the sequence is
 negotiate 36 V, false disconnect, source reverts to vSafe5V, repeat. The board
-could never have held its own headline PDO. Every corner fails: BZT52C20 is
-19-21 V and the BSS138's V_GS at 800 µA is 0.8-1.6 V, so the pin lands at
+could never have held its own headline PDO. Every corner failed: BZT52C20 is
+19-21 V and the BSS138's V_GS at 800 µA is 0.8-1.6 V, so the pin landed at
 17.4-20.2 V against a threshold that does not move.
 
-**BZT52C27 (C173421, 25.65-28.35 V)** puts the pin at **24.1-27.6 V**, nominally
-25.5 V:
+**BZT52C27 (C173421, 25.65-28.35 V)** fixes the clamp. But fixing the clamp only
+fixed `vVBUV_F2`, and that was the second mistake: **the other two bands break
+the same way, and the clamp has nothing to do with them.**
 
-| | worst low | nominal | worst high |
-|---|---|---|---|
-| pin voltage | 24.1 V | 25.5 V | 27.6 V |
-| against vVBUV_F2 = 22.4 V | **+1.7 V** | +3.1 V | +5.2 V |
-| against the 29.4 V recommended max | −5.3 V | −3.9 V | **−1.8 V** |
+### The follower's offset is fixed; the threshold is a percentage
 
-Margin at both ends, which is what the 20 V part was reaching for and missed by
-looking at the wrong band. The tighter-binned C27 is chosen over the C27S
+Below 25.65 V the Zener never conducts, so the clamp is irrelevant and the pin is
+simply the bus minus the follower's own drop. The disconnect threshold, however,
+is a *percentage of the requested voltage*. A fixed offset is a bigger fraction
+of a smaller number, so the lower the contract, the worse it gets. The pass
+condition in the 86% band is
+
+    0.95·V − V_offset ≥ 0.86·V      ⇒      V_offset ≤ 0.09·V
+
+— 0.95 because a compliant fixed PDO may sit 5% low, the figure this document
+uses everywhere. With the BSS138's 1.6 V worst-case V_GS that needs **V ≥ 17.8 V**,
+so 9 V, 12 V and 15 V all false-disconnect, and 20 V survives by 0.2 V. Those are
+exactly the contracts the degradation story is built on.
+
+**Q3 becomes an NPN emitter follower (MMBT5551, C7420357) and R44 drops to
+4.7 kΩ.** A silicon base-emitter junction is 0.6-0.8 V where a BSS138 gate is
+0.8-1.6 V, and that halving is the whole fix. The lower R44 keeps the base
+current's own IR drop out of the margin:
+
+| PDO | band | threshold | pin at a −5% bus | margin |
+|---|---|---|---|---|
+| 9 V | F1, 80% | 7.20 V | 7.69 V | +0.49 V |
+| **12 V** | F0, 86% | 10.32 V | 10.54 V | **+0.22 V** |
+| 15 V | F0, 86% | 12.90 V | 13.39 V | +0.49 V |
+| 20 V | F0, 86% | 17.20 V | 18.14 V | +0.94 V |
+| 28 V | F2, flat | 22.40 V | 24.85 V | +2.45 V |
+| 36 V | F2, flat | 22.40 V | 24.85 V | +2.45 V |
+
+Worked at V_BE = 0.80 V, h_FE = 60 and the BZT52C27's low corner. **12 V is the
+pinch point** — it sits just inside the 86% band, where the required offset is at
+its smallest — and 0.22 V of margin on a 10.32 V threshold is 2%. Carried in
+Known electrical limits rather than claimed as solved.
+
+At the top end the swap helps as well: the pin lands at 24.85-27.55 V against the
+22.4 V threshold and the 29.4 V recommended maximum, with more room at both ends
+than the MOSFET gave, because V_BE is smaller than V_GS. V_CE is 9.8 V in normal
+operation and 31.9 V during a 58.1 V TVS clamp, against the part's **160 V**
+V_CEO — where the BSS138's 50 V was only 1.6× that event.
+
+**What is not datasheet-backed here is V_BE.** The MMBT5551 datasheet specifies
+V_CEO, V_EBO and h_FE and gives **no V_BE(on)** at any current. The 0.6-0.8 V
+used above is a silicon junction at 800 µA over −20 to +85 °C, which is physics
+rather than a figure anyone published, and the 12 V margin rests on it directly.
+It is recorded as `inferred` in the part record and wants a measurement.
+
+Two things the NPN costs. Base current is 13 µA at h_FE 60, which R44 has to
+supply — hence 4.7 kΩ rather than 10 kΩ, trading 37 mW of board heat for 70 mV of
+margin at 12 V. And V_EBO is 6.0 V: at power-down D14 holds the pin at 4.19 V
+while the bus collapses, so the junction sees up to 4.19 V reversed. Inside the
+rating, and the datasheet characterises I_EBO at exactly 4.0 V, so it is a region
+the part is specified in.
+
+The tighter-binned C27 is chosen over the C27S
 (25.1-28.9 V) because the extra 1.1 V of spread eats most of the high-side
 margin. The 5 V case is untouched: the Zener does not conduct at a 5 V bus, so
 the pin still comes from D14 at 4.19 V.
@@ -703,7 +752,7 @@ they are fed from the bus directly.
 rail sits at **4.56 V** (the dropout table), and an RB751V-40 drops **0.37 V max
 at 1 mA** (p.2), so the pin is held at **4.19 V** — and the follower, seeing its
 source above (Vgate − Vth), simply stops conducting. Once the bus rises the
-follower takes the pin to ~25.5 V and the Schottky is reverse-biased by 13.5 V,
+follower takes the pin to ~26.3 V and the Schottky is reverse-biased by 21.3 V,
 well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 
 | | Follower alone | With D14 |
@@ -838,7 +887,7 @@ port. The TPS16630 works from **4.5 V**.
 | dissipation | 0.35 W | 0.66 W |
 
 The last row is the cost and it is real: 31 mΩ integrated against 9.5 mΩ discrete
-plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.17x**, on a board
+plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.16x**, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
 **What it buys back is three of this document's own known limits.** The inrush is
@@ -1091,8 +1140,8 @@ Active parts. Passives are listed below the table.
 | U9 | 74AHCT541 | C84548 | 1 | status-chain level shift (oversized, see KB) | 0.224 |
 | U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.80 |
 | Q1,Q2 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see Enable | 0.027 |
-| Q3 | BSS138 | C7420339 | 1 | source follower feeding the VBUS pin | 0.027 |
-| D1 | **BZT52C27** | C173421 | 1 | clamps the BSS138 follower gate at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.021 |
+| Q3 | **MMBT5551** | C7420357 | 1 | **emitter** follower feeding the VBUS pin — V_BE 0.6-0.8 V where a BSS138 gate is 0.8-1.6 V, which is what lets 9-15 V contracts hold. 160 V V_CEO | 0.009 |
+| D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.021 |
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
 | D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the eFuse is 67 V absolute (1.15x), but the 60 V bus parts are only **1.03x** | 0.037 |
@@ -1161,7 +1210,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | R40 | **10 kΩ 1% 0402** | C25744 | GPIO8 strapping pull-up |
 | R41 | **10 kΩ 1% 0402** | C25744 | GPIO15 **pull-down** — the GPIO table asks for one, and it is the status chain's data line: a pull-up would hold DIN high through reset and the whole boot window. With factory eFuses GPIO15 is not read as a strap at all, so the LED idle state decides it |
 | R42,R43 | **10 kΩ 1% 0402** | C25744 | MAX3485 DI pull-down, one per transceiver |
-| R44 | **10 kΩ 1% 0402** | C25744 | BSS138 follower gate pull-up |
+| R44 | **4.7 kΩ 1% 0402** | C25900 | MMBT5551 follower base pull-up. 4.7 kΩ rather than 10 kΩ so the 13 µA of base current drops 63 mV instead of 133 mV — 70 mV of the 12 V margin, for 37 mW |
 | R45 | **10 kΩ 1% 0402** | C25744 | INA226 ALERT pull-up — the pin is open-drain and cannot assert high without it. Stated as a requirement in Tie-offs for three revisions with no BOM line |
 | R46 | **10 kΩ 1% 0402** | C25744 | W5500 module RSTn pull-down — holds the PHY in reset until firmware drives GPIO21, instead of leaving it floating through the boot window |
 | R47 | **10 kΩ 1% 0402** | C25744 | W5500 module INTn pull-up — open-drain, same reasoning as the HUSB238A's INT_N |
@@ -1254,7 +1303,7 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V** — stays off at the PDO's +5% and clamps under the eFuse's 67 V absolute, though only by 1.15x; the 60 V parts it does *not* clear are the TPS54360B and the SS36 |
+| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V** — stays off at the PDO's +5% and clamps under the eFuse's 67 V absolute, though only by 1.15x; the 60 V parts it does *not* clear are the TPS54360B and the SS36 |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
@@ -1352,9 +1401,10 @@ design it has specific gaps:
   that it must not.
 - **No logic-level-domain rule**, which is the exact failure the 74AHCT541
   exists to prevent.
-- **Half the rules have no regression test.** S2, S5, K2, K5, E1, E2, E3,
-  P1-undervoltage, P2-thin, B1, Q1 and Q2 are untested — including all three
-  electrical rules, which are the ones that would fire on a voltage mistake.
+- **Half the rules have no regression test.** S2, S4-malformed-lcsc, S5, K2,
+  K5, E1, E2, E3, P1-undervoltage, P2-thin, B1, Q1 and Q2 are untested —
+  thirteen, including all three electrical rules, which are the ones that would
+  fire on a voltage mistake.
 
 One documentation gap feeding this: only the **module** datasheet for the
 ESP32-C6 is cached. Every GPIO, strapping, ADC and peripheral claim beyond the
@@ -1459,7 +1509,7 @@ around it, and a small board has less of it.
 The TPS16630's integrated FET is **31 mΩ typ / 45 mΩ max at 85 °C**, so at
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
-the price of the part — thermal headroom goes from 1.29x to **1.17x**.
+the price of the part — thermal headroom goes from 1.29x to **1.16x**.
 
 **The ramp is the device's own problem now, by design.** There is no SOA
 calculation to do and no power limit to set: the part regulates its own junction
@@ -1627,13 +1677,18 @@ that one by chip marking, or by reading `VERSIONR` at bring-up: the W5500 return
 identified, and the only mandatory SPI signal left unexposed is MISO — a W5500
 module without it would be useless — and it sits exactly where both official
 variants put it. That is sound but weaker than a datasheet line, so it carries
-provenance `inferred` in the knowledge base. **Which it does not yet carry** —
-`provenance.pins` on C134462 reads "datasheet p.2 Pin Description", and the
-by-elimination reasoning for MISO lives only in a free-text note. `erc.py`'s
-`unverified()` reads the structured field, so the one genuinely inferred pin on
-this board would be treated at full error severity. Split the record, or downgrade
-`provenance.pins` to `inferred` and lose the severity on the eleven pins that are
-properly sourced.
+provenance `inferred` in the knowledge base, **and now it does** — by a third
+route neither of the two obvious ones took. Downgrading `provenance.pins` to
+`inferred` would have lost the severity on eleven properly sourced pins; splitting
+the record would have duplicated it. Instead a *pin* may carry its own `source`,
+and `erc.py`'s `unverified()` prefers it over the record-level field when the rule
+is about that pin. J2-6 carries one; the other eleven stay at full severity.
+
+Fixing that exposed a second bug in the same function. It matched the whole
+provenance string against the set of weak markers, so `"inferred - by elimination,
+the only SPI signal left"` — an honest annotated guess — did not match `inferred`
+and was treated as datasheet-backed. It now reads the first word. Both are
+covered by cases in `tests/test_erc.py`.
 
 **Neither WIZnet's documentation nor the LCSC datasheet states which physical
 end is pin 1** — the wiki page carries a pinmap image and links an external
@@ -2031,20 +2086,21 @@ At the 72 x 74 mm envelope the board is 53 cm2.
 | shunt 10 mΩ | 0.25 | at full 5 A |
 | SY8089 + inductor | 0.19 | |
 | 10 µH inductor DCR | 0.04 | 72 mΩ at 0.7 A |
-| BSS138 follower + 10 kΩ + D1 | 0.04 | 14 mW channel at the 800 µA the pin draws with VDD tied; the 27 V clamp draws 0.9 mA through R44, so 8 mW in the resistor and 24 mW in the Zener — less than the 20 V part's 26 + 32 mW |
+| MMBT5551 follower + 4.7 kΩ + D1 | 0.08 | 8.4 mW collector at the 800 µA the pin draws with VDD tied; the 27 V clamp draws 1.9 mA through R44, so 17 mW in the resistor and 52 mW in the Zener |
 | 2x MAX3485 driving 120 Ω | 0.06 | DE tied high, line never idle |
 | 74AHCT541 | 0.02 | |
 | R2 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
 | status LEDs, capped | 0.12 | eight at one colour, 25% — see below |
-| **total** | **4.07** | TVS leakage not counted |
+| **total** | **4.11** | TVS leakage not counted |
 
-The rows sum to 4.07 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
-53 cm², so **1.17x headroom** — down from 1.29x. The eFuse is most of that
-change but not all of it: of the 0.36 W added, **0.31 W** is the eFuse's 31 mΩ
+The rows sum to 4.11 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
+53 cm², so **1.16x headroom** — down from 1.29x. The eFuse is most of that
+change but not all of it: of the 0.40 W added, **0.31 W** is the eFuse's 31 mΩ
 against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
-lower-DCR inductor, **−0.03 W** is the 27 V gate clamp drawing less than the 20 V
-one did, and **0.12 W** is the status-LED row, which the 3.71 W figure simply did
-not count. On the eFuse alone the headroom would be 1.21x. And that is
+lower-DCR inductor, **+0.01 W** is the PD follower (the 27 V clamp draws less than
+the 20 V one did, but the NPN's 4.7 kΩ base pull-up draws more than the 10 kΩ it
+replaced), and **0.12 W** is the status-LED row, which the 3.71 W figure simply
+did not count. On the eFuse alone the headroom would be 1.21x. And that is
 at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
@@ -2070,7 +2126,7 @@ preference:
 | all eight, one colour, 100% | 0.48 W | |
 | **all eight, one colour, 25%** | **0.12 W** | **the budgeted case** |
 
-The budget carries **0.12 W**, giving a board total of **4.07 W against 4.80 W —
+The budget carries **0.12 W**, giving a board total of **4.11 W against 4.80 W —
 1.17× headroom**. An earlier version budgeted the 70% tricolour case at 1.01 W,
 which put the board at 4.99 W and 1.04× *over* — but that case is a floodlight,
 not a status display, and nothing about indicating six power levels and two fault
@@ -2105,6 +2161,16 @@ that fixed them and in Resolved, not here — a limits list that doubles as a
 changelog stops being read. Each entry below is either open, accepted, or a
 constraint the layout has to honour.
 
+**The 12 V contract has 0.22 V of margin at the PD undervoltage detector.** The
+emitter follower feeding the HUSB238A VBUS pin subtracts a fixed V_BE while the
+disconnect threshold is 86% of the requested voltage, and 12 V sits just inside
+that band — where the required offset is at its smallest. Worked at V_BE 0.80 V
+and h_FE 60 the pin clears by 0.22 V on a 10.32 V threshold, i.e. 2%. Every other
+contract has 0.49 V or better. Two things would close it: a measured V_BE, since
+the datasheet publishes none, and a measured h_FE at 800 µA rather than the 60
+assumed from the 10 mA figure. Until then, treat 12 V as the contract to test
+first on real hardware.
+
 **The HUSB238A's FAULT pin may not be a FAULT pin at reset.** Pin 13 is
 FAULT/OUT2 and p.5 says it "can be configured as a FAULT pin" or "as a universal
 output pin (OUT2) via the I²C master" — without stating the power-on default. If
@@ -2131,7 +2197,7 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.17x** headroom
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.16x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
 roughly 2.4 W, and the board is at **0.58x** — over budget, not merely tight.
@@ -2213,9 +2279,12 @@ The swap pays for itself elsewhere: **halving the DCR** lifts the 5 V rail from
 4.50 V to **4.56 V** at the bottom of vSafe5V, which was sitting exactly on the
 74AHCT541's floor, and cuts the inductor's own loss from 0.08 W to 0.04 W.
 
-**TPS54360B at 963 kHz sits at its pulse-skip boundary.** Equation 9 gives
-f_SW(max skip) ≈ 1.13 MHz typ, falling to 1.07 MHz at a +5 % PDO — a margin of
-1.01-1.17×, where TI's own example sits at 0.85×. RT = 200 kΩ (500 kHz) would
+**TPS54360B at 963 kHz sits at its pulse-skip boundary.** Equation **10** — the
+minimum-controllable-on-time limit, p.15; Equation 9 is the short-circuit limit
+and an earlier version of this line cited it by mistake — gives f_SW(max skip) ≈
+1.13 MHz typ, falling to 1.07 MHz at a +5 % PDO. Against the 964 kHz the fitted
+R_T sets, that is **1.11-1.17×** on nominal parts, and **1.01×** once the ±10%
+f_SW spread from p.5 is carried. TI's own example sits at 0.85×. RT = 200 kΩ (500 kHz) would
 give 2.2× and halve switching loss.
 
 **Reverting is not the cheap fix it looked like.** At 500 kHz a 10 µH inductor
@@ -2223,13 +2292,19 @@ gives **123% ripple** (0.86 A on a 0.7 A load), so the revert needs ~22 µH at t
 same ≥3.8 A saturation — and the SPM6530 family has no 22 µH part in stock. It
 would mean a different family and a larger package. The original reason for 1 MHz
 (buying saturation margin) is weaker now that L1 is a 3.8 A part, but the revert
-costs more than it saves. **Accepted at 1.01-1.17×.**
+costs more than it saves. **Accepted at 1.01× worst case, 1.11-1.17× nominal.**
 
 ## Open questions
 
 ### Blocking the netlist
 
-**None.** The USB-C receptacle (CX90B-16P), the Ethernet front end (module,
+**One, and it is a lookup rather than a design decision.** C134462 and
+C3198004 are keyed in the knowledge base by contact designation (`J1-1 … J2-6`,
+`A1 … B12`) and a netlist keys `pins` by **pad number**, so twenty-seven pins
+across two components need their keys read off the EasyEDA library symbol before
+the import artefact can be written — otherwise `K3` fires on every one of them.
+
+Every *design* question is closed. The USB-C receptacle (CX90B-16P), the Ethernet front end (module,
 which retired the crystal and magnetics questions), the channel switch (TPS16630),
 the HUSB238A's supply at vSafe5V, and the hold-up capacitor — deleted, see Known
 electrical limits — are all settled.
@@ -2244,7 +2319,7 @@ things that would have made the first ERC run meaningless are done:
 - **`design.yaml` exists**, declaring the rails. Without it `P1-overvoltage`
   cannot fire at all, on a board whose two headline hazards are a 33 V-absolute
   VBUS pin and a 36 V-rated INA226 both sitting on a 36 V bus. The HUSB238A's
-  sense pin is declared as its own **25.5 V** rail, because the BSS138 follower
+  sense pin is declared as its own **26.3 V** rail, because the emitter follower
   is the entire reason that pin survives and the checker should see the topology
   rather than the bus voltage.
 
