@@ -821,11 +821,12 @@ vVBPRS_R implements, and the UV detector was not mentioned at all.
 `VBUS_OK` rising clears by **+0.11 V** at the converter's applicable worst-case
 on-resistance (+0.19 V on a typical one) and misses by 0.29 V on a max-threshold
 part. The under-voltage detector publishes no band covering a 5 V RDO at
-all; its **adjacent** band is F1 at 80%, giving a 4.00 V bound that the 4.19 V pin
-clears by **+0.19 V** — numerically the same figure by coincidence, since
-vVBPRS_R typ is 4.0 V and 80% of 5 V is also 4.0 V. Reading the *next* band up
-instead (F0, 86%) would put the bound at 4.30 V and the pin 0.11 V short, which
-is the pessimistic case rather than the adjacent one. Both margins would move
+all; its **adjacent** band is F1 at 80%, giving a 4.00 V bound that the pin
+clears by **+0.11 V** at the R_DS corner and +0.19 V on a typical converter —
+numerically the same pair as `VBUS_OK` by coincidence, since vVBPRS_R typ is
+4.0 V and 80% of 5 V is also 4.0 V. Reading the *next* band up instead (F0, 86%)
+would put the bound at 4.30 V and the pin 0.19 V short, which is the pessimistic
+case rather than the adjacent one. Both margins would move
 0.35 V the right way if the 5 V rail were not at its own dropout floor. Bench-check it on the first board; if it
 fails, the lever is the rail, not the diode — a lower-DCR inductor buys back
 more than any Schottky swap can.
@@ -2608,10 +2609,11 @@ Kept so they are not re-opened:
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
   draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.19 V on a
   4.75 V bus where the follower alone gives 3.89-4.09 V. Residual: `VBUS_OK`
-  rising clears by **+0.19 V** on a typical part, and the under-voltage detector
-  publishes no band covering a 5 V RDO — its adjacent band (F1, 80%) puts the
-  bound at 4.00 V, which the pin clears by the same 0.19 V. Works on a typical
-  part, not guaranteed at the corner.
+  rising clears by **+0.11 V** at the converter's applicable R_DS corner (+0.19 V
+  on a typical one), and the under-voltage detector publishes no band covering a
+  5 V RDO — its adjacent band (F1, 80%) puts the bound at 4.00 V, which the pin
+  clears by the same margin. Works on a typical part, not guaranteed at the
+  corner.
 - **USB-C receptacle** — **CX90B-16P** (C3198004), Hirose CX series, **5 A /
   48 V AC/DC**, 16-position USB 2.0. Closes the longest-standing blocking
   question. Note LCSC's parameter table says 20 V for it and is **wrong**; the
