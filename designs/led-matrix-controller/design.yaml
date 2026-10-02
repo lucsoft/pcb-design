@@ -45,7 +45,7 @@ rails:
     # 190 mOhm maximum is specified at BOOT-SW = 6 V; this design runs at low
     # dropout, where Figure 1's 3 V curve applies and the maximum is unpublished
     # - about 0.24 Ohm at the curve's 1.25-1.30x ratio. 4.48 V is UNDER the
-    # 74AHCT541's 4.5 V floor, so P1-undervoltage fires here on purpose. See
+    # 74AHCT541's 4.5 V floor, so P1-undervoltage will fire here on purpose. See
     # Assumptions; the consequence is cosmetic and documented.
     voltageMin: 4.48
   BUS_3V3:

@@ -441,7 +441,7 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
 4. Firmware pulls EN_N low and the HUSB238A negotiates. **It is powered from
    VDD**, which step 2 already brought up. It cannot self-power from VBUS the way
    the datasheet's standalone application implies: behind the Figure 6 follower the VBUS pin
-   sees only 3.89-4.09 V at vSafe5V, under the 4.5 V the chip needs when VDD is
+   sees only 3.91-4.11 V at vSafe5V, under the 4.5 V the chip needs when VDD is
    absent. D14 holds the pin at ~4.19 V and VDD does the supplying.
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
@@ -648,8 +648,8 @@ What protects the load, in order of speed:
 2. **TPS16630 OVP**, a hardware overvoltage cut-off at 40.68 V typ, needing no firmware
 3. the PD source limiting at the negotiated level
 4. HUSB238A FAULT into the interlock transistors, pulling both SHDN pins low on
-   OTP or an adapter-capability fault (OVP/UVP do not survive the clamp topology
-   above 28 V)
+   OTP or an adapter-capability fault. OVP does not survive the clamp topology
+   above 28 V; UVP does, offset by one V_BE — see the follower section
 5. software via the INA226, as a slow safety net
 
 **What is still unprotected is the bus node upstream of the two controllers.**
@@ -783,7 +783,7 @@ impedance, where a series resistor would drop voltage with load current.
 The follower costs one V_BE, and it costs it where there is least room. At the
 bottom of vSafe5V — a **4.75 V** bus — the base sits 43 mV below the rail
 (I_B × R44) and the emitter one V_BE below that, so the pin gets
-**3.89 – 4.09 V**. Against a VBUS-pin minimum of **4.5 V** with VDD unpowered,
+**3.91 – 4.11 V**. Against a VBUS-pin minimum of **4.5 V** with VDD unpowered,
 the chip would not reliably come up.
 
 **First: VDD (pin 5) is an input supply, so tie it to 3V3.** The datasheet is
@@ -797,7 +797,7 @@ once:
 | VBUS pin range **3.15 – 29.4 V** | 4.5 – 29.4 V |
 | VBUS pin current **330 µA typ / 800 µA max** | 4.5 mA |
 
-The requirement drops by 1.35 V and the current by **5.6x**, and 3.89 V now
+The requirement drops by 1.35 V and the current by **5.6x**, and 3.91 V now
 clears it by 0.74 V. That alone would do — but it is not what decides, because
 two *threshold* figures sit above the minimum and the follower misses both. Sequencing makes this safe: nothing has to happen until
 firmware pulls EN_N low, and by then the 5 V and 3.3 V rails are both up, because
@@ -814,9 +814,9 @@ well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 
 | | Follower alone | With D14 |
 |---|---|---|
-| Pin at a 4.75 V bus | 3.89 – 4.09 V | **4.19 V** typ, **4.11 V** at the R_DS corner |
+| Pin at a 4.75 V bus | 3.91 – 4.11 V | **4.19 V** typ, **4.11 V** at the R_DS corner |
 | Against the 3.15 V minimum | +0.74 V | +1.04 V |
-| Against the 4.0 V thresholds | **−0.11 V at the low corner** | +0.19 V typ, **+0.11 V** at the R_DS corner |
+| Against the 4.0 V thresholds | **−0.09 V at the low corner** | +0.19 V typ, **+0.11 V** at the R_DS corner |
 
 So D14 is not rescuing a part that fails its supply minimum — the follower clears
 that by 0.74 V since VDD was tied to 3V3. It is buying the margin on the two 4.0 V
@@ -867,7 +867,12 @@ about a small-signal PMOS — the design needs no such part.
 
 Hynetek states it plainly: *"因为HUSB238A没有36V/48V OV保护"* — there is no
 36 V/48 V OV protection. The clamp preserves the supply function and
-VBUS-present detection, but **destroys OVP, UVP and the discharge path**. It is
+VBUS-present detection, but **destroys OVP and the discharge path**. UVP is the
+exception and the whole follower analysis below depends on it: the clamped pin
+tracks the bus again once the bus falls below about 26.4 V, so vVBUV_F2's flat
+22.4 V fires at a bus of roughly 23.2 V — the intended threshold plus one V_BE.
+OVP genuinely cannot fire, because VBUS_OV is 120% of the requested voltage —
+43.2 V on a 36 V contract — and the clamp never lets the pin near it. It is
 also why 48 V is I²C-only while GPIO mode stops at 28 V.
 
 Accepted, because it is inherent to the topology rather than a mistake — but it
@@ -953,11 +958,14 @@ port. The TPS16630 works from **4.5 V**.
 | stock | 105 | 1141 |
 | inrush | 1.05 A rising to a 5.5 A plateau | **constant 0.72 A** |
 | two channels at once | 11 A — needed staggering | **1.44 A** |
-| ramp vs module count | capacitance-limited at 12.7/channel | **bounded by the eFuse's 1.25 s thermal timeout, not by a fault timer** |
-| dissipation | 0.35 W | 0.66 W |
+| ramp vs module count | capacitance-limited at 12.7/channel | **bounded by the eFuse's 1.1 s thermal timeout, not by a fault timer** |
+| switched-path dissipation | 0.35 W | 0.66 W |
 
-The last row is the cost and it is real: **45 mΩ max** integrated against 9.5 mΩ discrete
-plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.16x**, on a board
+The last row is the cost and it is real. It is the whole **switched path**, not
+the FET alone: the conduction half is 45 mΩ max integrated against 9.5 mΩ
+discrete plus a 10 mΩ shunt, which is 0.53 W against 0.23 W, and each column
+carries its own controller's quiescent and divider draw on top — 0.13 W here,
+0.12 W there. Thermal headroom falls from 1.29x to **1.16x**, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
 **What it buys back is three of this document's own known limits.** The inrush is
@@ -1020,7 +1028,7 @@ point.
 for 165 ms, 26 W for the pair — six times the board's entire steady budget. The
 datasheet is explicit that if this exceeds the Figure 13 power-versus-time
 boundary, the **thermal regulation loop** takes over, overrides the programmed
-slew and starts a **1.25 s** `t(Treg_timeout)`; if the output has not come up by
+slew and starts a `t(Treg_timeout)` of **1.1 s minimum** (1.25 typ); if the output has not come up by
 then the FET turns off and MODE decides latch or retry.
 
 Reading Figure 13 properly — the curves extracted rather than estimated — gives:
@@ -1034,7 +1042,7 @@ the 20-module design point.
 | 13 W (10 modules on the channel) | 475 ms | **120 ms** | 58 ms |
 | 26 W (20 modules on the channel) | 68 ms | 38 ms | 14 ms |
 
-**So the programmed 165 ms slew is never realised at any ambient.** At 25 °C the
+**So the programmed 165 ms slew is never realised at any ambient this board will see.** At 25 °C the
 boundary at 13 W is 120 ms, *below* the ramp. Two things make it tighter still: Figure 13 is time-to-*shutdown*
 at T(TSD) = 165 °C, while the regulation loop engages at T(J_REG) = 145 °C typ and
 136 °C minimum, so regulation starts earlier than the plotted time; and the
@@ -1043,13 +1051,18 @@ inrush tolerance band puts P_D at 11.3-15.7 W rather than exactly 13 W.
 **The correct statement is that thermal regulation runs the ramp, not the dVdT
 capacitor.** C_dVdT sets the *intended* slew and the loop overrides it whenever
 the ramp would overheat the die, which is always here. The real bound is
-`t(Treg_timeout)` = **1.25 s**, and the question is whether the output comes up
-inside it. On energy it does: the 25 °C curve reads ~7 W at 1.25 s, so 8.75 J
+`t(Treg_timeout)`, and the binding end of that spread is its **1.1 s minimum**
+(1.25 typ, 1.5 max, p.8) — not the typical. The question is whether the output
+comes up inside it.
+
+On energy it does. Figure 13's 25 °C trace is the hardest line on that plot to
+read — light grey over a dense log grid — and two careful extractions of it
+differ by 20%, giving **5.9 to 7.0 W** at the timeout. That is **6.5 to 7.7 J**
 against the **2.14 J** one channel needs at the 10-modules-per-channel design
-point, and 4.28 J at twenty. At 85 °C the same curve is near 4 W, about 5 J. So
-the design point has **2.3x** margin even hot; it is the 20-per-channel growth
-case that is marginal at 5 J against 4.28 J, and that case is already outside the
-power budget.
+point: **3.0 to 3.6x**, and the spread does not change the answer. At 85 °C the
+curve is near 4 W, so about 4.5 J. The design point keeps roughly **2x** margin
+even hot; the 20-per-channel growth case sits at 4.5 J against 4.28 J, i.e.
+**1.05x**, and that case is already outside the power budget.
 
 One caveat the datasheet attaches and this design cannot close: Figure 13 is
 *"taken on VQFN device on EVM board"*, and the fitted part is the HTSSOP-20. Both
@@ -1544,8 +1557,11 @@ design it has specific gaps:
   nominal, and `BUS_5V` declares **4.48 V** — the rail at the converter's
   applicable worst-case on-resistance, see Rail architecture.
 
-  **And it fires.** 4.48 V is about 20 mV under the 74AHCT541's floor, with no fan
-  fitted. That is the rule earning its place: the design had been reading its
+  **And it will fire.** 4.48 V is about 20 mV under the 74AHCT541's floor, with no
+  fan fitted. Written as a prediction and not an observation, because this design
+  has no `netlist.json` yet — the rule, the pin's `vMin` and the rail's
+  `voltageMin` are all in place and the comparison is arithmetic, but nothing has
+  run it. That is the rule earning its place: the design had been reading its
   margin off the 190 mΩ figure, which is specified at a gate drive this converter
   does not use, and a check against the declared worst case is what surfaced it.
   The consequence is the one *Rail architecture* already reaches — indicators
@@ -2276,7 +2292,7 @@ states needs white at 70%.
 **What makes this safe is that firmware cannot be allowed to produce the
 uncapped case**, since it would be a single API call away. The cap belongs in the
 LED driver, not in the display logic that calls it. The board survives 1.01 W
-briefly — it is 1.04× of a steady-state figure, not an absolute maximum — but not
+briefly — it is 1.05× of a steady-state figure, not an absolute maximum — but not
 as an operating point, and certainly not at the 45 °C ambient this section
 already calls over budget.
 
@@ -2314,7 +2330,7 @@ undetectable. None of these is all three.
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
 | **C134462 / C3198004 pad numbers** | the KB keys them by *contact* designation (`J1-1 … J2-6`, `A1 … B12`); a netlist keys by pad number | `K3` fires on 27 pins, or worse, a netlist that imports onto the wrong pads | **a desk task.** Open the EasyEDA library symbol and read them. Must happen before the netlist regardless |
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
-| **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 8.75 J available against 2.14 J needed at the design point is 4×, which a package change does not eat. Thermal measurement on the first board |
+| **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 6.5-7.7 J available against 2.14 J needed at the design point is 3-3.6×, which a package change does not eat. The spread is the reading uncertainty on a light-grey trace over a log grid. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
 | **0.09 W/cm² free-air** | rule of thumb, for a 40 °C rise from 25 °C ambient | thermal headroom is not 1.16× | **J4**, the fan header — see Cooling. The *footprint* exists before the question is answered; nothing is fitted by default |
 | **XL1509 V_CE ≈ 0.30 + 0.45·I** | fitted to the single datasheet point, 1.2 V at 2 A | the vSafe5V brightness estimate is wrong | measurement on one module. Affects a convenience figure, not the design |
@@ -2630,7 +2646,7 @@ Kept so they are not re-opened:
   (RB751V-40) from the 5 V rail to the VBUS pin. VDD is an input supply, not an
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
   draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.19 V on a
-  4.75 V bus where the follower alone gives 3.89-4.09 V. Residual: `VBUS_OK`
+  4.75 V bus where the follower alone gives 3.91-4.11 V. Residual: `VBUS_OK`
   rising clears by **+0.11 V** at the converter's applicable R_DS corner (+0.19 V
   on a typical one), and the under-voltage detector publishes no band covering a
   5 V RDO — its adjacent band (F1, 80%) puts the bound at 4.00 V, which the pin
