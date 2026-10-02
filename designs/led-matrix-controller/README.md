@@ -28,7 +28,6 @@ fatigue. Affected, and still to be revisited:
 - the module's bulk electrolytic — a 220-330 uF radial cap is a lump of mass on
   two leads, and this is the classic vibration failure. Bond the body down, or
   move to SMD polymer or an MLCC bank
-- the JK60-300 PPTC (10.2 mm radial through-hole) — same geometry, much lighter
 - converter board inductors — heavy and tall
 - **board mounting**: standoffs at several points, not two corners. An
   unsupported span has a resonance and parts in the middle see amplified
@@ -46,7 +45,8 @@ fatigue. Affected, and still to be revisited:
 | PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind a BSS138 follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **LM5069** (C52940995) x2 + **NSS085N100S** | four discrete gate networks failed; ramp, current limit, power limit, fast turn-off and dV/dt immunity are integrated |
-| External part ratings | **mixed: 100 V on the switched path, 60 V on the bus** | the channel switch is 100 V (1.72x the TVS clamp) and the LM5069 operates from 8 V (p.5) to 90 V, but the TPS54360B and SS36 are 60 V and set the real limit at 1.03x the clamp. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
+| External part ratings | **mixed: 100 V on the switched path, 60 V on the bus** | the channel switch is 100 V (1.72x the TVS clamp) and the LM5069 operates from 8 V to 90 V — its own datasheet gives 8-90 V in the
+electrical table, 9-90 V in the recommended-operating block and 9-80 V in the body text, and the 8 V figure is the one the pre-negotiation argument leans on, but the TPS54360B and SS36 are 60 V and set the real limit at 1.03x the clamp. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
@@ -282,8 +282,12 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
    pass-through was a selection criterion — giving ~4.85 V, and the SY8089 makes
    3.3 V from it.
 3. The MCU boots. EN_N is still high (internal pull-up), so the PD chip is idle.
-4. Firmware pulls EN_N low. The HUSB238A negotiates — it self-powers from VBUS
-   (p.5, pin 16), so it needs nothing from us to do this.
+4. Firmware pulls EN_N low and the HUSB238A negotiates. **It is powered from
+   VDD**, which step 2 already brought up — an earlier version of this step said
+   the chip "self-powers from VBUS, so it needs nothing from us", and that is
+   exactly what does not work here: behind the Figure 6 follower the VBUS pin
+   sees only 3.05-3.75 V at vSafe5V, under the 4.5 V the chip needs when VDD is
+   absent. D14 holds the pin at ~4.13 V and VDD does the supplying.
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
 6. Past ~28 V each LM5069 releases its own UVLO, and firmware enables the
@@ -301,21 +305,28 @@ is the behaviour we want.
 
 ## Rail architecture
 
-The board must run from a 5 V bus as well as 36 V - all eight PD levels usable, with
-software holding back what it cannot power. That constrains the rails more than the
-36 V case does.
+The board must run from a 5 V bus as well as 36 V, with software holding back
+what it cannot power. That constrains the rails more than the 36 V case does.
+
+**This is a statement about the rails, not about the LED output.** The LM5069
+UVLO releases the channel switches at 28.3 V typ and **32.2 V worst case**,
+deliberately set just under the 34.2 V minimum of a 36 V contract. So on a 20 V
+or even a 28 V PDO the controller boots, talks and reports — and the LEDs stay
+dark. An earlier version of this sentence said "all eight PD levels usable",
+which is true of the rails and false of the load.
 
 ```mermaid
 flowchart LR
     BUS["36 V bus<br/>(5-36 V)"] --> B1["TPS54360B<br/>C524806 · 4.5-60 V in"]
-    B1 --> R5["5 V rail"]
-    R5 --> B2["SY8089<br/>C479074"]
-    B2 --> R3["3.3 V rail"]
-    R5 --> LS["74AHCT541<br/>level shifter"]
-    R3 --> MCU["ESP32-C6"]
-    R3 --> ETH["W5500 module"]
-    R3 --> SENSE["INA226"]
-    R3 --> PD["HUSB238A VDD"]
+    B1 --> RAIL5["5 V rail"]
+    RAIL5 --> B2["SY8089<br/>C479074"]
+    B2 --> RAIL3["3.3 V rail"]
+    RAIL5 --> LS["74AHCT541<br/>level shifter"]
+    RAIL5 -->|"D14"| PDV["HUSB238A VBUS pin"]
+    RAIL3 --> MCU["ESP32-C6"]
+    RAIL3 --> ETH["W5500 module"]
+    RAIL3 --> SENSE["INA226"]
+    RAIL3 --> PD["HUSB238A VDD"]
 ```
 
 **TPS54360B** (4.5-60 V in, 3.5 A, 60k stock). Chosen specifically because its automatic
@@ -323,13 +334,29 @@ BOOT recharge circuit allows "duty cycles approaching 100%", so "the maximum out
 voltage is near the minimum input supply voltage" (datasheet p.10). An ordinary buck
 cannot make 5 V from a 5 V bus; this one passes through.
 
-Output across the input range at 0.7 A, from the datasheet's p.12 dropout formula:
+Output across the input range at 0.7 A, from the datasheet's p.12 Eq. 1, inverted:
+
+    V_OUT = 0.99·V_IN + 0.99·V_F − 0.99·R_DS(on)·I_OUT − V_F − R_dc·I_OUT
+
+with R_DS(on) = 0.12 Ω (p.5) and R_dc = **0.163 Ω** — the inductor DCR implied by
+this document's own thermal row, 0.08 W at 0.7 A.
 
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
 |---|---|---|
-| 4.75 V (USB-C low tolerance) | 4.60 V | ok |
-| 5.00 V | 4.85 V | ok |
+| 4.75 V (USB-C low tolerance) | **4.50 V** | **at the floor, zero margin** |
+| 5.00 V | 4.75 V | ok |
 | >= 5.25 V | 5.00 V | ok |
+
+**An earlier version of this table claimed 4.60 V at a 4.75 V bus**, which assumed
+a flat 0.15 V drop rather than working the equation with a real DCR. The 0.10 V
+difference matters twice: the 74AHCT541 lands exactly on its 4.5 V minimum, and
+D14 then holds the HUSB238A VBUS pin at **4.13 V** rather than 4.23 V.
+
+**Neither is fatal, and here is why.** The 74AHCT541 only drives the status LED
+chain; a marginal rail during the few seconds of the 5 V phase means the
+indicators may misbehave before negotiation, not that the board fails to start.
+And 4.13 V still clears the VBUS pin's 3.15 V minimum by 0.98 V. What it does
+erode is the margin against two 4.0 V thresholds — see Known electrical limits.
 
 The sag at low bus voltage is self-correcting rather than a problem: the modules' own
 XL1509 is also in pass-through at 5 V (1.5 V minimum dropout means it cannot regulate
@@ -350,14 +377,16 @@ Cascading costs almost nothing. The 3.3 V rail delivers ~2.3 W, so:
 
 | | efficiency | lost |
 |---|---|---|
-| cascade, 36 -> 5 -> 3.3 V | ~78% | 0.64 W |
-| hypothetical single 36 -> 3.3 V | ~80% | 0.58 W |
+| cascade, 36 -> 5 -> 3.3 V | ~78% | 0.649 W |
+| hypothetical single 36 -> 3.3 V | ~80% | 0.575 W |
 
-**A 66 mW penalty**, against saving a second wide-input buck. The alternatives
+**A 74 mW penalty**, against saving a second wide-input buck. (Earlier versions
+of this passage gave 60 mW, 66 mW and 74 mW from the same two efficiencies; 2.3 W
+at 78% and 80% is 0.649 W against 0.575 W.) The alternatives
 are all worse:
 
 - **Two parallel wide-input bucks** (bus to 5 V, bus to 3.3 V) needs two
-  TPS54360-class parts and two inductors, for that same 66 mW.
+  TPS54360-class parts and two inductors, for that same 74 mW.
 - **One bus-to-3.3 V buck plus a charge pump to 5 V** works — the level shifter
   draws only tens of mA — but adds a part and puts switching noise next to the
   data lines.
@@ -442,24 +471,38 @@ firmware pulls EN_N low, and by then the 5 V and 3.3 V rails are both up, becaus
 they are fed from the bus directly.
 
 **Second: a Schottky from the 5 V rail to the VBUS pin.** At a 4.75 V bus the
-rail sits at **4.60 V** (the dropout table), and an RB751V-40 drops **0.37 V max
-at 1 mA** (p.2), so the pin is held at **4.23 V** — and the follower, seeing its
+rail sits at **4.50 V** (the dropout table), and an RB751V-40 drops **0.37 V max
+at 1 mA** (p.2), so the pin is held at **4.13 V** — and the follower, seeing its
 source above (Vgate − Vth), simply stops conducting. Once the bus rises the
 follower takes the pin to ~18.5 V and the Schottky is reverse-biased by 13.5 V,
 well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 
 | | Follower alone | With D14 |
 |---|---|---|
-| Pin at a 4.75 V bus | 3.05 – 3.75 V | **4.23 V** |
+| Pin at a 4.75 V bus | 3.05 – 3.75 V | **4.13 V** |
 | Against the 3.15 V minimum | **fails at the low corner** | 1.08 V margin |
 
-**One residual, stated rather than hidden.** `VBUS_OK` asserts at 3.67 V typ but
-**4.4 V worst case** (p.6), and 4.23 V clears the typical by 0.23 V while falling
-0.17 V short of the worst case. The datasheet lists VBUS_OK under "VBUS Present
-and Protection" and does not say PD negotiation is gated on it — negotiation runs
-on CC — so this is a status flag that may read 0 on a worst-case part at the
-bottom of vSafe5V, not a start-up blocker. Worth a bench check on the first
-board.
+**Two residuals at the bottom of vSafe5V, and they are tighter than they look.**
+Both are 4.0 V thresholds against the 4.13 V the Schottky delivers:
+
+| Threshold | Value | Margin at 4.13 V |
+|---|---|---|
+| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.6) | +0.13 V on typ, **−0.27 V on max** |
+| VBUS UV falling, vVBUV_F1 | **80% of the requested voltage** = 4.0 V on a 5 V RDO (p.6) | +0.13 V |
+
+The first decides whether VBUS-present is seen; the second is the under-voltage
+detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
+state"*. An earlier version of this paragraph labelled 3.67 V as the typical —
+it is the **minimum** — and argued the risk away on the grounds that "negotiation
+runs on CC". That argument is weaker than it was made to sound: USB Type-C gates
+the `AttachWait.SNK → Attached.SNK` transition on VBUS detection, which is what
+vVBPRS_R implements, and the UV detector was not mentioned at all.
+
+**Honest position: this works on a typical part and is not guaranteed at the
+corner.** Both margins are 0.13 V, and both would widen by 0.35 V if the 5 V rail
+were not at its own dropout floor. Bench-check it on the first board; if it
+fails, the lever is the rail, not the diode — a lower-DCR inductor buys back
+more than any Schottky swap can.
 
 **Hynetek's >28 V gate drive is not built here, and this note survives only to
 say why.** Figures 4, 5 and 6 all draw the *same* Zener gate network — the 28 V
@@ -674,7 +717,7 @@ comparator spread alone:
 |---|---|---|---|
 | UVLO rising (enable) | 28.3 V | **32.2 V** | must stay below the **34.2 V** minimum bus (-5% PDO) — 2.0 V of margin |
 | UVLO falling | 26.2 V | — | channels shed before the rails do |
-| OVLO rising (trip) | 45.3 V | **40.0 V** low / 50.8 V high | must stay above the **37.8 V** maximum bus — 2.0 V of margin at the low end |
+| OVLO rising (trip) | 45.3 V | **40.0 V** low / 50.8 V high | must stay above the **37.8 V** maximum bus — 2.2 V of margin at the low end |
 | OVLO falling | 43.1 V | — | above 37.8 V, so a recovered bus re-enables rather than latching out |
 
 An earlier version of this table quoted the comparator spread only and claimed
@@ -807,8 +850,8 @@ Active parts. Passives are listed below the table.
 | L1 | ANR5040T100M | C7427121 | 1 | 10 uH, TPS54360B output, 2.9 A Isat | 0.058 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
 | R1 | FRM252WFR010TN | C7419995 | 1 | 10 mΩ 1% shunt, low-side | 0.058 |
-| R2,R3 | 10 mΩ 1% ≥0.5 W | — | 2 | LM5069 current-sense. Rated for the **6.5 A worst-case trip** (0.42 W for up to one fault timeout), not the 0.059 W steady state | — |
-| R4 | 10 kΩ 0.25 W | — | 1 | bus bleeder, controller-side capacitance only | — |
+| R2,R3 | FRM252WFR010TN | C7419995 | 2 | LM5069 current-sense — **same part as R1**, 10 mΩ 1% 2512 at 2 W, which covers the 0.42 W worst-case trip with 4.8x to spare | 0.058 |
+| R4 | 10 kΩ 0.25 W 1206 | — | 1 | bus bleeder, jellybean, final selection at layout | — |
 | J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.99 |
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
 | LED1-8 | SK6812MINI-E | C5149201 | 8 | status chain | 0.081 |
@@ -831,8 +874,10 @@ ordering.
 Passives, standard values, final selection at layout:
 
 - **120 Ω** differential termination (far end, on the converter board — not here)
-- **900 kΩ** on HUSB238A ADDR and DEBUG_N, per datasheet p.4-5, to keep standby
-  current low
+- **900 kΩ x3** on HUSB238A ADDR, DEBUG_N **and EN_HVDCP/OUT1**, per datasheet
+  p.4-5 and p.11 Table 7, to keep standby current low. Three parts, not two —
+  all three pins are dual-function and become push-pull outputs after
+  initialisation, which is why the resistor cannot be omitted on any of them
 - **LM5069 support, per channel**: R_PWR **64.9 kΩ** 1%, C_TIMER **6.8 µF** X7R
   25 V, UVLO/OVLO string **120 kΩ / 5.36 kΩ / 7.32 kΩ** 1%, C_VIN **100 nF**
   ≥100 V. All derived in Channel switching and inrush
@@ -929,9 +974,11 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7045 mm2.**
 
-Component area estimates at ~2310 mm2. At 45% utilisation (2-layer, relaxed)
-that is roughly **72 x 71 mm**; at 60% (4-layer, dense) about 72 x 53 mm. The
-target is met with room to spare.
+Component area estimates at **~2389 mm2** — the Ethernet module made the board
+slightly *bigger*, 575 mm2 against the ~496 it replaced, and an earlier 2310
+figure predates that swap. At 45% utilisation (2-layer, relaxed) that is roughly
+**72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
+with room to spare.
 
 The largest items are where any further shrink comes from:
 
@@ -943,11 +990,12 @@ The largest items are where any further shrink comes from:
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
 
 
-**Dropping the PPTCs is the easy win.** They were specified when the connector
-was 3 A; at the picoMAX's 10 A the worst case is 28% of rating and their job has
-largely evaporated. They are also through-hole radial — bulky, and mass on leads
-in a vibration environment. Removing them saves 192 mm2 and two hand-soldered
-parts.
+**The PPTCs are already gone** — there is no PPTC line in the BOM, and this
+section is the record of why. They were specified when the connector was 3 A; at
+the picoMAX's 10 A the worst case is 28% of rating and their job evaporated. They
+were also through-hole radial — bulky, and mass on leads in a vibration
+environment. Dropping them saved 192 mm2 and two hand-soldered parts, and the
+per-channel overcurrent role they half-filled is now the LM5069's.
 
 ## Thermals and the FET choice
 
@@ -1029,7 +1077,7 @@ any of them does not work. Cited so they can be checked rather than trusted.
 | Part | Value | Source |
 |---|---|---|
 | BOOT cap, BOOT→SW | 100 nF X7R ≥10 V | p.27 §8.2.2.7 "must be connected for proper operation" |
-| RT/CLK to GND | ~100 kΩ 1% → **1 MHz** | p.14 §7.3.9 — the pin **cannot float**; confirm against the datasheet equation |
+| RT/CLK to GND | **100 kΩ 1% → 964 kHz** | p.14 §7.3.9 — the pin **cannot float**. The equation gives 963.7 kHz; "1 MHz" elsewhere is that rounded |
 | Feedback divider | 53.6 kΩ / 10.2 kΩ 1% (VREF 0.8 V) | p.28 §8.2.2.9 |
 | COMP network | ~4.7 kΩ + 33 nF series, 150 pF parallel | p.13 §7.3.5, eq. 44-51 |
 | CIN | ≥3 µF **effective after DC-bias derating**, 100 V X7R | p.26 §8.2.2.6 |
@@ -1086,15 +1134,18 @@ daughterboard. Pin headers soldered through both boards, no receptacle.
 **Pin map, confirmed against the module on hand.** Two 1×6 headers, taken from
 the WIZ850io datasheet p.2 and checked against the clone's silkscreen:
 
+WIZnet calls the module's two headers J1 and J2, which collide with this board's
+own J1 (USB-C) and J2/J3 (picoMAX). They are written **MJ1** and **MJ2** here.
+
 | | 1 | 2 | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|---|
-| **J1** | GND | GND | MOSI | SCLK | SCSn | INTn |
-| **J2** | GND | 3V3 | 3V3 | NC | RSTn | MISO |
+| **MJ1** | GND | GND | MOSI | SCLK | SCSn | INTn |
+| **MJ2** | GND | 3V3 | 3V3 | NC | RSTn | MISO |
 
 The clone reads as `INT CS SCK MO G G` and `G V V NC RST WT`. The first of those
-is J1 right-to-left, which is what reading both headers left-to-right across the
-board produces — **J1 and J2 sit on opposite edges, so they run in opposite
-directions.** Both readings are therefore consistent with the table above. J2
+is MJ1 right-to-left, which is what reading both headers left-to-right across the
+board produces — **MJ1 and MJ2 sit on opposite edges, so they run in opposite
+directions.** Both readings are therefore consistent with the table above. MJ2
 position 4 being **NC** also settles which family it is: the WIZ550io carries a
 RDY pin there, the WIZ850io does not.
 
@@ -1110,8 +1161,8 @@ dimension PDF, and the LCSC file is an export of that page. So the handedness of
 the clone against the official footprint cannot be settled on paper.
 
 It can be settled with a multimeter in under a minute, with no power applied.
-**All grounds are common**, so ringing J2 position 1 against the two G pads on J1
-identifies which end of J1 is the ground end — and that, with the signal order
+**All grounds are common**, so ringing MJ2 position 1 against the two G pads on
+MJ1 identifies which end of MJ1 is the ground end — and that, with the signal order
 already read off the silkscreen, fixes the orientation completely.
 
 **And the layout should make a mismatch visible rather than invisible.** Put the
@@ -1121,13 +1172,21 @@ silkscreens are read against each other and a mirrored module is obvious before
 it is soldered. This costs nothing and converts the one error class that survives
 fabrication into one that cannot survive assembly.
 
-**This does not block the netlist.** The netlist maps pin *names* to nets; it is
-the **footprint** that carries pad geometry. If the clone turned out mirrored,
-the fix is a mirrored footprint, not a different netlist.
+**This does not block the netlist, but not for the reason an earlier version of
+this paragraph gave.** That version said the netlist maps pin *names* to nets.
+It does not — the format in CLAUDE.md step 5 is `"pins": { "1": "GND", … }`,
+keyed by **pin number**, and `erc.py`'s K3 rule checks those numbers against the
+KB pin map.
+
+The reason it is still not blocking is narrower: the netlist is written against
+**C134462's documented numbering**, where MJ1-1 is GND and MJ2-6 is MISO, and those
+numbers keep meaning those signals whichever way round the board is. A mirrored
+clone needs a **mirrored footprint** so that pad 1 lands on its ground end; the
+netlist is unchanged. Footprint work, not netlist work.
 
 **Symbol, footprint and 3D model come free, via the official part.** The clone
-has no EasyEDA library entry, but it does not need one: put **C3198004's
-neighbour C134462** — the WIZ850io — in the netlist as the `Supplier Part`, and
+has no EasyEDA library entry, but it does not need one: put **C134462** — the
+WIZnet WIZ850io — in the netlist as the `Supplier Part`, and
 EasyEDA resolves the symbol, the footprint and the 3D model from its own library.
 The clone drops into that footprint because it is the same one.
 
@@ -1210,7 +1269,10 @@ here.
 - **74AHCT541**: OE0 (pin 1) and OE1 (pin 19) are active-LOW enables and must go
   to GND, or every output stays high-Z. The seven unused A inputs must be tied.
 - **INA226**: A0 and A1 must each be tied to GND/SCL/SDA/VS (p.3) — they are
-  inputs. VBUS (pin 8) cannot float either; tie it to 3V3 and treat the bus and
+  inputs. **Tie both to GND**, giving address **0x40**. This is not free choice:
+  the HUSB238A sits at 0x42, which is also a legal INA226 address (A1 GND, A0
+  SDA), so the no-clash argument in Known electrical limits depends on pinning
+  this one here. VBUS (pin 8) cannot float either; tie it to 3V3 and treat the bus and
   power registers as unused, since bus sensing is done by the ADC divider.
 - **MAX3485**: DE to VCC **and RE to VCC** — RE is a CMOS input, "unused" is not
   a state. 0.1 µF at each VCC. Failsafe biasing is genuinely not needed, since DE
@@ -1236,12 +1298,8 @@ here.
 - The Ethernet module's handedness, which no datasheet settles — resolve it with
   a ground-continuity check and a labelled silkscreen. See Ethernet module. It
   affects the footprint, not the netlist.
-- D1 is **selected**: BZT52C20 (C19077415). See the note below on why 20 V
-  rather than Hynetek's 28 V.
-- **The hold-up capacitor's series element.** See Known electrical limits: the
-  Schottky as drawn breaks the 5 V cold start, and the topology is still open, so
-  no part is selected. That is the cause of the missing BOM line, not an
-  oversight in it.
+- The hold-up capacitor decision, which is a **blocking** item — see Open
+  questions.
 
 ## GPIO assignment
 
@@ -1273,7 +1331,9 @@ The cost is that external JTAG is no longer available; see Recovery and debug.
 GPIO12/13 are the USB pair and are unavailable. GPIO8 must read high at reset and
 GPIO15 must not be high-Z — both usable if the signal's idle state matches the
 required strap, which the assignment below exploits. GPIO9 wants the BOOT button.
-It fits with **one spare**, but only because of those two strap-sharing tricks.
+It fits at all only because of those two strap-sharing tricks — and the one pad
+they bought has since gone to the shared PGD line, so the count below is exact
+with nothing left over.
 
 A workable assignment, which also shows how tight it is:
 
@@ -1318,7 +1378,7 @@ and the module's header footprint and mechanical retention.
 
 ## Thermal budget
 
-At the 72 x 71 mm envelope the board is 51 cm2.
+At the 72 x 74 mm envelope the board is 53 cm2.
 
 | Source | W | Note |
 |---|---|---|
@@ -1338,8 +1398,8 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | R4 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
 | **total** | **3.71** | status LEDs excluded; TVS leakage not counted |
 
-The rows sum to 3.71 W against roughly **4.6 W** of capacity at 0.09 W/cm² over
-51 cm², so **1.24x headroom** — and that is at **25 °C ambient**. Inside an
+The rows sum to 3.71 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
+53 cm², so **1.29x headroom** — and that is at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
 switching to the LM5069 and an N-channel FET moved the whole switched path to
@@ -1378,7 +1438,9 @@ so it cannot conduct until the pin is already past its limit. The reasoning that
 rejected a 5 V part still holds — RS-485 common mode runs -7 V to +12 V — but
 there is no symmetric part that clears +12 V and clamps under 15 V. Options: an
 asymmetric RS-485 TVS (SM712 class, 7 V/12 V standoff, **not in JLCPCB's
-catalogue**), or rely on the MAX3485's own ±15 kV IEC ESD rating and treat the
+catalogue**), or rely on the MAX3485's own ±15 kV IEC **air-discharge** rating —
+the permissive test; the fitted JSMSEMI part quotes no contact-discharge figure
+and ±8 kV HBM — and treat the
 TVS as surge-only. **Open.**
 
 **H5VL10B on CC1/CC2 is marginal.** 5 V standoff, 5.6 V breakdown, against a
@@ -1388,9 +1450,15 @@ is the usual choice. **Open.**
 **ADDR to GND, 0x42.** An earlier note claimed 0x42 clashes with the INA226 and
 specified a VDD tie for 0x62 — both wrong. The INA226 occupies exactly **one**
 address (0x40 with A0/A1 to GND), so 0x42 is free. And a VDD tie is unsafe here:
-ADDR latches at power-up, and the chip self-powers from VBUS the instant it
-appears, while 3V3 only exists after two converters have started. GND is the only
-tie that is guaranteed valid at the moment of latching.
+ADDR latches at power-up, and with the follower in front of the VBUS pin that
+power-up does not happen on plug-in — the pin reaches only 3.05-3.75 V at
+vSafe5V, under the 4.5 V the chip needs with VDD absent. The chip therefore
+latches when **3V3 arrives**, after two converters have started. GND is valid at
+that moment and at every other, which is why it stays the tie; a VDD tie would
+now also be valid, but it buys nothing and depends on rail sequencing to stay
+true. An earlier version of this paragraph argued from the chip self-powering
+off VBUS the instant it appears, which is the behaviour this board does not
+have.
 
 **EN_N must stay HIGH at power-up**, which the internal pull-up already does —
 the cold-start sequence depends on the chip being idle until firmware enables it.
@@ -1413,10 +1481,10 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.24x** headroom
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.29x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
-roughly 2.3 W, and the board is at **0.6x** — over budget, not merely tight.
+roughly 2.4 W, and the board is at **0.65x** — over budget, not merely tight.
 This is the largest unquantified risk left in the thermal section.
 
 **The hold-up Schottky breaks the 5 V cold start — and the recommendation is to
@@ -1524,18 +1592,31 @@ would do without this cost.
 
 ### Blocking the netlist
 
-**None.** Every item that used to sit here is resolved: the USB-C receptacle
-(CX90B-16P), the Ethernet front end (module, which retired the crystal and
-magnetics questions), the gate network (LM5069), and the HUSB238A's supply at
-vSafe5V. What remains below is verification and accepted trade-offs.
+**One, and it is a decision rather than a question.** Everything else that used
+to sit here is resolved: the USB-C receptacle (CX90B-16P), the Ethernet front end
+(module, which retired the crystal and magnetics questions), the gate network
+(LM5069), and the HUSB238A's supply at vSafe5V.
 
-**So `designs/led-matrix-controller/netlist.json` can now be written**, and
-`tools/erc.py` has never run on this design.
+1. **Keep the hold-up capacitor, or delete it?** Known electrical limits
+   recommends deleting it, because one optional part causes three separate
+   defects — it breaks the 5 V cold start through its series Schottky, it leaves
+   a BOM line nobody can fill while the topology is unsettled, and it is almost
+   the whole of the Type-C bypass-capacitance overrun. What it buys is
+   ride-through of a PD renegotiation, and if the bus collapses the LEDs go dark
+   regardless; all it protects is the controller from a brownout reset.
+
+   This blocks the netlist because it decides **two components and a node**, and
+   it was previously filed under "still unresolved in this section" where it did
+   not look like a blocker. Deleting it is a one-line change; keeping it needs an
+   ideal-diode controller, not a Schottky.
+
+Once that is answered, `designs/led-matrix-controller/netlist.json` can be
+written — and `tools/erc.py` has never run on this design.
 
 ### Verification, not design
 
-1. **The Ethernet module's handedness.** Ring J2 position 1 against the two G
-   pads on J1 to find which end of J1 is ground, and read the controller's
+1. **The Ethernet module's handedness.** Ring MJ2 position 1 against the two G
+   pads on MJ1 to find which end of MJ1 is ground, and read the controller's
    silkscreen against the module's at assembly. Needs the physical module, not a
    datasheet — WIZnet does not publish the pin-1 end. Affects the **footprint**,
    not the netlist.
@@ -1622,9 +1703,10 @@ Kept so they are not re-opened:
 - **HUSB238A supply at vSafe5V** — **VDD (pin 5) tied to 3V3**, plus **D14**
   (RB751V-40) from the 5 V rail to the VBUS pin. VDD is an input supply, not an
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
-  draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.23 V on a
-  4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: `VBUS_OK` may
-  read 0 on a worst-case part at the bottom of vSafe5V.
+  draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.13 V on a
+  4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: two 4.0 V
+  thresholds — `VBUS_OK` rising and the under-voltage detector — each sit 0.13 V
+  below it, so this works on a typical part and is not guaranteed at the corner.
 - **USB-C receptacle** — **CX90B-16P** (C3198004), Hirose CX series, **5 A /
   48 V AC/DC**, 16-position USB 2.0. Closes the longest-standing blocking
   question. Note LCSC's parameter table says 20 V for it and is **wrong**; the

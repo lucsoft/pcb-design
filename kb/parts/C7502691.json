@@ -33,7 +33,7 @@
   },
   "designVerdict": "SELECTED as D14 - lifts the HUSB238A VBUS pin at vSafe5V, where the BSS138 follower falls short.",
   "notes": [
-    "Anode on the 5 V rail, cathode on the HUSB238A VBUS pin. At a 4.75 V bus the rail is 4.60 V and this part drops 0.37 V max at 1 mA (datasheet p.2), holding the pin at 4.23 V against a 3.15 V minimum - where the follower alone gives 3.05-3.75 V and fails at the low corner.",
+    "Anode on the 5 V rail, cathode on the HUSB238A VBUS pin. At a 4.75 V bus the rail is 4.50 V (the TPS54360B's own dropout, worked from Eq. 1 with the real inductor DCR) and this part drops 0.37 V max at 1 mA (p.2), holding the pin at 4.13 V against a 3.15 V minimum - where the follower alone gives 3.05-3.75 V and fails.",
     "It conducts only at low bus voltage. Once the bus rises the follower takes the pin to ~18.5 V and this diode is reverse-biased by 13.5 V, inside its 40 V rating - including during a 58.1 V TVS clamp, because the follower's Zener holds the pin at 18.5 V regardless of the drain.",
     "Chosen for low Vf at small current rather than for current capability: the load is 800 uA max. A 1N5819-class power Schottky would drop more at this current, which is the opposite of what is wanted."
   ]
