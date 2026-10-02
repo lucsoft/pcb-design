@@ -161,6 +161,26 @@ bookkeeping: `tools/erc.py` downgrades rules built on `inferred` or `assumed`
 data from error to warning, so an honest provenance keeps the checker's
 errors trustworthy.
 
+**The pin *number* comes from the EasyEDA symbol, not from the datasheet.**
+This is not a detail — the netlist keys `pins` by the number the library uses,
+and that is what the importer resolves against. The two agree on most parts and
+disagree without warning on connectors and modules:
+
+    ./tools/eda.py pins C3198004        # number -> name, as the symbol has it
+    ./tools/eda.py pins C3198004 --kb   # emit a kb.py set-pins command
+    ./tools/eda.py verify <file>|--kb   # check kb numbers against the library
+
+Four parts on one board disagreed, and in each case the datasheet reads as
+obviously right: a module header numbered 12→7 rather than 7→12, a USB-C
+receptacle whose shield tabs are pins **0** and **1**, a four-leg tactile switch
+the library gives two pads, and an MCU module whose one `EPAD` is nine GND pins.
+A key the symbol does not have places a pin that silently goes nowhere, and
+nothing downstream reports it. Run `eda.py verify` on the whole BOM before
+writing a netlist, the way `stock.py` is run before ordering one.
+
+Where the two numbering schemes differ, record both: `--pin "1:GND:power_in:contact=J1-1"`
+keeps the silkscreen designation that assembly reads.
+
 Turn datasheet requirements into part rules while the datasheet is open — a
 required decoupling capacitor, a strapping pin that must not be pulled low.
 That is the whole point of the knowledge base: **read it once, check it
@@ -198,12 +218,22 @@ Two smaller traps worth knowing:
   evidence the right part will land.
 - Deleting a component means **renumbering every `gge` key after it**. The
   sequence has no gaps; `S1-key-sequence` catches a violation, but it is
-  easier to renumber while editing than to debug afterwards.
+  easier to renumber while editing than to debug afterwards. Past about thirty
+  components, write a generator instead and commit both it and its output —
+  `designs/led-matrix-controller/netlist.py` assigns the keys from list
+  position, so deleting a part is deleting a line.
 
 Alongside it, `designs/<name>/design.yaml` declares the power rails and their
 voltages. Without that the overvoltage check cannot run. The same file takes
-an `ignore:` list of rule ids — suppress a rule there with a comment saying
-why, rather than working around it in the netlist.
+an `ignore:` list — suppress a rule there with a comment saying why, rather
+than working around it in the netlist. Write `rule@where` rather than a bare
+`rule` wherever the exception is local: a bare id silences the rule across the
+whole board, which is how a check that was doing real work quietly stops.
+
+A pin that is open **on purpose** goes to a net literally named `NC`. The
+checker treats that as a recorded decision; a pin simply left out of the
+netlist is reported as forgotten. Both are right, and only you know which one
+it is.
 
 ### 6. Check before importing
 
@@ -277,6 +307,7 @@ Neither one is evidence the board works. That takes a physical board.
     ├── tools/
     │   ├── kb.py              knowledge base: add, set-pins, check, list
     │   ├── ds.py              datasheet fetch, index, find, page
+    │   ├── eda.py             EasyEDA library: symbol pin numbers, verify
     │   ├── erc.py             electrical rule check
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets)
     │   ├── plot.py            chart helper: palette and house style

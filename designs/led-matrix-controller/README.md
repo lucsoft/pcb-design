@@ -1291,7 +1291,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | R30 | **100 kΩ 1% 0402** | C25741 | SY8089 EN pull-up — the datasheet forbids leaving it floating |
 | R31 | **470 kΩ 1% 0402** | C25790 | bus-voltage ADC divider, upper |
 | R32 | **27 kΩ 1% 0402** | C25771 | bus-voltage ADC divider, lower → 36 V reads 1.96 V |
-| R33,R34 | **499 Ω 1% 0402** | C4125 | SK6812 data series, in and out of the chain |
+| R33,R34 | **499 Ω 1% 0402** | C4125 | status-chain data series — **R34 on the 3.3 V side** (GPIO15 → buffer input), **R33 on the 5 V side** (buffer output → LED1 DIN). See Status indication |
 | R35-R38 | **33 Ω 1% 0402** | C138002 | MAX3485 A/B series — slows the edge without disturbing the 120 Ω far-end termination |
 | R39 | **10 kΩ 1% 0402** | C25744 | ESP32-C6 EN pull-up (with C17 forms the reset delay) |
 | R40 | **10 kΩ 1% 0402** | C25744 | GPIO8 strapping pull-up |
@@ -1866,16 +1866,16 @@ silkscreens are read against each other and a mirrored module is obvious before
 it is soldered. This costs nothing and converts the one error class that survives
 fabrication into one that cannot survive assembly.
 
-**This does not block the netlist.** The netlist does not map pin *names* to
-nets, which is the natural assumption — the format in CLAUDE.md step 5 is `"pins": { "1": "GND", … }`,
-keyed by **pin number**, and `erc.py`'s K3 rule checks those numbers against the
-KB pin map.
+**This does not block the netlist.** The netlist keys `pins` by **pin number**,
+not by pin name, and those numbers keep meaning those signals whichever way
+round the board is. A mirrored clone needs a **mirrored footprint** so pad 1
+lands on its ground end; the netlist is unchanged. Footprint work, not netlist
+work.
 
-The reason it is still not blocking is narrower: the netlist is written against
-**C134462's documented numbering**, where J1-1 is GND and J2-6 is MISO, and those
-numbers keep meaning those signals whichever way round the board is. A mirrored
-clone needs a **mirrored footprint** so that pad 1 lands on its ground end; the
-netlist is unchanged. Footprint work, not netlist work.
+The numbers themselves are the symbol's 1-12, read with `tools/eda.py` — and
+the mapping is not the one the silkscreen suggests. **MJ2 runs 12→7**, so
+MJ2-1 (GND) is pin 12 and MJ2-6 (MISO) is pin 7. All six names agree on that
+direction; the obvious reading, MJ2-1 = 7, agrees on none of them.
 
 **Symbol, footprint and 3D model come free, via the official part.** The clone
 has no EasyEDA library entry, but it does not need one: put **C134462** — the
@@ -1888,10 +1888,10 @@ schematic; it must not end up on a JLCPCB PCBA order, or they will fit a $22.89
 WIZ850io where the €12.30 JOY-IT clone in the sourcing table was intended. Treat it like J2/J3, which are in the
 BOM but hand-fitted.
 
-Whether EasyEDA actually carries C134462 is a one-click check in the editor and
-has not been verified here — the LCSC detail endpoint does not report library
-availability. If it does not, the fallback is drawing a 2 × 1×6 header footprint
-by hand, which is the simplest footprint on the board.
+**EasyEDA does carry C134462**, verified rather than assumed: `./tools/eda.py
+device C134462` returns symbol `WIZ850IO` and footprint `RJ45-TH_WIZ850IO`
+from the Pro library — a through-hole footprint that includes the jack. So the fallback of drawing a 2 × 1×6 header footprint by hand is not
+needed.
 
 **Area is not the reason to do this.** The module is ~25 × 23 mm = 575 mm²
 against roughly 496 mm² for the chip, crystal, jack and support passives, so the
@@ -2016,8 +2016,14 @@ reflection returns ~110 ns after the edge, inside a 400 ns pulse.
 - **HUSB238A ADDR**: tie to **GND (0x42)**, not VDD. Mode and address latch at
   power-up, when the 3.3 V rail does not yet exist — so a VDD tie reads as GND
   anyway, or worse is ambiguous against the float-means-GPIO-mode state.
-- **SK6812 chain**: ~500 Ω series resistors on data in and out, plus 100 nF per
-  LED. The *value* is from the **WS2812D-F8** p.5 (`104`); SK6812MINI-E p.9 shows
+- **SK6812 chain**: ~500 Ω series resistors on the data line and 100 nF per LED.
+  The datasheet figure puts one at the chain's DIN and one at its DOUT, because
+  the chain in that figure continues to another board. **This one ends at LED8**,
+  so a resistor on LED8's DOUT would damp nothing. The second one goes on the
+  3.3 V side instead, between GPIO15 and the buffer input — a real trace, and
+  it keeps the GPIO behind a series element. Writing the netlist is what forced
+  this to be decided; "in and out of the chain" had been carried for several
+  revisions without anyone asking what the second one terminated into. The *value* is from the **WS2812D-F8** p.5 (`104`); SK6812MINI-E p.9 shows
   one capacitor per LED with no value and says only that "the decoupling
   capacitance between each LED is essential". The 500 Ω series figure on that
   page is verbatim. Note the **SK6812-EC20** fitted here specifies VIH as
@@ -2334,7 +2340,6 @@ undetectable. None of these is all three.
 | **Q3 V_BE = 0.6-0.8 V** at 800 µA | silicon junction over −20…+85 °C. The MMBT5551 datasheet publishes no V_BE(on) at any current; its only V_BE figure is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
 | **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.84 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.22 V at β 40, 0.15 V at β 20, zero near β 9 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
-| **C134462 / C3198004 pad numbers** | the KB keys them by *contact* designation (`J1-1 … J2-6`, `A1 … B12`); a netlist keys by pad number | `K3` fires on 27 pins, or worse, a netlist that imports onto the wrong pads | **a desk task.** Open the EasyEDA library symbol and read them. Must happen before the netlist regardless |
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
 | **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 6.5-7.7 J available against 2.14 J needed at the design point is 3-3.6×, which a package change does not eat. The spread is the reading uncertainty on a light-grey trace over a log grid. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
@@ -2518,54 +2523,8 @@ costs more than it saves. **Accepted at 1.01× worst case, 1.11-1.17× nominal.*
 
 ### Blocking the netlist
 
-**One, and it is a lookup rather than a design decision.** C134462 and
-C3198004 are keyed in the knowledge base by contact designation (`J1-1 … J2-6`,
-`A1 … B12`) and a netlist keys `pins` by **pad number**, so twenty-seven pins
-across two components need their keys read off the EasyEDA library symbol before
-the import artefact can be written — otherwise `K3` fires on every one of them.
-
-A second thing to decide rather than discover: **J2/J3 carry no `Supplier
-Part`**, because the picoMAX headers are not LCSC parts. `design.yaml`
-suppresses `S4-missing-lcsc` for them so the ERC passes, but the importer
-resolves only through `eda.lib_Device.getByLcscIds()` — so if they appear in the
-netlist they place **nothing**, and `LED_RTN`, `A` and `B` lose their
-connector-side pins at import. That is the one net whose naming this document
-spends a section defending. Decide before writing: either leave J2/J3 out of the
-netlist entirely and draw both connectors by hand afterwards, or give them a
-placeholder part and correct it on the canvas. Leaving them in with no
-`Supplier Part` is the option that looks like it worked and did not.
-
-Every *design* question is closed. The USB-C receptacle (CX90B-16P), the Ethernet front end (module,
-which retired the crystal and magnetics questions), the channel switch (TPS16630),
-the HUSB238A's supply at vSafe5V, and the hold-up capacitor — deleted, see Known
-electrical limits — are all settled.
-
-**So `designs/led-matrix-controller/netlist.json` can be written.** The two
-things that would have made the first ERC run meaningless are done:
-
-- **Every BOM part now carries a pin map**, each with a `--source`. Without one
-  `pin_type()` returns `unspecified`, which silently disables K3, K4, K5, E1, E2,
-  E3, P1 and P2 for that part — and `P2-no-decoupling` only sees `power_in` pins,
-  so decoupling would have been checked on three ICs and nowhere else.
-- **`design.yaml` exists**, declaring the rails. Without it `P1-overvoltage`
-  cannot fire at all, on a board whose two headline hazards are a 33 V-absolute
-  VBUS pin and a 36 V-rated INA226 both sitting on a 36 V bus. The HUSB238A's
-  sense pin is declared as its own **26.3 V** rail, because the emitter follower
-  is the entire reason that pin survives and the checker should see the topology
-  rather than the bus voltage.
-
-**Two parts need their pin keys reconciled against the EasyEDA symbol** before
-the netlist is written, and this is a real step rather than a formality. The
-Ethernet module (C134462) is recorded with the module's own `J1-1 … J2-6`
-designations and the USB-C receptacle (C3198004) with Hirose's contact names
-`A1 … B12` — because in both cases the pad numbering lives in a drawing that
-neither datasheet extracts. The netlist format keys `"pins"` by **pad number**,
-so either those keys are translated or `K3` fires on every pin of both parts.
-
-**`S4-missing-lcsc` is suppressed in `design.yaml`**, with the reason recorded
-there: J2/J3 are Wago picoMAX headers with real Reichelt order numbers and no
-LCSC part, so the importer cannot resolve them and the rule would fire on every
-build.
+**Nothing. `netlist.json` exists, and `erc.py` reports no errors against it.**
+See Netlist for what is in it and what the clean report does not mean.
 
 ### Verification, not design
 
@@ -2626,52 +2585,126 @@ build.
     and 2.7 V under the modules' absolute rating. Retuning the divider to
     732k/255k/30.0k closed it.
 
+## Netlist
+
+`netlist.json` is generated by `netlist.py`, not written by hand, and both are
+committed. **128 components, 439 pins, 76 nets.** The ERC reports **0 errors**
+and one warning, which is the documented `P1-undervoltage` on U9.20.
+
+The generator exists for one reason: the importer requires the component keys
+to be exactly `gge1 … ggeN` with no gaps, so deleting a part means renumbering
+every key after it. Here the keys follow position in a list, so deleting a part
+is deleting a line. The JSON is still the artefact that gets imported.
+
+    nix-shell --run './designs/led-matrix-controller/netlist.py'
+    nix-shell --run './tools/erc.py designs/led-matrix-controller/netlist.json'
+
+**The pin keys come from the EasyEDA library, not from the datasheets.** This
+distinction had been written down as a chore and turned out to be the most
+productive hour of the netlist work, because the library disagrees with the
+datasheet on four parts and in every case the datasheet is the one that reads
+as obviously right:
+
+| Part | The datasheet says | The symbol says |
+|---|---|---|
+| WIZ850io (C134462) | two headers, `J1-1 … J2-6` | 1-12, with **J2 running 12→7** — all six names agree on that direction and none on the other |
+| CX90B-16P (C3198004) | 16 contacts `A1 … B12` | the same 16 names, plus shield tabs **0 and 1** and mid-plate tabs **2 and 3** |
+| TS-1088-AR02016 (C720477) | four legs in two common pairs | **two** pads, each spanning both legs of one side |
+| ESP32-C6-WROOM-1 (C5366877) | 29 pins, the underside one `EPAD` | 37 — the pad is broken out as **nine** GND pins, 29-37 |
+
+A netlist keyed from the datasheet would have placed a pin numbered `J2-1` that
+resolves to nothing, wired pads 3 and 4 of a two-pad switch, and left eight
+ground pads of the MCU module with no net. None of that is visible on the
+canvas afterwards. `./tools/eda.py verify <file>` now checks a whole BOM against
+the library in one pass; it is how the last two were found, after the first two
+had been fixed by hand.
+
+### Deliberately open pins
+
+Wired to a net literally named `NC`, which `erc.py` treats as "open on
+purpose" rather than "nobody got to it". The distinction matters: the second
+one is a bug and the checker has to be able to tell them apart.
+
+| Pin | Why it is open |
+|---|---|
+| U1.1, U1.2 (D+/D−) | the pair belongs to the MCU's native USB; sharing it would break enumeration |
+| U1.15 (GATE) | there is no external VBUS switch left for it to drive |
+| U4.3 (EN) | abs max 8.4 V — any UVLO divider off a 36 V bus sits over it; open gives the internal 4.3 V UVLO |
+| U7.1, U8.1 (RO) | RE_N is tied high, so the receiver is off and its output is high-Z |
+| U9.11-17 (Y1-Y7) | one buffer channel is used; the other seven drive nothing |
+| U10/U11 .12 (MODE) | **open is the setting** — it selects latch-off, which is the chosen fault behaviour |
+| U10/U11 .14, .15 (IMON, FLT) | real losses, argued in Known electrical limits — there are no GPIOs left |
+| J1.A8, J1.B8 (SBU1/2) | no audio accessory or debug accessory mode |
+| LED8.2 (DOUT) | end of the status chain |
+
+### Hand-drawn after import
+
+Three things are not in the netlist and must be drawn on the canvas, because
+the importer resolves components only through `Supplier Part` and these have
+none:
+
+- **J2 and J3**, the picoMAX 3.5 headers. LCSC carries some WAGO parts but not
+  the 2091 series — checked, not assumed. Giving them a placeholder C-number
+  was the alternative and is worse: the importer would place a *different*
+  connector, silently, with no footprint field in the property table to correct
+  it afterwards. A part that is visibly absent beats a wrong part that looks
+  present. Their nets all exist already — `CH1_36V`, `CH2_36V`, `LED_RTN`,
+  `CH1_A/B`, `CH2_A/B` — so this is attaching a symbol to live nets, not
+  rebuilding connectivity.
+- **TP1-TP3**, the UART0 console pads. `UART_TX` and `UART_RX` are named in the
+  netlist and carry one pin each; `design.yaml` suppresses `C1-single-pin-net`
+  at those two nets specifically, so the rule stays live everywhere else.
+
+**`LED_RTN` is the one to check twice.** It is the module return and it is *not*
+GND: R1, the 10 mΩ shunt, sits between them and they meet nowhere else. Wiring
+J2/J3 pin 2 to GND shorts the shunt through the ground pour and the current
+sense reads zero — with no ERC rule able to catch it, because a connector wired
+to the wrong net is indistinguishable from one wired to the right one.
+
+### What the clean report does not mean
+
+The ERC passing is a floor, not a result. It has nothing to say about whether
+R25/R26 divide to 5 V, whether the COMP network is stable, or whether the
+UVLO string trips where the arithmetic in *Values, derived* says it does. Those
+are the next two steps: the import diff, then ngspice on the two regulators.
+
 ## Next: from here to a board
 
-The design questions are closed. What remains is mechanical, in order, with the
-reason each step comes before the next.
+The netlist is written and checked. What remains needs the EasyEDA editor and,
+eventually, a board.
 
-**1. Read the pad numbers off the EasyEDA library.** C134462 (the W5500 module)
-and C3198004 (the USB-C receptacle) are keyed in `kb/` by contact designation —
-`J1-1 … J2-6` and `A1 … B12` — because that is what their datasheets give. A
-netlist keys `pins` by **pad number**, so twenty-seven pins need translating.
-Open each symbol in EasyEDA, read the pad numbering, and `kb.py set-pins` both
-records with the pad numbers as keys and the contact name in the `name` field.
-This is the one thing blocking the netlist and it is a lookup, not a decision.
+**1. Import.** Netlist Rebuild in EasyEDA Pro, select `netlist.json`.
 
-**2. Decide what to do about J2/J3.** The picoMAX headers have no LCSC number,
-so the importer resolves them to nothing. Either leave them out of the netlist
-and draw both connectors by hand, or give them a placeholder C-number and fix it
-on the canvas. The failure mode if neither is chosen is silent: the parts appear
-to import and `LED_RTN`, `A` and `B` lose their connector-side pins.
+**2. Draw the five hand-fitted symbols** — J2, J3 and TP1-TP3 — onto nets that
+already exist. See *Hand-drawn after import*, and check `LED_RTN` against GND
+while doing it.
 
-**3. Write `netlist.json`.** Keys `gge1 … ggeN` with no gaps, field names
-lowercase except `Designator` and `Supplier Part`, and `Supplier Part` is the
-*only* field the importer resolves by — a wrong C-number silently places a
-different part with nothing in the property table to correct it. The BOM tables
-above are the source; 58 distinct parts, 84 passives.
-
-**4. Run `./tools/erc.py designs/led-matrix-controller/netlist.json`.** This has
-never run against this design. Expect `P1-undervoltage` on U9.20 — that one is
-deliberate and documented under Rail architecture. Iterate until nothing else
-remains, then re-run `./tools/stock.py` on the BOM before ordering.
-
-**5. Import, then verify by diffing.** Netlist Rebuild in EasyEDA Pro, then
-export the netlist back out and diff it against the JSON that went in. The
-failure modes that matter are invisible on the canvas: pins that look wired but
-carry no net port, and separate nets silently merged. EasyEDA's DRC checks
+**3. Verify by diffing.** Export the netlist back out of EasyEDA and diff it
+against the JSON that went in. This is not optional and the canvas is not a
+substitute: the failure modes that matter are pins that look wired but carry no
+net port, and separate nets silently merged into one. EasyEDA's DRC checks
 geometry, not intent.
 
-**6. Layout.** Everything in Layout constraints applies: 2 oz (70 µm) copper,
+**4. Simulate the two regulators.** EasyEDA Pro's built-in ngspice, on the
+TPS54360B stage and the SY8089 stage. The ERC has nothing to say about loop
+stability or whether a divider produces the voltage it is supposed to. Not
+worth running on the board as a whole — SPICE has no idea what firmware does.
+
+**5. Layout.** Everything in *Layout constraints* applies: 2 oz (70 µm) copper,
 the trace widths at the 2.80 A worst case, the split `LED_RTN` return joined to
 ground only at the shunt, D15/D16 and C34/C35 within a few mm of the eFuse OUT
 pins, the eFuse PowerPADs on a soldered pour with vias, and the module's
 18 × 6 mm antenna keep-out copper-free on every layer.
 
-Worth running before the board is ordered, and not done yet: EasyEDA Pro's
-**ngspice** on the two regulators and on the differential link. It will not tell
-you whether the board works — only a board does that — but a regulator is
-exactly the kind of block where it earns its time.
+**6. Re-check stock before ordering.** `./tools/stock.py
+designs/led-matrix-controller/README.md`. The figures in this document carry a
+retrieval date and five parts in an earlier BOM were at zero while a catalogue
+mirror reported six figures.
+
+Two things to carry into the first board rather than resolve on paper: the
+5 V rail's real dropout at the bottom of vSafe5V, which decides whether
+`P1-undervoltage` on U9.20 is cosmetic as argued, and the Ethernet module's
+handedness, which a continuity check settles in a minute.
 
 ## Resolved
 
