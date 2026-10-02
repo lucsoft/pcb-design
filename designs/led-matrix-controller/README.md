@@ -1758,35 +1758,48 @@ At the 72 x 74 mm envelope the board is 53 cm2.
 | 2x MAX3485 driving 120 Ω | 0.06 | DE tied high, line never idle |
 | 74AHCT541 | 0.02 | |
 | R2 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
-| **total** | **3.98** | status LEDs excluded; TVS leakage not counted |
+| status LEDs, capped | 0.12 | eight at one colour, 25% — see below |
+| **total** | **4.10** | TVS leakage not counted |
 
-The rows sum to 3.98 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
-53 cm², so **1.20x headroom** — down from 1.29x, and the integrated eFuse is why:
+The rows sum to 4.10 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
+53 cm², so **1.17x headroom** — down from 1.29x, and the integrated eFuse is why:
 31 mΩ against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced — and that is at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
 the switched path is 0.66 W, and the two largest rows are the MCU and that path.
 
-**Capping status-LED brightness is a thermal requirement, not a preference.**
-**The datasheet forbids the full-white case this models.** SK6812MINI-E p.3:
-monochrome may use 100% greyscale, but "when illuminating the tricolor light, use
-**70% greyscale**". So capping status-LED brightness is a manufacturer
-restriction, not only a thermal judgement. **And at the sanctioned 70% they no
-longer fit.** 8 × 3 × 12 mA × 0.70 × 5 V = **1.01 W**, which on a 3.98 W base
-gives **4.99 W against 4.80 W of capacity — 1.04× over.** An earlier version of
-this sentence called 4.72 W "just inside"; that was computed against a 3.71 W
-base, two part swaps ago.
+### Status LEDs: why addressable, and why capped
 
-**So the status chain has to be duty-capped in firmware regardless**, not merely
-kept off full white. A few percent is plenty for indicators and brings this back
-to a rounding error; the datasheet's 70% ceiling is the *electrical* limit, and
-the board's thermal budget is the tighter one.
+**They are not plain SMD LEDs.** Each SK6812MINI-E contains a controller and
+three 12 mA constant-current drivers, which is where the power goes — and what
+buys the thing the GPIO budget cannot otherwise afford: **eight indicators on one
+pin.** Eight discrete LEDs would need eight pins, and the assignment table has
+none spare. (An I²C LED driver on the bus that already exists would also cost
+zero pins and about a twentieth of the power, at the cost of colour. Not taken,
+but it is the alternative if the budget ever tightens.)
 
-Eight SK6812MINI-E at full white add **1.44 W typ / 1.74 W max** — the earlier
-2.4 W assumed 20 mA per channel, but this is the 12 mA part — which still takes
-the total past the board's capacity. They are indicators; a few percent duty is plenty. This is the
-second reason to cap them — the first was L1's saturation margin, which is why
-the 22 µH part was dropped for a 10 µH one in the first place.
+**The brightness cap is a hard firmware requirement with a number**, not a
+preference:
+
+| Case | Power | |
+|---|---|---|
+| all eight, three colours, 100% | 1.44 W | above the datasheet's own limit |
+| all eight, three colours, **70%** | **1.01 W** | the datasheet's ceiling (p.3: "when illuminating the tricolor light, use 70% greyscale") |
+| all eight, one colour, 100% | 0.48 W | |
+| **all eight, one colour, 25%** | **0.12 W** | **the budgeted case** |
+
+The budget carries **0.12 W**, giving a board total of **4.10 W against 4.80 W —
+1.17× headroom**. An earlier version budgeted the 70% tricolour case at 1.01 W,
+which put the board at 4.99 W and 1.04× *over* — but that case is a floodlight,
+not a status display, and nothing about indicating six power levels and two fault
+states needs white at 70%.
+
+**What makes this safe is that firmware cannot be allowed to produce the
+uncapped case**, since it would be a single API call away. The cap belongs in the
+LED driver, not in the display logic that calls it. The board survives 1.01 W
+briefly — it is 1.04× of a steady-state figure, not an absolute maximum — but not
+as an operating point, and certainly not at the 45 °C ambient this section
+already calls over budget.
 
 Hot spots need local copper rather than relying on the board average: the
 ESP32-C6 (1.26 W), the Ethernet module and the TPS54360B (0.50 W each), the catch diode
@@ -1794,10 +1807,9 @@ ESP32-C6 (1.26 W), the Ethernet module and the TPS54360B (0.50 W each), the catc
 dissipate more than the discrete FET and shunt they replaced. The two bucks should not share a thermal zone with the module or
 the Ethernet controller.
 
-The N-channel switch is what made this comfortable: the 100 V P-channel
-alternative once considered here would have dissipated far more for the same job,
-where the integrated eFuse gives 67 V absolute at the cost of 0.31 W more than
-the discrete FET it replaced.
+The eFuse costs 0.31 W more than the discrete FET and shunt it replaced, which is
+the single largest change to this budget and is recorded in Channel switching and
+inrush as the price of working from 4.5 V.
 
 **The TPS54360B needs an external catch diode** (datasheet p.26) — this was
 missing from the BOM until the thermal pass. SS36 covers it: 60 V blocks the
@@ -1829,10 +1841,10 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.20x** headroom
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.17x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
-roughly 2.4 W, and the board is at **0.60x** — over budget, not merely tight.
+roughly 2.4 W, and the board is at **0.58x** — over budget, not merely tight.
 This is the largest unquantified risk left in the thermal section.
 
 **The channel body diodes back-feed the USB-C receptacle.** An N-channel
