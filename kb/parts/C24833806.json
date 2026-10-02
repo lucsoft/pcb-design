@@ -187,7 +187,7 @@
       ],
       "requires": "connected",
       "severity": "error",
-      "note": "Above 28 V the VBUS pin must sit behind the p.16 Figure 6 BSS138 source follower - never tied straight to a 36 V bus. GATE is deliberately left unconnected in this design: there is no external VBUS switch for it to drive. See the design README's 'Channel switching and inrush' section: the channels switch through their own TPS16630 eFuses."
+      "note": "Above 28 V the VBUS pin must sit behind the p.16 Figure 6 follower (an MMBT5551 emitter follower here, C7420357) - never tied straight to a 36 V bus. GATE is deliberately left unconnected in this design: there is no external VBUS switch for it to drive. See the design README's 'Channel switching and inrush' section: the channels switch through their own TPS16630 eFuses."
     },
     {
       "id": "flgin-tied",

@@ -43,5 +43,5 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "SELECTED as R48, the follower bypass link - DO NOT FIT. 0 Ohm 0402. Fitted only on a build that never exceeds 28 V, where the BSS138 and D1 come out and VBUS connects straight through."
+  "designVerdict": "SELECTED as R48, the follower bypass link - DO NOT FIT. 0 Ohm 0402. Fitted only on a build that never exceeds 28 V, where Q3 and D1 come out and VBUS connects straight through."
 }

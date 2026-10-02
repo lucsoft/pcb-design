@@ -219,6 +219,11 @@ def _():
     assert erc.first_word("datasheet p.2 PIN ASSIGNMENT") == "datasheet"
     assert erc.first_word("") == ""
     assert erc.first_word(None) == ""
+    # Punctuation people actually write. Splitting on a space missed every one
+    # of these, and each failed in the direction that raises an error on a guess.
+    for s in ("inferred. SOT-23 standard", "assumed; standard pinout",
+              "(inferred)", "inferred	by tab", "inferred-by-elimination"):
+        assert erc.first_word(s) in erc.UNVERIFIED, s
 
 
 @case("a pin's own source overrides the record's provenance.pins")

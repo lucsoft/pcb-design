@@ -499,7 +499,7 @@ electrical table gives 92 mΩ typ / **190 mΩ max**, and the datasheet adds that
 values *"must include tolerance … at their maximum operating temperature"*. At
 190 mΩ the rail is **4.52 V** on a 4.75 V bus — still over the 74AHCT541's 4.5 V
 minimum, which the lower-DCR inductor bought — and D14 then holds the VBUS pin at
-**4.15 V**, cutting both 4.0 V margins from 0.19 V to **0.15 V**. The corner is flagged for the thresholds; the 4.56 V row
+**4.15 V**, which takes `VBUS_OK` to **+0.15 V** and the under-voltage bound to **0.15 V short**. The corner is flagged for the thresholds; the 4.56 V row
 itself should be read as typical, not as the floor.
 
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
@@ -697,7 +697,7 @@ pinch point** — it sits just inside the 86% band, where the required offset is
 its smallest — and 0.22 V of margin on a 10.32 V threshold is 2%. Carried in
 Known electrical limits rather than claimed as solved.
 
-At the top end the swap helps as well: the pin lands at 24.85-27.55 V against the
+At the top end the swap helps as well: the pin lands at 24.85-27.75 V against the
 22.4 V threshold and the 29.4 V recommended maximum, with more room at both ends
 than the MOSFET gave, because V_BE is smaller than V_GS. V_CE is 9.8 V in normal
 operation and 31.9 V during a 58.1 V TVS clamp, against the part's **160 V**
@@ -765,8 +765,8 @@ Both are 4.0 V thresholds against the 4.19 V the Schottky delivers:
 
 | Threshold | Value | Margin at 4.19 V |
 |---|---|---|
-| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.6) | +0.19 V on typ, **−0.21 V on max** |
-| VBUS UV falling, vVBUV_F1 | **not specified at a 5 V RDO.** p.6 bands it 86% for 26 V > RDO > 10 V and 80% for 10 V ≥ RDO > 5 V — 5 V itself falls in no band. At the adjacent 86% the threshold is 4.30 V and the pin is **0.11 V short**, not 0.19 V over | **unknown; treat 4.30 V as the bound** |
+| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.7) | +0.19 V on typ, **−0.21 V on max** |
+| VBUS UV falling, vVBUV_F1 | **not specified at a 5 V RDO.** p.7 bands it 86% for 26 V > RDO > 10 V and 80% for 10 V ≥ RDO > 5 V — 5 V itself falls in no band. At the adjacent 86% the threshold is 4.30 V and the pin is **0.11 V short**, not 0.19 V over | **unknown; treat 4.30 V as the bound** |
 
 The first decides whether VBUS-present is seen; the second is the under-voltage
 detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
@@ -776,9 +776,12 @@ runs on CC". That argument is weaker than it was made to sound: USB Type-C gates
 the `AttachWait.SNK → Attached.SNK` transition on VBUS detection, which is what
 vVBPRS_R implements, and the UV detector was not mentioned at all.
 
-**Honest position: this works on a typical part and is not guaranteed at the
-corner.** Both margins are 0.19 V, and both would widen by 0.35 V if the 5 V rail
-were not at its own dropout floor. Bench-check it on the first board; if it
+**Honest position: one margin and one shortfall, and the shortfall is the one
+that matters.** `VBUS_OK` rising clears by **+0.19 V** on a typical part. The
+under-voltage detector does not: a 5 V RDO falls in no published band, and at the
+adjacent 86% the bound is 4.30 V against a pin at 4.19 V — **0.11 V short**. Both
+numbers would move 0.35 V the right way if the 5 V rail were not at its own
+dropout floor. Bench-check it on the first board; if it
 fails, the lever is the rail, not the diode — a lower-DCR inductor buys back
 more than any Schottky swap can.
 
@@ -887,7 +890,7 @@ port. The TPS16630 works from **4.5 V**.
 | dissipation | 0.35 W | 0.66 W |
 
 The last row is the cost and it is real: 31 mΩ integrated against 9.5 mΩ discrete
-plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.16x**, on a board
+plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.17x**, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
 **What it buys back is three of this document's own known limits.** The inrush is
@@ -989,7 +992,7 @@ the package and the copper differ, in the unhelpful direction.
 **Thresholds.** UVLO at 4.28 V sits just under the part's own 4.5 V minimum
 operating voltage, so **the device's own floor is the binding one** and the LED
 output follows the rails down to vSafe5V. Its hysteresis is 78 mV typ, so it
-falls out at 4.06 V — still under that floor, which is why the hysteresis does
+falls out at 4.00 V — still under that floor, which is why the hysteresis does
 not need designing around.
 
 **OVP cuts off at 40.68 V, and that number closes an accepted limit.** The
@@ -1214,7 +1217,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | R45 | **10 kΩ 1% 0402** | C25744 | INA226 ALERT pull-up — the pin is open-drain and cannot assert high without it. Stated as a requirement in Tie-offs for three revisions with no BOM line |
 | R46 | **10 kΩ 1% 0402** | C25744 | W5500 module RSTn pull-down — holds the PHY in reset until firmware drives GPIO21, instead of leaving it floating through the boot window |
 | R47 | **10 kΩ 1% 0402** | C25744 | W5500 module INTn pull-up — open-drain, same reasoning as the HUSB238A's INT_N |
-| R48 | **0 Ω 0402, do not fit** | C17168 | follower bypass link. Fitted only on a build that never exceeds 28 V, where the BSS138 and D1 come out and VBUS connects straight through. **DNF** on this board |
+| R48 | **0 Ω 0402, do not fit** | C17168 | follower bypass link. Fitted only on a build that never exceeds 28 V, where Q3 and D1 come out and VBUS connects straight through. **DNF** on this board |
 
 **Capacitors** — 33 parts.
 
@@ -1509,7 +1512,7 @@ around it, and a small board has less of it.
 The TPS16630's integrated FET is **31 mΩ typ / 45 mΩ max at 85 °C**, so at
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
-the price of the part — thermal headroom goes from 1.29x to **1.16x**.
+the price of the part — thermal headroom goes from 1.29x to **1.17x**.
 
 **The ramp is the device's own problem now, by design.** There is no SOA
 calculation to do and no power limit to set: the part regulates its own junction
@@ -1761,7 +1764,7 @@ design is built around had no entry.
 | D14, 5V rail → VBUS pin | **RB751V-40** (C7502691) | lifts the VBUS pin at vSafe5V; reverse-biased once the follower takes over |
 | ADDR, DEBUG_N | 910 kΩ each | p.4-5 calls for 900 kΩ, which is not an E96 value; 910 kΩ is the nearest stocked one. Keeps standby current low |
 | INT_N pull-up | 10 kΩ | p.5, open-drain |
-| BSS138 gate pull-up | 10 kΩ | same source |
+| Q3 follower base pull-up (R44) | **4.7 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — those are Q1/Q2 with 10 kΩ pull-**downs** (R15/R16), because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
 | Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
 | EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest E96 value that is stocked. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
 | FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V). Its only function is disabling the GATE driver, and GATE is unconnected, so a defined low is the whole requirement |
@@ -2044,7 +2047,7 @@ Measured against 20 modules, where full white is 288 W:
 | 180 W EPR charger | 36 V / 5 A | 175 W | 80% |
 
 **The gamma curve is what makes this work.** Perceived brightness follows γ = 2.2,
-so halving the electrical power costs only about fifteen percentage points of
+so halving the electrical power costs only about twenty percentage points of
 apparent brightness: 91 W against 175 W is 52% of the power and 59% against 80%
 of what the eye reports. That is the whole argument for degrading rather than
 refusing — and it is what the old 28 V UVLO threw away.
@@ -2093,8 +2096,8 @@ At the 72 x 74 mm envelope the board is 53 cm2.
 | status LEDs, capped | 0.12 | eight at one colour, 25% — see below |
 | **total** | **4.11** | TVS leakage not counted |
 
-The rows sum to 4.11 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
-53 cm², so **1.16x headroom** — down from 1.29x. The eFuse is most of that
+The rows sum to 4.11 W against **4.80 W** of capacity at 0.09 W/cm² over
+53.3 cm², so **1.17x headroom** — down from 1.29x. The eFuse is most of that
 change but not all of it: of the 0.40 W added, **0.31 W** is the eFuse's 31 mΩ
 against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
 lower-DCR inductor, **+0.01 W** is the PD follower (the 27 V clamp draws less than
@@ -2166,10 +2169,20 @@ emitter follower feeding the HUSB238A VBUS pin subtracts a fixed V_BE while the
 disconnect threshold is 86% of the requested voltage, and 12 V sits just inside
 that band — where the required offset is at its smallest. Worked at V_BE 0.80 V
 and h_FE 60 the pin clears by 0.22 V on a 10.32 V threshold, i.e. 2%. Every other
-contract has 0.49 V or better. Two things would close it: a measured V_BE, since
-the datasheet publishes none, and a measured h_FE at 800 µA rather than the 60
-assumed from the 10 mA figure. Until then, treat 12 V as the contract to test
-first on real hardware.
+contract has 0.49 V or better. What would close it is a **measured V_BE**: the
+datasheet publishes no V_BE(on) at any current, and its only V_BE-family figure is
+V_BE(sat) ≤ 1.0 V at I_C = 10 mA with a forced β of 10 — deep saturation, which
+does not bound the active-region value at 800 µA and should not be read as if it
+did. h_FE is *not* the gap it was once called here: p.1 carries a row at
+**I_C = 1.0 mA → 80 min**, which brackets the operating point, and using 80
+instead of the conservative 60 widens the 12 V margin to 0.23 V. Treat 12 V as
+the contract to test first on real hardware.
+
+One thing that makes the analysis above valid and is not obvious: the base sits
+**below** the collector by exactly I_B·R44 ≈ 50 mV, at every bus voltage, because
+R44 is the only path into the base. So V_BC is pinned a hair negative and the
+transistor is always just inside the active region — never saturated, where V_BE
+would climb. That is also why V_BE(sat) is the wrong spec to reach for.
 
 **The HUSB238A's FAULT pin may not be a FAULT pin at reset.** Pin 13 is
 FAULT/OUT2 and p.5 says it "can be configured as a FAULT pin" or "as a universal
@@ -2197,7 +2210,7 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.16x** headroom
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.17x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
 roughly 2.4 W, and the board is at **0.58x** — over budget, not merely tight.
@@ -2279,9 +2292,14 @@ The swap pays for itself elsewhere: **halving the DCR** lifts the 5 V rail from
 4.50 V to **4.56 V** at the bottom of vSafe5V, which was sitting exactly on the
 74AHCT541's floor, and cuts the inductor's own loss from 0.08 W to 0.04 W.
 
-**TPS54360B at 963 kHz sits at its pulse-skip boundary.** Equation **10** — the
-minimum-controllable-on-time limit, p.15; Equation 9 is the short-circuit limit
-and an earlier version of this line cited it by mistake — gives f_SW(max skip) ≈
+**TPS54360B at 963 kHz sits at its pulse-skip boundary.** The governing formula
+is the one **tagged (9)** on p.15, `f_SW(max skip)` — and the citation is worth a
+sentence because the datasheet contradicts itself: TI's prose on that page says
+"Equation 10 calculates the maximum switching frequency limitation set by the
+minimum controllable on time", while the equation actually tagged (10) is
+`f_SW(shift)`, the short-circuit foldback limit. The tags are right and the prose
+is wrong; a previous revision here followed the prose and cited (10). Read by
+formula rather than by number, it gives f_SW(max skip) ≈
 1.13 MHz typ, falling to 1.07 MHz at a +5 % PDO. Against the 964 kHz the fitted
 R_T sets, that is **1.11-1.17×** on nominal parts, and **1.01×** once the ±10%
 f_SW spread from p.5 is carried. TI's own example sits at 0.85×. RT = 200 kΩ (500 kHz) would
@@ -2303,6 +2321,17 @@ C3198004 are keyed in the knowledge base by contact designation (`J1-1 … J2-6`
 `A1 … B12`) and a netlist keys `pins` by **pad number**, so twenty-seven pins
 across two components need their keys read off the EasyEDA library symbol before
 the import artefact can be written — otherwise `K3` fires on every one of them.
+
+A second thing to decide rather than discover: **J2/J3 carry no `Supplier
+Part`**, because the picoMAX headers are not LCSC parts. `design.yaml`
+suppresses `S4-missing-lcsc` for them so the ERC passes, but the importer
+resolves only through `eda.lib_Device.getByLcscIds()` — so if they appear in the
+netlist they place **nothing**, and `LED_RTN`, `A` and `B` lose their
+connector-side pins at import. That is the one net whose naming this document
+spends a section defending. Decide before writing: either leave J2/J3 out of the
+netlist entirely and draw both connectors by hand afterwards, or give them a
+placeholder part and correct it on the canvas. Leaving them in with no
+`Supplier Part` is the option that looks like it worked and did not.
 
 Every *design* question is closed. The USB-C receptacle (CX90B-16P), the Ethernet front end (module,
 which retired the crystal and magnetics questions), the channel switch (TPS16630),
@@ -2429,9 +2458,11 @@ Kept so they are not re-opened:
   (RB751V-40) from the 5 V rail to the VBUS pin. VDD is an input supply, not an
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
   draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.19 V on a
-  4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: two 4.0 V
-  thresholds — `VBUS_OK` rising and the under-voltage detector — each sit 0.19 V
-  below it, so this works on a typical part and is not guaranteed at the corner.
+  4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: `VBUS_OK`
+  rising clears by **+0.19 V** on a typical part, while the under-voltage
+  detector publishes no band covering a 5 V RDO at all — at the adjacent 86%
+  the bound is 4.30 V and the pin is **0.11 V short**. Works on a typical part,
+  not guaranteed at the corner.
 - **USB-C receptacle** — **CX90B-16P** (C3198004), Hirose CX series, **5 A /
   48 V AC/DC**, 16-position USB 2.0. Closes the longest-standing blocking
   question. Note LCSC's parameter table says 20 V for it and is **wrong**; the

@@ -37,6 +37,6 @@
   "designVerdict": "SUPERSEDED - the resistor+Zener clamp was replaced by a follower (BSS138, now MMBT5551)",
   "notes": [
     "BZT52C18, 18 V Zener. Was specified as the shunt half of a resistor+Zener clamping the HUSB238A VBUS pin. That topology was an INFERENCE and turned out to be wrong: Hynetek's published Figure 6 uses a BSS138 source follower with a 28 V Zener on its gate (see C7420339 and C24833806).",
-    "Not in the BOM. The part the design actually needs there is a 28 V Zener (BZT52C28 class) on the BSS138 gate - still to be selected."
+    "Not in the BOM. The part the design actually fitted is the BZT52C27 (C173421) on the Q3 emitter-follower base - selected."
   ]
 }

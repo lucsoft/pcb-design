@@ -51,8 +51,16 @@ def first_word(source) -> str:
     signal left" — so matching the whole string against UNVERIFIED silently
     treats every annotated guess as datasheet-backed. Only the first word
     carries the claim.
+
+    Taking everything up to the first non-letter rather than splitting on a
+    space, because the punctuation people actually write is unbounded:
+    "inferred.", "assumed;", "(inferred)" and "inferred-by-elimination" all
+    have to resolve to the marker. Getting this wrong fails in the direction
+    that raises errors on guesses, which is the trust the ERC exists to
+    protect.
     """
-    return str(source or "").strip().lower().split(" ")[0].strip("-:,")
+    m = re.search(r"[a-z]+", str(source or "").lower())
+    return m.group(0) if m else ""
 
 
 @dataclass

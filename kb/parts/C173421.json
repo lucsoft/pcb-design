@@ -48,8 +48,8 @@
   "designVerdict": "SELECTED as D1, the Q3 emitter-follower base clamp. BZT52C27, SOD-123, 25.65-28.35 V.",
   "notes": [
     "Replaces BZT52C20 (C19077415), which was wrong and would have broken the board. The HUSB238A's undervoltage table (p.7) has THREE bands and the third, vVBUV_F2, applies at any RDO >= 26 V: a flat 22.4 V. A 20 V clamp puts the VBUS pin at 17.4-20.2 V across tolerance - permanently below it - so the part would have dropped every 36 V contract and fallen back to vSafe5V in a loop.",
-    "At 25.65-28.35 V the pin lands at 24.1-27.6 V once the BSS138's V_GS (0.8-1.6 V at 800 uA) is taken off: 1.7 V clear of the 22.4 V disconnect at the low corner, 1.8 V under the 29.4 V recommended maximum at the high one. Margin at both ends.",
     "Chosen over the BZT52C27S (C2993022), which is the same nominal voltage binned 25.1-28.9 V - the extra 1.1 V of spread eats most of the high-side margin.",
-    "Dissipation: (36 - 27)/10 kOhm = 0.9 mA through R44, so 24 mW in the Zener and 8 mW in the resistor - less than the 20 V part's 58 mW total."
+    "At 25.65-28.35 V the pin lands at 24.85-27.75 V once Q3's V_BE (0.6-0.8 V) is taken off: 2.45 V clear of the 22.4 V vVBUV_F2 disconnect at the low corner, 1.65 V under the 29.4 V recommended maximum at the high one. The 24.1-27.6 V an earlier note gave was worked against the BSS138 that used to sit there.",
+    "Dissipation: (36 - 27)/4.7 kOhm = 1.9 mA through R44, so 52 mW in the Zener and 17 mW in the resistor, 69 mW total. That is MORE than the 20 V part's 58 mW, not less as an earlier note claimed - R44 dropped from 10 kOhm to 4.7 kOhm when Q3 became an NPN, to keep base current out of the undervoltage margin. 1.9 mA is also closer to the BZT52 test current, so the voltage bin is better honoured."
   ]
 }
