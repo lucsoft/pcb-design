@@ -35,12 +35,13 @@
     "category": "manual",
     "pins": ""
   },
-  "designVerdict": "SELECTED - RS-485 line protection, 4 off",
+  "designVerdict": "REJECTED - clamps at 24.4 V, above the MAX3485 A/B absolute maximum of +/-15 V. Superseded by SMAJ7.0CA (C19077529).",
   "notes": [
     "SMAJ15CA, 15 V bidirectional TVS, SMA, 26k stock, $0.031. Two per output connector, one on each of A and B to ground.",
     "CORRECTS AN EARLIER ERROR: the H5VL10B (5 V) picked for 'data lines' is wrong for RS-485. The standard defines a common-mode range of -7 V to +12 V, so a 5 V clamp would conduct during normal operation and corrupt the bus. 15 V standoff clears the +12 V limit with margin.",
     "H5VL10B remains correct for the USB-C D+/D- and CC lines, which are genuine 5 V-class signals and need the low capacitance.",
     "Bidirectional is required: RS-485 swings both polarities relative to ground.",
-    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground."
+    "TERMINOLOGY: called a differential pair in the design docs. RS-485 line levels, but no RS-485 connector convention - the pair runs over two poles of a picoMAX next to power and ground.",
+    "SUPERSEDED. The 15 V standoff was chosen to clear the RS-485 -7/+12 V common-mode window, but that window is the transceiver's capability and not what this cable imposes - both ends share GND in one connector shell, so the real excursion is ~1.5 V worst case. SMAJ7.0CA stands off 7 V and clamps at 12 V, which is the ordering this part could never achieve."
   ]
 }

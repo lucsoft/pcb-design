@@ -8,7 +8,9 @@ several items under Open questions still block the netlist.
 Negotiates USB PD, supplies a chained set of LED matrix modules over a
 high-voltage bus, and runs an ESP32-C6 that drives the chain over Ethernet
 (W5500) or USB. Brightness is capped in software to whatever PD actually
-negotiated, so any number of modules can be attached and the board divides the
+negotiated, so modules can be added freely up to **12 per channel** — above that
+the channel's bulk capacitance defeats the hot-swap controller's start-up timer,
+see Why two channels — and within that limit the board divides the
 available power between them.
 
 ## Environment
@@ -126,7 +128,7 @@ flowchart LR
     MCU <-->|I2C| INA
     MCU <-->|SPI| ETH
     MCU <-->|"D+/D-"| USBD
-    MCU -->|"PARLIO x2"| RS485
+    MCU -->|"PARLIO, 2 lanes"| RS485
     MCU --> BUF
     MCU -->|enable| SW1
     MCU -->|enable| SW2
@@ -249,12 +251,35 @@ would need a sensor on the module, i.e. a module revision.
 The use case is flashing effects, not sustained brightness, which changes what
 the limiter has to do.
 
-**Predictive limiting is primary.** Compute a frame's draw before displaying
-it — sum all channel values x 20 mA / 255 — and scale the frame if it would
-breach the negotiated current. Reacting to a measurement is too late: a sudden
-all-white flash steps the bus from ~1 A to ~5 A in microseconds, and if that
-exceeds what PD negotiated the source can cut VBUS entirely, blacking out the
-whole installation.
+**Predictive limiting is primary.** Compute a frame's draw before displaying it
+and scale the frame if it would breach the negotiated current. Reacting to a
+measurement is too late: a sudden all-white flash steps the bus by several amps,
+and if that exceeds what PD negotiated the source can cut VBUS entirely, blacking
+out the whole installation.
+
+The model needs three terms, and an earlier version of this paragraph had only
+the first:
+
+    I_bus  =  (sum(channel values) x 20 mA / 255) x 5 V / (36 V x eta)   [LED term]
+           +  N_ICs x 0.6 mA x 5 V / (36 V x eta)                        [quiescent floor]
+           +  controller overhead
+
+- **The sum is amperes at the module's 5 V rail**, and the contract is amperes
+  at 36 V. The conversion is ÷7.2 and ÷η — a factor of about **9.6** at the
+  design's 75% efficiency estimate — which the earlier formula omitted entirely.
+- **An all-black frame does not draw zero.** The WS2812D-F8 specifies no
+  quiescent current; the sibling SK6812 gives 0.6 mA per IC and the family runs
+  0.5-1 mA. At 720 ICs that is 0.36-0.72 A at 5 V, i.e. **2.4-4.8 W off the
+  bus** — 1.5-2.7% of a budget this document already computes at 5.2 A against a
+  5.0 A contract. The floor is not optional headroom; it is always present.
+- η is the same optimistic 75% the whole power budget rests on, characterised at
+  28 V rather than 36 V. The limiter inherits that error and should carry a
+  margin for it rather than trusting the figure.
+
+**The step is slower than "microseconds".** The modules' own converters and their
+3.3 mF of bulk slew a full-white transition over roughly 100 µs, not
+instantaneously — which is what makes a predictive limiter viable at all, and is
+worth stating because the earlier wording argued the opposite way.
 
 **The INA226 is the slow loop**: calibrating the model, noticing the module
 count changed, and acting as a safety net. Not the first line of defence.
@@ -358,10 +383,16 @@ indicators may misbehave before negotiation, not that the board fails to start.
 And 4.13 V still clears the VBUS pin's 3.15 V minimum by 0.98 V. What it does
 erode is the margin against two 4.0 V thresholds — see Known electrical limits.
 
-The sag at low bus voltage is self-correcting rather than a problem: the modules' own
-XL1509 is also in pass-through at 5 V (1.5 V minimum dropout means it cannot regulate
-5 V out from 5 V in), so module VDD falls too. WS2812 VIH is 0.7 x VDD, so the level
-shifter and the modules track together and the thresholds stay valid.
+**The sag at low bus voltage matters locally, not across the cable.** An earlier
+version argued it was self-correcting because the modules' own XL1509 is also in
+pass-through at 5 V, so module VDD falls too and WS2812 thresholds track. That
+tracking argument is void here — the controller's 5 V rail and the modules' 5 V
+rail no longer share a signal path, only a differential pair at 3.3 V logic.
+
+What the sag actually threatens is the **SK6812 status chain on this board**:
+its VIH is 0.65 x VDD, so at a 4.50 V rail the threshold is 2.93 V and the
+74AHCT541 drives it comfortably. The binding constraint is the buffer's own
+4.5 V supply minimum, which the rail reaches exactly — see the dropout table.
 
 **SY8089** (C479074, SOT-23-5, 100k stock) for 3.3 V rather than an LDO. At 4.85 V in,
 3.3 V out, and the ESP32-C6's ~500 mA transmit peaks, an LDO would burn ~0.8 W; a
@@ -370,8 +401,15 @@ synchronous buck burns under 0.1 W and avoids a thermal problem in a small packa
 ### Why two conversion stages
 
 The board needs **both** rails: 3.3 V for the MCU, Ethernet module, INA226 and the
-HUSB238A's VDD, and 5 V for the 74AHCT541, because WS2812 VIH is 0.7 x VDD =
-3.5 V on a 5 V module rail and a 3.3 V GPIO cannot reach it.
+HUSB238A's VDD, and 5 V for the 74AHCT541, the SK6812 status chain and **D14**.
+
+**The reason is the status chain, not the modules.** An earlier version of this
+paragraph argued from the WS2812's 0.7 x VDD = 3.5 V threshold — but the
+controller does not drive any WS2812. It drives two MAX3485s at 3.3 V, and the
+3.3 -> 5 V shift lives on the converter board, which the module record states
+outright. The governing number is the **SK6812MINI-E's 0.65 x 5.0 = 3.25 V** on
+the controller's own rail, which a 3.3 V GPIO clears by only 50 mV — margin, plus
+the rail's own sag, is what justifies the buffer.
 
 Cascading costs almost nothing. The 3.3 V rail delivers ~2.3 W, so:
 
@@ -390,12 +428,14 @@ are all worse:
 - **One bus-to-3.3 V buck plus a charge pump to 5 V** works — the level shifter
   draws only tens of mA — but adds a part and puts switching noise next to the
   data lines.
-- **Eliminating the 5 V rail entirely** is the only real simplification, and it
-  is a *module* change: if the modules ran at ~4.5 V instead of 5.0 V, WS2812
-  VIH would fall to 3.15 V and a 3.3 V GPIO could drive them directly. That
-  removes the 5 V rail **and** the 74AHCT541. It needs XL1509-ADJ in place of
-  the fixed XL1509-5.0, so it only makes sense if the modules are being revised
-  for another reason.
+- **Eliminating the 5 V rail is not available.** An earlier version of this
+  bullet called it "the only real simplification" and framed it as a *module*
+  change — running the modules at 4.5 V so a 3.3 V GPIO could drive their
+  WS2812s directly. That argument belongs to a design where the controller
+  drives the modules' LEDs, which this one stopped doing when the link went
+  differential. Three things on **this** board need 5 V and no module revision
+  touches any of them: the 74AHCT541, the SK6812 status chain it buffers, and
+  **D14**, which must sit above the HUSB238A's VBUS pin to hold it at 4.13 V.
 
 So the two stages are forced by the 5 V logic requirement, and the cascade is
 the cheapest way to meet it.
@@ -823,8 +863,27 @@ Two boundaries worth knowing rather than discovering:
   5 A but says nothing about the split, so one channel at the thermal cap while
   the other is dark draws 2.80 A — 28% of the picoMAX's 10 A. This was a real
   constraint at the old 3 A connector and is not one now.
-- **Growth past ~24 modules degrades:** 24 -> 76 fps, 30 -> 61 fps (at the
-  floor), 40 -> 46 fps (below it). Beyond ~24 is a board revision with 3-4
+- **Growth is capped at ~12 modules per channel by the LM5069 fault timer, not
+  by frame rate.** t_start scales linearly with the channel's bulk capacitance
+  while the fault timeout does not, so the ratio the design needs — t_FLT at
+  least 1.5x t_start — runs out long before the fps floor does:
+
+  | modules/ch | C_OUT | t_start worst | t_FLT / t_start | |
+  |---|---|---|---|---|
+  | 10 (target) | 3.30 mF | 96 ms | 1.91 | ok |
+  | 12 | 3.96 mF | 115 ms | 1.59 | last value that clears 1.5x |
+  | 15 | 4.95 mF | 144 ms | 1.27 | under the rule |
+  | 20 | 6.60 mF | 192 ms | **0.95** | **times out mid-ramp — the channel never comes up, retrying every 64 s** |
+
+  The ceiling is **12.7 modules per channel**, worked at the corners that bind
+  (C_OUT +20%, P_LIM at the 19 mV PWR_ILM minimum, I_LIM at 48 mV, t_FLT at
+  183 ms). An earlier version of this bullet described growth past ~24 modules as
+  a frame-rate degradation — 76, 61 and 46 fps — which is true of the numbers and
+  misses the failure: at 40 modules the LEDs do not come on at all.
+
+- **Frame rate past ~24 modules degrades too**, if the capacitance problem were
+  solved: 24 -> 76 fps, 30 -> 61 fps (at the floor), 40 -> 46 fps (below it).
+  Beyond ~24 is a board revision with 3-4
   channels, not a software change.
 
 <picture>
@@ -855,7 +914,7 @@ Active parts. Passives are listed below the table.
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
 | D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the 100 V FET is 1.72x that, but the 60 V bus parts are only **1.03x** | 0.037 |
-| D10-D13 | SMAJ15CA | C7466491 | 4 | 15 V TVS on the A/B pair, 2 per output | 0.031 |
+| D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.043 |
 | D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
 | L1 | ANR5040T100M | C7427121 | 1 | 10 uH, TPS54360B output, 2.9 A Isat | 0.058 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
@@ -913,14 +972,37 @@ A plain UDP frame protocol is simpler and smaller:
 | 20 | 2160 | 2 | 180 pkt/s |
 | 30 | 3240 | 3 | 270 pkt/s |
 
-Trivial rates for a W5500. Keep each datagram under the ~1400 byte MTU rather
-than relying on IP fragmentation, which is fragile over UDP and makes a single
-lost fragment cost the whole frame.
+Trivial *bandwidth* for a W5500 — 1.56 Mbit/s at the target — but **not trivial
+buffering, and the default allocation drops half of every frame.** The W5500 has
+16 kB of RX split **2 kB per socket by default** (§3.3 p.30, `Sn_RXBUF_SIZE`
+p.52), and it prepends an 8-byte PACKET-INFO header per datagram. Packet 1 of a
+20-module frame occupies 1088 B; packet 2 arrives about 92 µs later on a 100 Mbit
+link, while draining packet 1 over SPI costs 109 µs at 80 MHz and 218 µs at
+40 MHz before interrupt latency. With 960 B free the W5500 **discards a datagram
+that does not fit**. The fix is one register write at init: `Sn_RXBUF_SIZE = 8`
+for the pixel socket, taking it to 8 kB.
+
+Keep each datagram under the ~1400 byte MTU rather than relying on IP
+fragmentation, which is fragile over UDP and makes a single lost fragment cost
+the whole frame.
 
 Worth building in from the start: a **frame number and byte offset** in each
 packet header, so the controller only displays once every packet of a frame has
 arrived. Without it a dropped packet tears the image instead of just repeating
 the previous frame.
+
+**And a stale-frame watchdog, which is a safety requirement rather than a
+polish item.** "Repeat the previous frame" is the right behaviour for one lost
+packet and the wrong one for a lost link: a frozen full-white frame is 180 W of
+sustained load with nobody watching. Blank the output after a bounded number of
+missed frames — a few hundred milliseconds — and treat link-down as immediate
+blank.
+
+Two more things the protocol section owes an implementer: **addressing** (static,
+DHCP or mDNS — this is a wall with no display, so a lost address is a site
+visit), and the **MAC address source**. The W5500 has no EEPROM and no assigned
+MAC; derive one from the ESP32-C6's eFuse base MAC rather than hard-coding a
+literal that would collide on a multi-controller wall.
 
 TouchDesigner drives it directly. If Art-Net is ever wanted it can be a software
 translation layer; nothing in the hardware depends on the choice.
@@ -935,7 +1017,7 @@ parts:
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
 | USB-C VBUS, both output +36 V | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V** — stays off at the PDO's +5% and clamps under the FET's 60 V rating |
-| Differential A and B, both outputs | SMAJ15CA | 4 | 15 V bidirectional |
+| Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
 standard these drivers follow defines a
@@ -1287,8 +1369,21 @@ here.
   this one here. VBUS (pin 8) cannot float either; tie it to 3V3 and treat the bus and
   power registers as unused, since bus sensing is done by the ADC divider.
 - **MAX3485**: DE to VCC **and RE to VCC** — RE is a CMOS input, "unused" is not
-  a state. 0.1 µF at each VCC. Failsafe biasing is genuinely not needed, since DE
-  is permanently asserted and the pair is never idle-floating.
+  a state. 0.1 µF at each VCC. **DI needs a pull-down**, so the line idles low
+  and GPIO4/GPIO5 have defined strap levels through MCU reset (MTMS=0/MTDI=0 is
+  a valid SDIO combination).
+- **Fail-safe is a converter-board problem, and an earlier note here dismissed
+  it wrongly.** That note said "failsafe biasing is genuinely not needed, since
+  DE is permanently asserted and the pair is never idle-floating". That covers
+  the **driver** end. The fitted part's fail-safe is **open-circuit only** (p.1,
+  p.5 function table, p.9) with V_TH = ±200 mV and RO undefined inside that band
+  — and a *terminated but undriven* pair is not an open circuit: the far end's
+  own 120 Ω holds it at ~0 mV differential, squarely indeterminate. Two cases are
+  uncovered: controller brownout or power loss, where the modules' 3.3 mF keeps
+  the converter boards alive for milliseconds with a chattering receiver driving
+  their LED chains, and the cable unplugged at the controller. The fix belongs on
+  the **converter board** — a 560/120/560 bias divider, or a true-fail-safe
+  receiver such as SN65HVD75 (C57928), which the KB rejected over $0.24.
 - **Channel enable**: each 2N7002 gate needs a **100 kΩ pull-up to 3V3**, not a
   pull-down. Pulling the gate high pulls UVLO low, which holds the channel
   **off** — so through reset and the whole boot window, when the driving GPIOs
@@ -1365,10 +1460,18 @@ A workable assignment, which also shows how tight it is:
 
 **No spare GPIO left.** The last free pin now carries the shared PGD line, so
 the budget is 20 signals on exactly 23 pads with BOOT and UART0. One
-unverified assumption, and it no longer has slack to absorb: if PARLIO TX needs a
-clock-output pin for the two synchronised channels, that is a **21st** signal and
-something has to give — the likeliest candidate is dropping the shared PGD line
-back off the budget and inferring channel state from the INA226 instead.
+**The PARLIO clock-pin worry that used to sit here is resolved and was the wrong
+worry.** `clk_out_gpio_num = -1` is accepted from IDF v5.3 onward, so no pin is
+at risk and the PGD line is safe. (It would not have been a usable fallback
+anyway: one shunt in the shared return cannot tell which channel failed.)
+
+What is real is the other direction. The ESP32-C6 has exactly **one** PARLIO TX
+unit, not two — so the two channels are one unit at `data_width = 2` driving two
+GPIOs with time-aligned bit streams, sharing a clock, a DMA stream and a
+start/stop. Unequal chains must be zero-padded to the longer one. RMT is not an
+alternative for both: the C6 has only **2 RMT TX channels**, which cannot carry
+two data channels *and* the SK6812 status chain. `data_width = 4` on the single
+PARLIO unit is the clean answer if the status chain ever needs to join them.
 
 ## Recovery and debug
 
@@ -1441,16 +1544,25 @@ everywhere else in this document.
 
 Found by review, accepted or still open rather than silently carried.
 
-**SMAJ15CA clamps above the MAX3485's rating.** The transceiver's A/B absolute
-maximum is ±15 V; SMAJ15CA breaks down at 16.7-18.5 V and clamps at **24.4 V**,
-so it cannot conduct until the pin is already past its limit. The reasoning that
-rejected a 5 V part still holds — RS-485 common mode runs -7 V to +12 V — but
-there is no symmetric part that clears +12 V and clamps under 15 V. Options: an
-asymmetric RS-485 TVS (SM712 class, 7 V/12 V standoff, **not in JLCPCB's
-catalogue**), or rely on the MAX3485's own ±15 kV IEC **air-discharge** rating —
-the permissive test; the fitted JSMSEMI part quotes no contact-discharge figure
-and ±8 kV HBM — and treat the
-TVS as surge-only. **Open.**
+**The A/B TVS is resolved — SMAJ7.0CA, not SMAJ15CA.** The fitted part clamped
+at **24.4 V** against the MAX3485's ±15 V absolute maximum, so it could not
+conduct until the pin was already past its limit. The reasoning that rejected a
+5 V part assumed the RS-485 common-mode window of -7 V to +12 V, and that is the
+transceiver's *capability*, not what this cable imposes.
+
+**This link is not a bus.** Both ends share GND in the same 4-pole picoMAX shell,
+so the real common-mode excursion is the cable's own IR drop — the table above
+budgets 1.62 V round-trip at 20 AWG over 10 m, so the return carries ~0.81 V, and
+~1.5 V on a 4.0 A white flash. SMAJ7.0CA stands off **7 V** against that (4.7x)
+and clamps at **12 V**, below the ±15 V limit. That is the ordering the SMAJ15CA
+could never achieve, and it closes an item that had been open since the first
+review.
+
+**What it still does not cover:** +36 V sits two poles from A/B in the same
+connector, so a mis-wired cable puts 2.4x the absolute maximum on those pins. No
+TVS survives that as a sustained condition — it is a mechanical and
+build-discipline problem, handled by the polarised shell and the hard module
+housings.
 
 **H5VL10B on CC1/CC2 is marginal.** 5 V standoff, 5.6 V breakdown, against a
 3.0 A Rp that pulls CC toward 5 V ±5 % with no cable attached. A 6 V-class part

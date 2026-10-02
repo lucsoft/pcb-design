@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19077529",
+  "@type": "Component",
+  "lcscId": "C19077529",
+  "mpn": "SMAJ7.0CA",
+  "manufacturer": "R+O",
+  "description": "12VC Clamp 33.3A@10/1000us Ipp TVS DIODE DO-214AC(SMA)",
+  "category": "diode",
+  "package": "DO-214AC(SMA)",
+  "stock": 77380,
+  "priceUsd": 0.0428,
+  "parameters": {
+    "Clamping Voltage": "12V",
+    "Operating Temperature": "-55℃~+150℃",
+    "Peak Pulse Current (Ipp)": "33.3A@10/1000us",
+    "Peak Pulse Power Dissipation (Ppp)": "400W@10/1000us",
+    "Number of Channels": "1",
+    "Voltage - Breakdown": "8.6V",
+    "type": "TVS",
+    "Reverse Leakage Current (Ir)": "200uA",
+    "Polarity": "Bidirectional",
+    "Reverse Stand-Off Voltage (Vrwm)": "7V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/f3d2c9df3269749880b305befd579c39.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED as D10-D13, the A/B pair TVS. Replaces SMAJ15CA (C7466491), which clamped above the transceiver rating.",
+  "notes": [
+    "Vrwm 7 V, Vbr 8.6 V, Vc 12 V. The clamp is what matters: 12 V is UNDER the MAX3485's +/-15 V absolute maximum, where SMAJ15CA clamps at 24.4 V and therefore cannot conduct until the pin is already destroyed.",
+    "The 7 V standoff is sized against what this cable actually imposes, not against the RS-485 -7/+12 V common-mode window. Both ends share GND in the same 4-pole picoMAX shell, so the real excursion is the cable IR drop: ~0.81 V on the return at 20 AWG over 10 m, ~1.5 V on a 4.0 A white flash. That is 4.7x of margin.",
+    "Does NOT cover a mis-wired cable putting +36 V on A/B - 2.4x the absolute maximum, two poles away in the same connector. No TVS survives that sustained; it is handled mechanically by the polarised shell.",
+    "Four fitted, two per output channel."
+  ]
+}

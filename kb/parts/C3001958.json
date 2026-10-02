@@ -1,0 +1,38 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C3001958",
+  "@type": "Component",
+  "lcscId": "C3001958",
+  "mpn": "SMAJ6.8CA",
+  "manufacturer": "UMW",
+  "description": "10.5VC Clamp 38.1A Ipp TVS DIODE DO-214AC(SMA)",
+  "category": "diode",
+  "package": "DO-214AC(SMA)",
+  "stock": 153120,
+  "priceUsd": 0.0307,
+  "parameters": {
+    "Clamping Voltage": "10.5V",
+    "Operating Temperature": "-55℃~+150℃",
+    "Peak Pulse Current (Ipp)": "38.1A",
+    "Peak Pulse Power Dissipation (Ppp)": "400W@10/1000us",
+    "Number of Channels": "1",
+    "Voltage - Breakdown": "6.45V",
+    "type": "TVS",
+    "Polarity": "Bidirectional",
+    "Reverse Leakage Current (Ir)": "1mA",
+    "Reverse Stand-Off Voltage (Vrwm)": "5.8V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/20ab85d3ea6d1fdad6dd9c48587d7ff3.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  }
+}
