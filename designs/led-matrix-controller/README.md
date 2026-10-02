@@ -1108,6 +1108,34 @@ were also through-hole radial — bulky, and mass on leads in a vibration
 environment. Dropping them saved 192 mm2 and two hand-soldered parts, and the
 per-channel overcurrent role they half-filled is now the LM5069's.
 
+## What the ERC will and will not catch
+
+Worth knowing before the first run, because a clean result is easy to
+over-read. The rule set covers structure, connectivity, voltage against pin
+ratings, decoupling, I2C pull-ups and part-specific rules. Against *this*
+design it has specific gaps:
+
+- **`S6-shorted-two-terminal` was added for this board** — a two-terminal part
+  with the same net on every pin. It exists because the low-side shunt dies
+  silently if the output connectors' return is called `GND`: the pour shorts it
+  and the current sense reads zero. Nothing else in the checker looks at a part's
+  own pins as a set.
+- **No I2C address-collision rule.** This design has already got that question
+  wrong once (0x42 against the INA226), and the fix depends on pinning A0/A1 by
+  hand — which the checker cannot see.
+- **No do-not-fit / assembly-class flag.** The document explicitly fears a
+  $22.89 WIZ850io landing on a PCBA order, and nothing machine-readable records
+  that it must not.
+- **No logic-level-domain rule**, which is the exact failure the 74AHCT541
+  exists to prevent.
+- **Half the rules have no regression test.** S2, S5, K2, K5, E1, E2, E3,
+  P1-undervoltage, P2-thin, B1, Q1 and Q2 are untested — including all three
+  electrical rules, which are the ones that would fire on a voltage mistake.
+
+One documentation gap feeding this: only the **module** datasheet for the
+ESP32-C6 is cached. Every GPIO, strapping, ADC and peripheral claim beyond the
+pin table rests on the chip datasheet and TRM, which `ds.py` cannot re-read.
+
 ## Layout constraints
 
 Until now this document said "2-layer, relaxed" and "4-layer, dense" as area
@@ -1820,8 +1848,32 @@ which retired the crystal and magnetics questions), the gate network (LM5069),
 the HUSB238A's supply at vSafe5V, and the hold-up capacitor — deleted, see Known
 electrical limits — are all settled.
 
-**So `designs/led-matrix-controller/netlist.json` can be written**, and
-`tools/erc.py` has never run on this design.
+**So `designs/led-matrix-controller/netlist.json` can be written.** The two
+things that would have made the first ERC run meaningless are done:
+
+- **Every BOM part now carries a pin map**, each with a `--source`. Without one
+  `pin_type()` returns `unspecified`, which silently disables K3, K4, K5, E1, E2,
+  E3, P1 and P2 for that part — and `P2-no-decoupling` only sees `power_in` pins,
+  so decoupling would have been checked on three ICs and nowhere else.
+- **`design.yaml` exists**, declaring the rails. Without it `P1-overvoltage`
+  cannot fire at all, on a board whose two headline hazards are a 33 V-absolute
+  VBUS pin and a 36 V-rated INA226 both sitting on a 36 V bus. The HUSB238A's
+  sense pin is declared as its own **18.5 V** rail, because the BSS138 follower
+  is the entire reason that pin survives and the checker should see the topology
+  rather than the bus voltage.
+
+**Two parts need their pin keys reconciled against the EasyEDA symbol** before
+the netlist is written, and this is a real step rather than a formality. The
+Ethernet module (C134462) is recorded with WIZnet's own `MJ1-1 … MJ2-6`
+designations and the USB-C receptacle (C3198004) with Hirose's contact names
+`A1 … B12` — because in both cases the pad numbering lives in a drawing that
+neither datasheet extracts. The netlist format keys `"pins"` by **pad number**,
+so either those keys are translated or `K3` fires on every pin of both parts.
+
+**`S4-missing-lcsc` is suppressed in `design.yaml`**, with the reason recorded
+there: J2/J3 are Wago picoMAX headers with real Reichelt order numbers and no
+LCSC part, so the importer cannot resolve them and the rule would fire on every
+build.
 
 ### Verification, not design
 
