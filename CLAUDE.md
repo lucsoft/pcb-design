@@ -278,6 +278,19 @@ Written in English, including comments and documentation, regardless of the
 language the conversation happens in — matching the convention in the
 home-manager repository.
 
+**European units and standards, not American ones.** Cable cross-sections in
+mm² per IEC 60228, never AWG. Lengths in mm and m, temperatures in °C, mass in
+g. Where a standard has both an IEC/EN and a US form, cite the IEC/EN one.
+
+Two exceptions, because the industry has no European alternative in practice:
+**IPC-2221** for PCB trace sizing, and **oz copper** for plating weight — but
+state the metric value alongside (1 oz = 35 µm), and give IPC results in mm
+rather than mils.
+
+This is not cosmetic. AWG in a German project means every reader converts in
+their head before they can sanity-check a number, and conversions are where
+mistakes hide.
+
 ## Version control
 
 **Commit after every meaningful change, without being asked.** The premise of a

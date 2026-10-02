@@ -15,7 +15,10 @@ from plot import figure, save, build, limit_line, annotate
 FULL_W, EFF, CAP = 10.8, 0.75, 0.70      # per-module full-white W, buck eff, thermal cap
 LEDS, US, RESET = 36, 30.0, 0.28         # per module; 24 bits @ 800 kbps; latch
 CONN_A, V = 10.0, 36.0   # picoMAX 3.5 contact rating
-AWG = {18: 0.0210, 20: 0.0333, 22: 0.0530, 24: 0.0842}   # ohm/m, one conductor
+# IEC 60228 cross-sections, ohm/m for ONE conductor: rho_Cu / A at 20 C.
+# Metric throughout - this is a German project and AWG has no place in it.
+RHO_CU = 0.0172                                    # ohm*mm2/m at 20 C
+CSA = [0.25, 0.34, 0.5, 0.75, 1.0]                 # mm2
 OUT = Path(__file__).resolve().parent / "figures"
 
 
@@ -81,9 +84,9 @@ def fig_cable(ax, pal):
     cable has length. It carries the whole channel current.
     """
     L = [x / 2 for x in range(1, 41)]
-    for i, g in enumerate((18, 20, 22, 24)):
-        rt = 2 * AWG[g]
-        ax.plot(L, [2.43 * rt * x for x in L], color=pal[i], label=f"{g} AWG")
+    for i, a in enumerate(CSA):
+        rt = 2 * RHO_CU / a
+        ax.plot(L, [2.43 * rt * x for x in L], color=pal[i], label=f"{a} mm\u00b2")
     ax.set_title("Drop in the controller-to-first-module cable (2.43 A)")
     ax.set_xlabel("cable length (m)")
     ax.set_ylabel("voltage drop (V)")

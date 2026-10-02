@@ -263,7 +263,7 @@
       "status": "RESOLVED - discrete gate networks abandoned after four failures; replaced by an integrated hot-swap controller.",
       "history": "FOUR attempts, all wrong. The first three were rooted in a gate-to-DRAIN (Miller) capacitor: (1) R_pu 100k/R_pd 1M gave Vgs 3.27 V; (2) 10M/1M/1uF put the ramp on a node with no capacitance, made turn-off 180 s and let the PD step self-turn-on the FET; (3) dropping the master FET moved the same faults onto channel switches with 27x more load capacitance - 8.2 A during the PD step against a 5 A contract. The fourth moved to a gate-to-SOURCE capacitor with a diode bypassing the pull-up, and was written up as settled before review found two independent fatal errors: a diode across a gate-source pull-up cannot discriminate direction, because the resistor carries current the same way when turning off and when the pull-down drags the gate low, so it clamps Vgs and the FET never enhances; and a gate-to-source capacitor cannot set a ramp in a common-source switch, because the drain transition happens inside the Miller plateau where Vgs is constant and C_gs therefore carries no current at all.",
       "whyIntegrated": "A discrete network has to deliver ramp, current limit, turn-off and dV/dt immunity from one capacitor and two resistors, and those requirements pull against each other. No value set reconciles them.",
-      "designPoint": "Per channel: R_SENSE 10 mOhm (current limit 5.5 A typ, 4.8-6.5 A, sized against the 4.0 A white-flash peak), R_PWR 64.9 kOhm (P_LIM 39.8 W), C_TIMER 6.8 uF, UVLO/OVLO string 120k/5.36k/7.32k. Ramp 61 ms typ, 96 ms at the corners.",
+      "designPoint": "Per channel: R_SENSE 10 mOhm (current limit 5.5 A typ, 4.8-6.5 A, sized against the 4.0 A white-flash peak), R_PWR 64.9 kOhm (P_LIM 39.8 W), C_TIMER 6.8 uF, UVLO/OVLO string 82.5k/44.2k/7.50k. Ramp 61 ms typ, 96 ms at the corners.",
       "sideEffects": "The N-channel switch removed the high-side gate drive, the level shifters and the Vgs clamps entirely, and moved the FET from 60 V (1.03x the TVS clamp) to 100 V (1.72x). The LM5069's OVLO also hands back a hardware overvoltage trip the HUSB238A loses above 28 V.",
       "cost": "The TIMER pin sets the insertion delay as well as the fault timeout, locked at 17.5:1 by the datasheet's own currents, so 6.8 uF buys a 6.1 s typical (2.9-13.6 s) hold-off at power-on that no firmware action shortens. Documented rather than designed away.",
       "soa": "Verifiable for the first time, but the figure must be read by pixel - two readings were wrong, by 4.5x and then 1.4x. The NSS085N100S Fig. 12 p.4 DC curve is a constant-power asymptote at ~70-75 W (its 1 A point is at 70 V; the vertical at 100 V is the BVdss wall), giving ~72 W at Vds 36 V against a 39.8 W power limit - 1.8x, falling to 1.46x at the PWR_ILM max corner. Fig. 13 p.6 then closes the thermal question the SOA curve cannot: single-pulse Zth about 0.45 at 96 ms, times the figure's own Rth-jc 4.5 C/W, is an 81 C junction rise.",
@@ -278,8 +278,7 @@
     "selected": "Wago picoMAX 3.5, 2091 series, 4-pole",
     "rating": {
       "current_A": 10,
-      "wire_max_mm2": 1.5,
-      "wire_max_awg": 14,
+      "wire_max_mm2": 2.5,
       "pitch_mm": 3.5
     },
     "whyThisOne": "Push-in spring termination holds constant force, unlike a screw that backs out under vibration. Male headers carry an integrated locking latch, so the plug cannot walk out. Both vibration failure modes covered without a crimp tool.",
@@ -330,23 +329,23 @@
     },
     "bindingLimit": "power, not data - the differential pair removed the data limit",
     "maxLengthAt5pct": {
-      "18awg": 17.6,
-      "20awg": 11.1,
-      "22awg": 7.0,
-      "24awg": 4.4,
-      "unit": "m"
+      "0.25mm2": 5.4,
+      "0.34mm2": 7.3,
+      "0.50mm2": 10.8,
+      "0.75mm2": 16.1,
+      "1.00mm2": 21.5
     },
     "recommendedGauge": {
-      "awg": 20,
       "practicalLength_m": 11,
-      "note": "a differential pair at 800 kbps is good for tens of metres, so the 5% voltage-drop line is now the only constraint"
+      "note": "a differential pair at 800 kbps is good for tens of metres, so the 5% voltage-drop line is now the only constraint",
+      "crossSection_mm2": 0.5
     },
     "signalIntegrity": [
       "twist A and B together as a pair",
       "120 ohm termination at the far end, on the first converter board",
       "keep the pair away from the +36 V conductor and its converter switching noise"
     ],
-    "cableLossAt20awg10m_W": 3.93
+    "cableLossAt0p5mm2_10m_W": 4.06
   },
   "environment": {
     "context": "Mounted on a soundwall for tekno. Sustained high-amplitude vibration.",

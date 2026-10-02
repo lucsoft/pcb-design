@@ -196,17 +196,21 @@ full-white flash.
   <img alt="Drop in the controller-to-first-module cable" src="figures/cable-drop-vs-hop-length.svg">
 </picture>
 
-| AWG | 5 m | 10 m | 15 m | max at 5% |
+Cross-sections per **IEC 60228**, loop resistance 2ρ/A with ρ(Cu) = 0.0172
+Ω·mm²/m at 20 °C:
+
+| mm² | 5 m | 10 m | 15 m | max at 5% |
 |---|---|---|---|---|
-| 18 | 0.51 V | 1.02 V | 1.53 V | **17.6 m** |
-| **20** | **0.81 V** | **1.62 V** | 2.43 V | **11.1 m** |
-| 22 | 1.29 V | 2.58 V | 3.86 V | 7.0 m |
-| 24 | 2.05 V | 4.09 V | 6.14 V | 4.4 m |
+| 0.25 | 1.67 V | 3.34 V | 5.02 V | 5.4 m |
+| 0.34 | 1.23 V | 2.46 V | 3.69 V | 7.3 m |
+| **0.50** | **0.84 V** | **1.67 V** | 2.51 V | **10.8 m** |
+| 0.75 | 0.56 V | 1.11 V | 1.67 V | 16.1 m |
+| 1.00 | 0.42 V | 0.84 V | 1.25 V | 21.5 m |
 
 **Power is not the constraint.** The converter needs only 6.5 V in (5 V out plus
 1.5 V dropout), so from 36 V there is 29.5 V of headroom — the cable would have
 to be absurd before the converter stopped regulating. The 5% line above is an
-efficiency choice, not a functional limit. At 20 AWG and 10 m the cable burns
+efficiency choice, not a functional limit. At 0.5 mm² and 10 m the cable burns
 3.9 W per channel, which is the real cost.
 
 **Data is no longer the limit.** Going differential removed it. A differential
@@ -214,7 +218,7 @@ pair is good for tens of metres at 800 kbps, well past anything power
 allows, and it is far more tolerant of a room full of switching converters than
 a single-ended line would have been.
 
-So **power is now the only constraint: 20 AWG, up to about 11 m** at 5% drop.
+So **power is now the only constraint: 0.5 mm², up to about 10.8 m** at 5% drop.
 That is a real gain over the ~5 m the single-ended link would have been held to.
 
 Practice for the pair:
@@ -334,7 +338,7 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
    absent. D14 holds the pin at ~4.13 V and VDD does the supplying.
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
-6. Past ~28 V each LM5069 releases its own UVLO, and firmware enables the
+6. Past ~8 V each LM5069 releases its own UVLO, and firmware enables the
    channels by pulling the enable GPIOs low.
 7. **Nothing happens for several seconds.** Each controller holds its gate down
    for its insertion time — 6.1 s typical, 2.9-13.6 s over the spread — counted
@@ -353,11 +357,11 @@ The board must run from a 5 V bus as well as 36 V, with software holding back
 what it cannot power. That constrains the rails more than the 36 V case does.
 
 **This is a statement about the rails, not about the LED output.** The LM5069
-UVLO releases the channel switches at 28.3 V typ and **32.2 V worst case**,
-deliberately set just under the 34.2 V minimum of a 36 V contract. So on a 20 V
-or even a 28 V PDO the controller boots, talks and reports — and the LEDs stay
-dark. An earlier version of this sentence said "all eight PD levels usable",
-which is true of the rails and false of the load.
+UVLO releases the channel switches at **7.97 V typ / 9.12 V worst case**, so the
+LED output follows the rails down: **every PDO from 12 V up drives the wall**, at
+whatever brightness the contract supports. An earlier version of this design set
+UVLO at 28 V, which made that sentence true of the rails and false of the load —
+see Channel switching and inrush for the threshold and what it trades.
 
 ```mermaid
 flowchart LR
@@ -490,7 +494,7 @@ What protects the load, in order of speed:
    see Known electrical limits: against a 5.0 A *total* contract the PD source
    acts first on a hard short, so "one chain sheds, the other keeps running" is
    **not reliably obtainable**
-2. **LM5069 OVLO**, a hardware overvoltage trip at 45.3 V typ, needing no firmware
+2. **LM5069 OVLO**, a hardware overvoltage trip at 44.7 V typ, needing no firmware
 3. the PD source limiting at the negotiated level
 4. HUSB238A FAULT into the interlock transistor, pulling both UVLO pins low on
    OTP or an adapter-capability fault (OVP/UVP do not survive the clamp topology
@@ -664,7 +668,7 @@ flowchart LR
   U["LM5069<br/>SENSE / VIN / OUT / GATE"] -. gate drive .-> Q
   RS -.-> U
   OUTN -.-> U
-  DIV["divider<br/>120k / 5.36k / 7.32k"] --> U
+  DIV["divider<br/>82.5k / 44.2k / 7.50k"] --> U
   MCU[ESP32-C6 GPIO] --> QE["Q3 2N7002<br/>channel enable"]
   FLT[HUSB238A FAULT] --> QF["Q5 2N7002<br/>FAULT interlock"]
   QE --> U
@@ -689,7 +693,7 @@ bus maximum is **V_INMAX = 37.8 V** (36 V at the PDO's +5%) and the load is
 | R_SENSE | **10 mOhm**, 1%, >=0.5 W | current limit is 55 mV / R_S (p.14) = **5.5 A typ**; over the 48-65 mV spread (p.5), 4.8-6.5 A. Sized against the **4.0 A white-flash peak**, not the 2.43 A sustained figure — 1.20x at the worst-case low end |
 | R_PWR | **64.9 kOhm** 1% | Eq. 14: R_PWR = 180000 x R_S x (P_LIM - 1.0 mV x V_INMAX/R_S), so 64.9 kOhm sets **P_LIM = 39.8 W** |
 | C_TIMER | **6.8 uF** X7R 25 V | sets insertion delay *and* fault timeout; see below — both constraints pull on this one part |
-| UVLO/OVLO string | **120 kOhm / 5.36 kOhm / 7.32 kOhm** 1% | VIN-UVLO-OVLO-GND. Thresholds 2.25/2.5/2.75 V, hysteresis current 12/18/24 uA (p.5) |
+| UVLO/OVLO string | **82.5 kOhm / 44.2 kOhm / 7.50 kOhm** 1% | VIN-UVLO-OVLO-GND. Thresholds 2.25/2.5/2.75 V, hysteresis current 12/18/24 uA (p.5) |
 | C_VIN | **100 nF** >=100 V | p.3: "a small ceramic bypass capacitor close to this pin is recommended" |
 
 **Start time.** Eq. 10, the power-limited case, at typicals and then at the
@@ -801,10 +805,43 @@ comparator spread alone:
 
 | Threshold | Typ | Worst case, incl. 1% resistors | Against |
 |---|---|---|---|
-| UVLO rising (enable) | 28.3 V | **32.2 V** | must stay below the **34.2 V** minimum bus (-5% PDO) — 2.0 V of margin |
-| UVLO falling | 26.2 V | — | channels shed before the rails do |
-| OVLO rising (trip) | 45.3 V | **40.0 V** low / 50.8 V high | must stay above the **37.8 V** maximum bus — 2.2 V of margin at the low end |
-| OVLO falling | 43.1 V | — | above 37.8 V, so a recovered bus re-enables rather than latching out |
+| UVLO rising (enable) | **7.97 V** | 6.83 V low / **9.12 V** high | sized for **graceful degradation**, not for the 36 V contract — see below |
+| UVLO falling | 6.49 V | — | just under the modules' own 6.5 V converter dropout |
+| OVLO rising (trip) | 44.7 V | **40.3 V** low / 49.2 V high | must stay above the **37.8 V** maximum bus — 2.5 V of margin at the low end |
+| OVLO falling | 42.5 V | — | above 37.8 V, so a recovered bus re-enables rather than latching out |
+
+**The UVLO is deliberately low, and an earlier version of this design had it at
+28 V.** That setting made the LED output work on a 36 V contract and nothing
+else: at 20 V, 15 V or 12 V the channels never released, which contradicted the
+design's own stated goal that "software holds back what it cannot power".
+
+| PDO | contract | at full brightness | at 20 modules |
+|---|---|---|---|
+| 12 V | 36 W | 2.5 modules/channel | ~20% brightness |
+| 20 V | 100 W | 6.9 modules/channel | ~57% |
+| 28 V | 140 W | 9.7 modules/channel | ~80% |
+| 36 V | 180 W | 12.5 modules/channel | 100% |
+
+Below **12 V** it is not reliable: the effective turn-on is
+`max(V_INEN 6.8-8.5 V, UVLO)`, so a worst-case part needs ~9.1 V and a 9 V PDO
+at −5% is 8.55 V. From 12 V up there is margin at every corner.
+
+**What the low threshold gives up, and why it is smaller than it looks.** At
+28 V the channels shed themselves if a 36 V bus sagged; now they hold on down to
+6.5 V. But the 28 V setting did not shed cleanly — with hysteresis from 26.2 V to
+28.3 V, a source sagging into that band produces an *oscillator*: load on, bus
+sags, channels open, bus recovers, channels re-ramp, 61 ms per cycle. What
+actually protects a brownout is unchanged: **the LM5069 current limit stays
+active throughout** and caps each channel at 5.5 A however far the bus falls, the
+HUSB238A's FAULT interlock sheds both channels when the source reports it cannot
+supply, and the software limiter scales the frame to the negotiated contract. At
+a 12-20 V contract the whole power level is 36-100 W rather than 180 W, so a sag
+there is far less dramatic than the one the 28 V threshold was guarding.
+
+**The ramp gets easier at lower voltages, not harder.** t_start scales with
+V_INMAX², so the fault-timer ratio improves from 1.9x at 36 V to 5.8x at 20 V and
+14x at 12 V — the ~12.7 modules/channel ceiling is a 36 V number and relaxes as
+the contract drops.
 
 An earlier version of this table quoted the comparator spread only and claimed
 1.1 V of OVLO margin; with 1% resistors at the adverse combination that was
@@ -984,7 +1021,7 @@ Passives, standard values, final selection at layout:
   all three pins are dual-function and become push-pull outputs after
   initialisation, which is why the resistor cannot be omitted on any of them
 - **LM5069 support, per channel**: R_PWR **64.9 kΩ** 1%, C_TIMER **6.8 µF** X7R
-  25 V, UVLO/OVLO string **120 kΩ / 5.36 kΩ / 7.32 kΩ** 1%, C_VIN **100 nF**
+  25 V, UVLO/OVLO string **82.5 kΩ / 44.2 kΩ / 7.50 kΩ** 1%, C_VIN **100 nF**
   ≥100 V. All derived in Channel switching and inrush
 - **100 kΩ** pull-up to 3V3 on each channel-enable 2N7002 gate, so both channels
   are off whenever the MCU is in reset
@@ -1482,7 +1519,7 @@ table is the schematic checklist.
 | R_SENSE, VIN→SENSE | **10 mΩ** 1%, ≥0.5 W | p.14 — current limit at 55 mV across it. **Kelvin-connect it**; p.14 also caps R_S at 100 mΩ |
 | R_PWR, PWR→GND | **64.9 kΩ** 1% | p.14 Eq. 14 — sets the 39.8 W MOSFET power limit |
 | C_TIMER, Timer→GND | **6.8 µF** X7R 25 V | p.14 Eq. 11 for the fault timeout, and p.13 for the insertion delay it also sets |
-| UVLO/OVLO string | **120 kΩ / 5.36 kΩ / 7.32 kΩ** 1% | VIN→UVLO→OVLO→GND, thresholds 2.5 V typ (p.5) |
+| UVLO/OVLO string | **82.5 kΩ / 44.2 kΩ / 7.50 kΩ** 1% | VIN→UVLO→OVLO→GND, thresholds 2.5 V typ (p.5) |
 | C_VIN, VIN→GND | **100 nF** ≥100 V | p.3 pin 2 — "a small ceramic bypass capacitor close to this pin" |
 | PGD pull-up | **10 kΩ** to 3V3, shared | p.3 pin 8 — open drain |
 | OUT (pin 9) | to the **MOSFET source**, i.e. the channel bus | p.3 — this is the V_DS sense for power limiting, not a supply |
@@ -1660,6 +1697,25 @@ non-issue; on an old USB-A port, bring up WiFi *or* Ethernet, not both.
 release until ~28 V, so a 5 V bus holds both channel switches off no matter what
 firmware does. That is what makes it safe to develop with the wall connected.
 
+**And a laptop port will not light them either.** A MacBook *sinks* EPR; as a
+source its port offers 5 V at around 15 W. What the LEDs need is a **PD 3.1 EPR
+source rated 180 W or more**, plus a 5 A e-marked cable:
+
+| Source | Bus | Channels |
+|---|---|---|
+| Laptop USB-C port (5 V) | 4.8–5.2 V | **off** — under the LM5069's own 8 V minimum |
+| 9 V PDO | 8.55–9.45 V | marginal; a worst-case part wants 9.1 V |
+| 12 V PDO | 11.4–12.6 V | **on**, ~36 W |
+| 20 V PDO | 19.0–21.0 V | **on**, ~100 W |
+| 28 V EPR PDO — a 140 W charger | 26.6–29.4 V | **on**, ~140 W |
+| 36 V EPR PDO — 180 W or more | 34.2–37.8 V | on, full 180 W |
+
+So the LEDs do light from a 12 V or 20 V charger, at whatever brightness the
+contract supports — the software limiter already scales the frame to the
+negotiated current, and this is the hardware finally doing the same. Full
+brightness on 20 modules still needs a 180 W EPR source and a 5 A e-marked
+cable; everything below that degrades rather than failing.
+
 **No PD contract forms on a PC port.** The HUSB238A presents Rd and stays idle
 until firmware pulls EN_N low; a non-PD host simply never answers, and the bus
 stays at vSafe5V. Nothing needs disabling to flash.
@@ -1750,7 +1806,7 @@ transceiver's *capability*, not what this cable imposes.
 
 **This link is not a bus.** Both ends share GND in the same 4-pole picoMAX shell,
 so the real common-mode excursion is the cable's own IR drop — the table above
-budgets 1.62 V round-trip at 20 AWG over 10 m, so the return carries ~0.81 V, and
+budgets 1.67 V round-trip at 0.5 mm² over 10 m, so the return carries ~0.84 V, and
 ~1.5 V on a 4.0 A white flash. SMAJ7.0CA stands off **7 V** against that (4.7x)
 and clamps at **12 V**, below the ±15 V limit. That is the ordering the SMAJ15CA
 could never achieve, and it closes an item that had been open since the first
@@ -1824,7 +1880,7 @@ capacitance (τ = 50 ms at ~5 µF, so under 0.8 V in ~190 ms) and costs 0.13 W. 
 module-side energy is **not** covered and is recorded here as the open part.
 
 **The power budget omits cable loss.** 175 W of modules at 20 modules is 4.86 A;
-add 2× 10 m of 20 AWG at 3.93 W per channel (0.22 A) and 0.14 A of controller
+add 2× 10 m of 0.5 mm² at 4.06 W per channel (0.23 A) and 0.14 A of controller
 draw and the total is **≈5.2 A against a 5.0 A contract**. The 5 % drop line is
 described as an efficiency choice; at the 20-module target it is an overrun.
 
@@ -1850,7 +1906,7 @@ trades directly against the insertion delay. Whether a compliant source tolerate
 4.3 ms of 1.1x is not something this design can assert.
 
 **OVLO now trips above the TVS breakdown, which inverts the intended ordering.**
-The SMAJ36CA's V_BR is **40.0-44.2 V**, and OVLO was re-centred to 45.3 V nominal
+The SMAJ36CA's V_BR is **40.0-44.2 V**, and OVLO sits at 44.7 V nominal
 to win margin over the 37.8 V maximum bus. So on a *sustained* overvoltage the
 TVS enters breakdown first and must dissipate continuously — an SMA part rated
 400 W at 10/1000 µs, i.e. a surge device, not a sustained one. Open question 11
@@ -1980,7 +2036,7 @@ build.
     comparator spread and the 1% resistors, an OVLO that stays above the 37.8 V
     maximum bus at its *low* extreme needs **≥42.8 V** nominal, and one that stays
     below the modules' 45 V absolute at its *high* extreme needs **≤40.1 V**.
-    Those are **mutually exclusive**. It is set at 45.3 V nominal to protect the
+    Those are **mutually exclusive**. It is set at 44.7 V nominal to protect the
     controller with 2.0 V of margin, which leaves a **45-50.8 V** window where a
     worst-case part passes voltage the modules are not rated for. The SMAJ36CA
     does not cover that window the way an earlier version of this entry claimed:
