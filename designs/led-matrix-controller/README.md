@@ -948,7 +948,7 @@ independently as `1/(20.8e3 × 2 µA) = 24.0`.
 | UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.28 V**, **OVP 40.68 V**, and draws 35.4 µA. The E192 values this string first carried (723 k / 249 k / 29.4 k) are not stocked in 0402 — see Bill of materials |
 | C_IN | **220 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as a **minimum**. A nominal 100 nF ±10% part meets it with zero margin — 90 nF at tolerance alone, less after X7R's tempco and DC-bias loss at 36 V. 220 nF lands near 150-170 nF effective. Same reasoning the TPS54360B row applies with its "≥3 µF effective after DC-bias derating" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain; both channels wire-ORed onto one GPIO |
-| C_OUT, **OUT → GND** | **100 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as the minimum at IN, P_IN **and** OUT. C34/C35 |
+| C_OUT, **OUT → GND** | **220 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as the **minimum** at IN, P_IN and OUT. C34/C35, oversized so the minimum survives tolerance and DC bias |
 | Transient Schottky, **OUT → GND** | **MBRS3100T3G**, cathode to OUT | §11.1 p.28: interrupting current makes the output inductance drive OUT negative, against a −0.3 V absolute maximum. D15/D16. Note it **bounds** the spike rather than meeting the rating: V_F is 0.79 V at 3 A, so OUT still goes to about −0.8 V — an unbounded inductive excursion becomes a bounded sub-µs one, which is the normal reading of an absolute maximum |
 
 **The inrush is constant, which is the whole point.** Equations 1 and 2 make the
@@ -1262,7 +1262,8 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | C5 | **100 nF 50 V X7R 0402** | C131394 | TPS54360B BOOT — required for operation |
 | C6 | **33 nF 50 V X7R 0402** | C106862 | TPS54360B COMP series |
 | C7 | **150 pF 50 V C0G 0402** | C1527 | TPS54360B COMP parallel |
-| C8,C33 | **4.7 µF 100 V X7R 1210** | C2840282 | 36 V bus bulk, one at the converter and one at the USB-C inlet |
+| C8 | **4.7 µF 100 V X7R 1210** | C2840282 | TPS54360B input bulk — the part the "C_IN ≥3 µF effective after DC-bias derating" row means |
+| C33 | **2.2 µF 100 V X7R 1210** | C153036 | 36 V bulk at the USB-C inlet. 2.2 rather than a second 4.7 because of the Type-C sink bypass limit — see Resolved |
 | C3,C4,C34,C35 | **220 nF 100 V X7R 0805** | C513710 | C_IN and C_OUT at each eFuse, one of each per channel. p.6 gives 0.1 µF as a **minimum** at IN, P_IN *and* OUT; a nominal 100 nF ±10% part meets that with zero margin, so this is oversized deliberately |
 | C9 | **220 nF 100 V X7R 0805** | C513710 | TPS54360B input decoupling — this one sits on the **36 V bus**, so it takes the same 100 V part as the eFuse inputs, not the 0402 |
 | C14 | **100 nF 50 V X7R 0402** | C131394 | SY8089 input decoupling, on the 5 V rail |
