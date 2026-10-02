@@ -237,18 +237,28 @@ Eight SK6812MINI-E in a chain on ONE GPIO, level-shifted through a 74AHCT541.
 obvious saving is two addressable LEDs for the fault indicators plus six plain
 ones for the bar, and it does not pay:
 
-| | power | GPIOs |
-|---|---|---|
-| **8 addressable, one colour, 25% (chosen)** | **0.120 W** | **1** |
-| 2 addressable + 6 plain, driven directly | 0.070 W | 7 — and none are spare |
-| 2 addressable + 6 plain on a shift register | 0.070 W | 2, plus another part |
+| | power | GPIOs | parts | cost |
+|---|---|---|---|---|
+| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **9** | $0.87 |
+| 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W | 1 | 17 | **$0.15** |
+| 2 addressable + 6 plain, driven directly | 0.070 W | 7 — none spare | 10 | — |
 
-Splitting the chain saves **50 mW of 4.10 W, 1.2%**, for a pin the assignment
-table does not have and an extra IC. And it gives up the thing that makes the bar
-work: **colour on the bar is how the negotiated contract is shown.** Since the
-UVLO change made 12, 20, 28 and 36 V all normal operating points, the operator
-needs to see which one was negotiated — and with RGB that costs no extra LEDs and
-no extra pin, while with plain LEDs it is not possible at all.
+**GPIO count is a tie, not a win**, and an earlier version of this section said
+otherwise. A 74HC595 shares SCLK and MOSI with the Ethernet module and needs only
+a latch pin — exactly what the addressable chain costs — and it would replace the
+74AHCT541, which exists only because SK6812 wants 5 V logic. The plain option is
+genuinely buildable: YLED0805R (C19171391) at 127k stock and 0.8 ¢.
+
+Two things decide it, and they pull opposite ways. **Part count favours
+addressable** — nine against seventeen, because the shift-register version needs
+eight current-limiting resistors where the SK6812s have drivers built in, and on
+a small run that outweighs 72 ¢. **And colour has become load-bearing.** The bar
+reads watts across 180 W, so on a 36 W contract one LED lights whether the wall
+is dark or the supply is small; without colour there is no way to tell those
+apart. That did not matter while 36 V was the only normal case — since the UVLO
+change, 12, 20, 28 and 36 V all are.
+
+Power is not the deciding factor: 67 mW is 1.6% of a budget sitting at 1.17×.
 
 **A real simplification does exist and is not taken:** three addressable LEDs
 showing two colours each would encode the same six power levels, so five parts
