@@ -27,7 +27,25 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/ee9c3f6fbed80ffd70ecaec0eec4608b.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "G",
+      "type": "input",
+      "vMax": 20.0
+    },
+    {
+      "number": "2",
+      "name": "S",
+      "type": "passive"
+    },
+    {
+      "number": "3",
+      "name": "D",
+      "type": "passive",
+      "vMax": 60.0
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -35,7 +53,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "datasheet p.1 SOT-23 package drawing: 1 G, 2 S, 3 D"
   },
   "designVerdict": "SELECTED - FOUR per board: Q3/Q4 channel enable (one per channel), Q5/Q6 FAULT interlock (one per channel). All four switch a low-voltage divider node, not a 36 V gate.",
   "notes": [

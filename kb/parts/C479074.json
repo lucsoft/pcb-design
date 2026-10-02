@@ -27,7 +27,34 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0ca32da5d5c125881791fee9f2de17c1.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "EN",
+      "type": "input"
+    },
+    {
+      "number": "2",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "3",
+      "name": "LX",
+      "type": "power_out"
+    },
+    {
+      "number": "4",
+      "name": "IN",
+      "type": "power_in",
+      "vMax": 5.5
+    },
+    {
+      "number": "5",
+      "name": "FB",
+      "type": "input"
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -35,7 +62,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "datasheet Pin Description table (SOT-23-5)"
   },
   "notes": [
     "Synchronous buck, chosen over an LDO on thermal grounds. At 4.85 V in / 3.3 V out with the ESP32-C6's ~500 mA transmit peaks an LDO burns ~0.8 W; this burns under 0.1 W.",

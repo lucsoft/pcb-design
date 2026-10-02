@@ -174,6 +174,21 @@ def _():
     assert "S4-missing-lcsc" in rules(run(n))
 
 
+@case("S6 catches a two-terminal part shorted by its own nets")
+def _():
+    # The failure this exists for: a sense resistor in a ground return whose
+    # load side is simply called GND, so the pour shorts it and the current
+    # measurement silently reads zero.
+    n = json.loads(json.dumps(GOOD_LDO))
+    n["gge2"]["pins"]["1"] = "GND"      # C1 now has GND on both pins
+    assert "S6-shorted-two-terminal" in rules(run(n))
+
+
+@case("S6 does not fire on a capacitor across two different nets")
+def _():
+    assert "S6-shorted-two-terminal" not in rules(run(GOOD_LDO))
+
+
 @case("B2 catches an I2C bus with no pull-ups")
 def _():
     n = {

@@ -29,7 +29,60 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/c67b965eb2a01e8d671b6f15d639e314.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "A1",
+      "type": "input"
+    },
+    {
+      "number": "2",
+      "name": "A0",
+      "type": "input"
+    },
+    {
+      "number": "3",
+      "name": "ALERT",
+      "type": "open_collector"
+    },
+    {
+      "number": "4",
+      "name": "SDA",
+      "type": "bidirectional"
+    },
+    {
+      "number": "5",
+      "name": "SCL",
+      "type": "input"
+    },
+    {
+      "number": "6",
+      "name": "VS",
+      "type": "power_in",
+      "vMax": 5.5
+    },
+    {
+      "number": "7",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "8",
+      "name": "VBUS",
+      "type": "input",
+      "vMax": 40.0
+    },
+    {
+      "number": "9",
+      "name": "IN_N",
+      "type": "input"
+    },
+    {
+      "number": "10",
+      "name": "IN_P",
+      "type": "input"
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -37,7 +90,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": ""
+    "pins": "datasheet Pin Functions table (VSSOP-10)"
   },
   "notes": [
     "Common-mode and VBUS absolute max 40 V. On a 36 V bus that is only 1.11x margin, so it is NOT usable high-side here.",

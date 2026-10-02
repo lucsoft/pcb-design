@@ -28,7 +28,109 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/cb5438984a167863cfd311a38ed58432.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "OE0_N",
+      "type": "input"
+    },
+    {
+      "number": "2",
+      "name": "A0",
+      "type": "input"
+    },
+    {
+      "number": "3",
+      "name": "A1",
+      "type": "input"
+    },
+    {
+      "number": "4",
+      "name": "A2",
+      "type": "input"
+    },
+    {
+      "number": "5",
+      "name": "A3",
+      "type": "input"
+    },
+    {
+      "number": "6",
+      "name": "A4",
+      "type": "input"
+    },
+    {
+      "number": "7",
+      "name": "A5",
+      "type": "input"
+    },
+    {
+      "number": "8",
+      "name": "A6",
+      "type": "input"
+    },
+    {
+      "number": "9",
+      "name": "A7",
+      "type": "input"
+    },
+    {
+      "number": "10",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "11",
+      "name": "Y7",
+      "type": "output"
+    },
+    {
+      "number": "12",
+      "name": "Y6",
+      "type": "output"
+    },
+    {
+      "number": "13",
+      "name": "Y5",
+      "type": "output"
+    },
+    {
+      "number": "14",
+      "name": "Y4",
+      "type": "output"
+    },
+    {
+      "number": "15",
+      "name": "Y3",
+      "type": "output"
+    },
+    {
+      "number": "16",
+      "name": "Y2",
+      "type": "output"
+    },
+    {
+      "number": "17",
+      "name": "Y1",
+      "type": "output"
+    },
+    {
+      "number": "18",
+      "name": "Y0",
+      "type": "output"
+    },
+    {
+      "number": "19",
+      "name": "OE1_N",
+      "type": "input"
+    },
+    {
+      "number": "20",
+      "name": "VCC",
+      "type": "power_in",
+      "vMax": 5.5
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -36,7 +138,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "datasheet section 5.1 Pinning, D/SOT163-1 (SO20) diagram"
   },
   "notes": [
     "SCOPE CHANGED by the move to a differential pair. The two WS2812 data lines now leave the controller as differential pairs from MAX3485 transceivers driven straight off 3.3 V GPIOs, so the level shifting for them has moved to the converter boards. The only 5 V logic left on the controller is the single status-LED chain. An octal buffer for one channel is overkill - a single-gate HCT buffer would do, though none surfaced in the JLCPCB assembly catalogue, so the octal may simply stay as the available option.",

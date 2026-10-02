@@ -27,7 +27,56 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/ae818327cbcf892222f6d1e99cbd6f65.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "BOOT",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "VIN",
+      "type": "power_in",
+      "vMax": 60.0
+    },
+    {
+      "number": "3",
+      "name": "EN",
+      "type": "input",
+      "vMax": 8.4
+    },
+    {
+      "number": "4",
+      "name": "RT_CLK",
+      "type": "input"
+    },
+    {
+      "number": "5",
+      "name": "FB",
+      "type": "input"
+    },
+    {
+      "number": "6",
+      "name": "COMP",
+      "type": "passive"
+    },
+    {
+      "number": "7",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "8",
+      "name": "SW",
+      "type": "power_out",
+      "vMax": 60.0
+    },
+    {
+      "number": "9",
+      "name": "EP",
+      "type": "power_in"
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -35,7 +84,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "datasheet Pin Functions table (DDA/SO PowerPAD-8)"
   },
   "notes": [
     "Chosen specifically for 5 V bus operation. Its automatic BOOT recharge circuit allows 'duty cycles approaching 100%', so 'the maximum output voltage is near the minimum input supply voltage' (datasheet p.10). An ordinary buck cannot produce 5 V from a 5 V input; this one passes through.",

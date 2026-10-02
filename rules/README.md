@@ -13,6 +13,7 @@ a suppressed rule is a decision, not a cleanup.
 | `S3-duplicate-designator` | error | two components claiming the same reference |
 | `S4-missing-lcsc` / `S4-malformed-lcsc` | error | absent or non-`C#####` `Supplier Part` |
 | `S5-prop-case` | warning | a prop key the importer will silently drop |
+| `S6-shorted-two-terminal` | error (resistor, inductor) / warning (other) | a two-terminal part with the same net on every pin, so it is shorted out |
 
 ## Knowledge base — can this part be checked at all
 

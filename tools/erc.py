@@ -318,6 +318,35 @@ class Check:
 
     # -- electrical ------------------------------------------------------
 
+    def check_shorted_parts(self):
+        """A two-terminal part with the same net on both pins is a wire.
+
+        This is how a low-side shunt dies: the design wants both channel
+        returns to pass through it before joining board ground, but if the
+        output connectors' return is simply called GND the pour shorts the
+        shunt and the current sense reads zero. Nothing else in the checker
+        looks at a part's own pins as a set, so nothing else can see it.
+        """
+        SHORTABLE = {"resistor", "inductor", "diode", "capacitor", "fuse"}
+        for comp in self.components.values():
+            if comp.category not in SHORTABLE:
+                continue
+            nets = [n for n in comp.pins.values() if n and n.upper() != "NC"]
+            if len(nets) < 2 or len(set(nets)) != 1:
+                continue
+            net = nets[0]
+            # A capacitor across one net is a different (and also wrong) thing,
+            # but a resistor or inductor shorted out is the one that silently
+            # changes what a measurement means.
+            sev = "error" if comp.category in ("resistor", "inductor") else "warning"
+            self.add("S6-shorted-two-terminal", sev,
+                     f"{comp.designator} ({comp.category}) has net '{net}' on "
+                     f"every pin, so it is shorted out",
+                     where=comp.designator,
+                     hint="give each terminal its own net. A sense resistor in a "
+                          "ground return needs the load side on its own net, "
+                          "joined to ground only at the resistor")
+
     def check_electrical(self):
         for net, conns in sorted(self.nets.items()):
             if net.upper() == "NC":
@@ -500,6 +529,7 @@ class Check:
         self.check_structure()
         self.check_kb_coverage()
         self.check_connectivity()
+        self.check_shorted_parts()
         self.check_electrical()
         self.check_voltage()
         self.check_decoupling()

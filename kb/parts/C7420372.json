@@ -25,7 +25,20 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/595e68ef375462f0ed359f09f0579884.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "A1",
+      "type": "passive",
+      "vMax": 12.0
+    },
+    {
+      "number": "2",
+      "name": "A2",
+      "type": "passive",
+      "vMax": 12.0
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -33,7 +46,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "two-terminal TVS, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
   "designVerdict": "SELECTED - ESD on data lines",
   "notes": [

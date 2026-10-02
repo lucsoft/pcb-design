@@ -20,7 +20,18 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/a15e54507aca7b688df779462a1a4487.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "A",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "B",
+      "type": "passive"
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -28,7 +39,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "two-terminal inductor, symmetric package outline - no polarity"
   },
   "designVerdict": "SELECTED - SY8089 output inductor (5 V to 3.3 V)",
   "notes": [

@@ -37,7 +37,29 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0907a34a701b4aef568078003f6e9eae.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "2",
+      "name": "DIN",
+      "type": "input"
+    },
+    {
+      "number": "3",
+      "name": "VDD",
+      "type": "power_in",
+      "vMax": 6.0
+    },
+    {
+      "number": "4",
+      "name": "DOUT",
+      "type": "output"
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -45,7 +67,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "datasheet section 5 Pin Function Description"
   },
   "notes": [
     "Status LED chain: 8 on one GPIO, so the GPIO budget (17 of ~23-26 already used) is not a constraint. Level-shifted through a spare 74AHCT541 channel.",

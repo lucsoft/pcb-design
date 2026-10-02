@@ -24,7 +24,20 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02a7f2c734d5d8407bcaa05ee2a504ab.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "K",
+      "type": "passive",
+      "vMax": 20.0
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "type": "passive",
+      "vMax": 20.0
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -32,7 +45,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "two-terminal Zener, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
   "designVerdict": "SELECTED - clamps the BSS138 follower gate",
   "notes": [

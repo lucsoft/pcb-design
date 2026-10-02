@@ -26,7 +26,51 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/10d2e02526bd4d057ac080b6dfcdb81f.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "RO",
+      "type": "output"
+    },
+    {
+      "number": "2",
+      "name": "RE_N",
+      "type": "input"
+    },
+    {
+      "number": "3",
+      "name": "DE",
+      "type": "input"
+    },
+    {
+      "number": "4",
+      "name": "DI",
+      "type": "input"
+    },
+    {
+      "number": "5",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "6",
+      "name": "A",
+      "type": "bidirectional",
+      "vMax": 15.0
+    },
+    {
+      "number": "7",
+      "name": "B",
+      "type": "bidirectional",
+      "vMax": 15.0
+    },
+    {
+      "number": "8",
+      "name": "VCC",
+      "type": "power_in",
+      "vMax": 5.5
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -34,7 +78,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "datasheet p.? PIN CONFIGURATION + PIN DESCRIPTION (SOP-8)"
   },
   "designVerdict": "SELECTED - differential data link, 2 off (one per channel)",
   "notes": [

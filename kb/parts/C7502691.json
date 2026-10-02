@@ -21,7 +21,20 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/03241c0735ccd51dc7a8adf53caddb72.pdf",
   "retrieved": "2026-10-02",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "K",
+      "type": "passive",
+      "vMax": 40.0
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "type": "passive",
+      "vMax": 40.0
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -29,7 +42,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": ""
+    "pins": "two-terminal Schottky, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
   "designVerdict": "SELECTED as D14 - lifts the HUSB238A VBUS pin at vSafe5V, where the BSS138 follower falls short.",
   "notes": [

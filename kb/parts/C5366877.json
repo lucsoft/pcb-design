@@ -25,7 +25,154 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/914ba3f9643762e2fb21b3ff300ff859.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "2",
+      "name": "3V3",
+      "type": "power_in",
+      "vMax": 3.6
+    },
+    {
+      "number": "3",
+      "name": "EN",
+      "type": "input"
+    },
+    {
+      "number": "4",
+      "name": "IO4",
+      "type": "bidirectional"
+    },
+    {
+      "number": "5",
+      "name": "IO5",
+      "type": "bidirectional"
+    },
+    {
+      "number": "6",
+      "name": "IO6",
+      "type": "bidirectional"
+    },
+    {
+      "number": "7",
+      "name": "IO7",
+      "type": "bidirectional"
+    },
+    {
+      "number": "8",
+      "name": "IO0",
+      "type": "bidirectional"
+    },
+    {
+      "number": "9",
+      "name": "IO1",
+      "type": "bidirectional"
+    },
+    {
+      "number": "10",
+      "name": "IO8",
+      "type": "bidirectional"
+    },
+    {
+      "number": "11",
+      "name": "IO10",
+      "type": "bidirectional"
+    },
+    {
+      "number": "12",
+      "name": "IO11",
+      "type": "bidirectional"
+    },
+    {
+      "number": "13",
+      "name": "IO12",
+      "type": "bidirectional"
+    },
+    {
+      "number": "14",
+      "name": "IO13",
+      "type": "bidirectional"
+    },
+    {
+      "number": "15",
+      "name": "IO9",
+      "type": "bidirectional"
+    },
+    {
+      "number": "16",
+      "name": "IO18",
+      "type": "bidirectional"
+    },
+    {
+      "number": "17",
+      "name": "IO19",
+      "type": "bidirectional"
+    },
+    {
+      "number": "18",
+      "name": "IO20",
+      "type": "bidirectional"
+    },
+    {
+      "number": "19",
+      "name": "IO21",
+      "type": "bidirectional"
+    },
+    {
+      "number": "20",
+      "name": "IO22",
+      "type": "bidirectional"
+    },
+    {
+      "number": "21",
+      "name": "IO23",
+      "type": "bidirectional"
+    },
+    {
+      "number": "22",
+      "name": "NC",
+      "type": "nc"
+    },
+    {
+      "number": "23",
+      "name": "IO15",
+      "type": "bidirectional"
+    },
+    {
+      "number": "24",
+      "name": "RXD0",
+      "type": "bidirectional"
+    },
+    {
+      "number": "25",
+      "name": "TXD0",
+      "type": "bidirectional"
+    },
+    {
+      "number": "26",
+      "name": "IO3",
+      "type": "bidirectional"
+    },
+    {
+      "number": "27",
+      "name": "IO2",
+      "type": "bidirectional"
+    },
+    {
+      "number": "28",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "29",
+      "name": "EPAD",
+      "type": "power_in"
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -33,7 +180,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": ""
+    "pins": "datasheet section 3.2 table 3 Pin Definition (29 pins incl. EPAD)"
   },
   "notes": [
     "Datasheet p.3 peripheral list confirms Parallel IO (PARLIO), RMT TX/RX, SPI, I2S and GDMA. PARLIO with DMA is the right peripheral for N synchronised WS2812 lines; RMT TX has only a couple of channels on C6.",

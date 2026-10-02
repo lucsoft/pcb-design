@@ -25,7 +25,20 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/f3d2c9df3269749880b305befd579c39.pdf",
   "retrieved": "2026-10-02",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "A1",
+      "type": "passive",
+      "vMax": 12.0
+    },
+    {
+      "number": "2",
+      "name": "A2",
+      "type": "passive",
+      "vMax": 12.0
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -33,7 +46,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": ""
+    "pins": "two-terminal TVS bidirectional, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
   "designVerdict": "SELECTED as D10-D13, the A/B pair TVS. Replaces SMAJ15CA (C7466491), which clamped above the transceiver rating.",
   "notes": [

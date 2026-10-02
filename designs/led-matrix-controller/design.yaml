@@ -1,0 +1,59 @@
+# USB-PD (36 V / 180 W EPR) controller for a two-channel LED matrix wall.
+#
+# Declaring rail voltages is what lets the ERC check pins against their
+# absolute maximum ratings. On this board that check is not decoration: the
+# HUSB238A's VBUS pin is rated 29.4 V recommended / 33 V absolute against a
+# 36 V bus, and the INA226 is a 36 V part on the same bus. Both are handled
+# by topology rather than by part rating, and P1 is what proves the handling
+# is actually wired.
+name: led-matrix-controller
+description: >-
+  36 V / 180 W USB-PD sink driving two LED-matrix channels through LM5069
+  hot-swap controllers, with Ethernet and a differential data link.
+
+rails:
+  GND:
+    type: ground
+
+  # The PD bus. 36 V nominal; a compliant fixed PDO may sit at +5%, so
+  # every margin in this design is worked against 37.8 V.
+  VBUS:
+    voltage: 36.0
+
+  # Channel outputs, downstream of the LM5069 switches. Same voltage as the
+  # bus; separate nets so a short on one chain is visibly one chain.
+  CH1_36V:
+    voltage: 36.0
+  CH2_36V:
+    voltage: 36.0
+
+  # Rails. The 5 V stage runs in near-100% duty pass-through at vSafe5V, so
+  # it is 4.50 V at the bottom of the USB-C tolerance - see the dropout
+  # table. 5.0 V is the nominal declared here; the sag is a documented
+  # limit rather than something the ERC can model.
+  BUS_5V:
+    voltage: 5.0
+  BUS_3V3:
+    voltage: 3.3
+
+  # The HUSB238A's VBUS pin sits behind the Figure 6 BSS138 follower, which
+  # holds it near 18.5 V on a 36 V bus. Declaring it as its own rail is what
+  # stops P1 reading the 36 V bus straight onto a 33 V-absolute pin - the
+  # follower is the whole reason that pin survives.
+  PD_VBUS_SENSE:
+    voltage: 18.5
+
+buses:
+  - type: i2c
+    sda: I2C_SDA
+    scl: I2C_SCL
+
+# Suppress a rule here, with a comment saying why, rather than working
+# around it in the netlist.
+ignore:
+  # J2/J3 are Wago picoMAX 3.5 headers, hand-fitted from Reichelt and not
+  # orderable through LCSC, so they carry no Supplier Part. They are real
+  # parts with real order numbers (2091-1424 board side, 2091-1104 plugs) -
+  # see the sourcing table - but the importer cannot resolve them and
+  # S4 would fire on every build.
+  - S4-missing-lcsc

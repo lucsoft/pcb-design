@@ -22,7 +22,20 @@
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/e8a285a15b5ef18869dfc48bcc8570f5.pdf",
   "retrieved": "2026-10-01",
   "tier": null,
-  "pins": [],
+  "pins": [
+    {
+      "number": "1",
+      "name": "K",
+      "type": "passive",
+      "vMax": 60.0
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "type": "passive",
+      "vMax": 60.0
+    }
+  ],
   "provenance": {
     "description": "lcsc-api",
     "package": "lcsc-api",
@@ -30,7 +43,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": ""
+    "pins": "two-terminal Schottky, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
   "notes": [
     "USED ON THE CONTROLLER as the TPS54360B's catch diode. That part is non-synchronous and 'requires an external catch diode between the SW pin and GND' (TPS54360B datasheet p.26) - it was missing from the BOM until the thermal pass. 60 V blocks the 36 V input; average current is Iout x (1-D) = 0.86 A against a 3 A rating; it dissipates ~0.43 W, the fourth-largest heat source on the board.",
