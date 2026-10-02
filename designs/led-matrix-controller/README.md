@@ -1873,12 +1873,31 @@ drop at whatever current flows. At the full 2.5 A the drop is the datasheet's
 1.2-1.4 V and the module rail lands near **3.3 V** — at or below the WS2812D-F8's
 **3.5 V** supply minimum. The LEDs do not work there.
 
-At low current they do. The drop falls with current, and the datasheet only
-characterises it at 2 A, so the usable point has to be bounded rather than
-calculated: scaling the 1.2 V linearly puts the module rail above 4.2 V — enough
-for the blue channel to stay in regulation — somewhere under **0.6 A**, roughly
-**a quarter of one module at full white**. That is an estimate from one datasheet
-point and wants a measurement before it is quoted as a number.
+**At low current they do, and there is more light in it than that sounds.** The
+drop falls with current. The datasheet characterises VCE at one point only, so
+the rest is a model — `VCE ≈ 0.30 + 0.45·I`, fitted to that point — carried here
+with the board's own 55 mΩ, a metre of 0.5 mm² cable and the module inductor's
+DCR:
+
+| module current | rail at a 5.0 V bus | at the 4.75 V corner | share of full white | perceived |
+|---|---|---|---|---|
+| 0.6 A | 4.33 V | 4.08 V | 28% | **56%** |
+| 1.0 A | 4.08 V | 3.83 V | 46% | **70%** |
+| 1.5 A | 3.76 V | 3.51 V | 69% | 85% |
+| 2.16 A | 3.35 V | 3.10 V | 100% | **dark** |
+
+The WS2812D-F8 needs **3.5 V**, so the rail holds up to about **1.0 A** even at
+the bottom of the USB-C tolerance — **one module at roughly 70% perceived
+brightness**, since halving power costs far less than half the apparent light.
+Past that the blue channel loses its driver headroom first, so the failure mode
+is a warm colour cast before it is darkness.
+
+**The binding constraint is not the port.** 12.7 W would be 2.5 A at 5 V and the
+port would supply it; the module's own buck is what stops it, two rows below
+where the LEDs give up. An earlier version of this section reasoned from the port
+budget alone and concluded "one module at 88% of full-white power", which is in
+the last row of that table. The model above is fitted to a single datasheet point
+and wants a measurement before any of it is quoted as fact.
 
 **That is still the difference between developing against a dark board and a lit
 one**, which is what matters here. But the honest floor for *full* operation is
@@ -1899,7 +1918,7 @@ Measured against 20 modules, where full white is 288 W:
 
 | Source | PDO | for LEDs | perceived brightness |
 |---|---|---|---|
-| MacBook port, as a source | 5 V / 15 W | 12.7 W at the connector | **not convertible** — the module buck cannot regulate below 6.5 V in; roughly a quarter of one module glows, see Recovery |
+| MacBook port, as a source | 5 V / 15 W | ~5 W usable | **~70% of one module** — the module buck cannot regulate below 6.5 V in, so the rail sags with current and caps it near 1.0 A, well before the port's 12.7 W. See Recovery |
 | 9 V PDO | 8.55–9.45 V | 15 W | **~20%** — the lowest PDO that clears the module converter's 6.5 V input, so the first one that produces full-colour light |
 | 12 V PDO | 11.4–12.6 V | 31 W | ~37% |
 | Apple 96 W charger | 20.5 V / 4.7 A | 91 W | **59%** |
