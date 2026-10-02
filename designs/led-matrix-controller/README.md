@@ -2175,6 +2175,37 @@ missing from the BOM until the thermal pass. SS36 covers it: 60 V blocks the
 36 V input, 3 A against **0.60 A** average at the 0.7 A rail load used
 everywhere else in this document.
 
+## Assumptions
+
+Everything below is a number this design uses and cannot fully source. Each row
+says what it rests on, what breaks if it is wrong, and **how it gets settled** —
+because that last column is what decides whether a board has to be built and
+measured before the design can be trusted, or whether the question can be closed
+at a desk or in firmware.
+
+The short version: **nothing here forces a build-test-respin cycle.** An
+assumption only forces a respin if it is baked into copper, wrong, *and*
+undetectable. None of these is all three.
+
+| Assumption | Rests on | If wrong | Settled by |
+|---|---|---|---|
+| **Q3 V_BE = 0.6-0.8 V** at 800 µA | silicon junction over −20…+85 °C. The MMBT5551 datasheet publishes no V_BE(on) at any current; its only V_BE figure is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
+| **h_FE = 60** at 800 µA | deliberately below the datasheet's 80 min at I_C = 1.0 mA | nothing — every margin in the table is the pessimistic one | already settled; the datasheet row brackets the operating point |
+| **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
+| **C134462 / C3198004 pad numbers** | the KB keys them by *contact* designation (`J1-1 … J2-6`, `A1 … B12`); a netlist keys by pad number | `K3` fires on 27 pins, or worse, a netlist that imports onto the wrong pads | **a desk task.** Open the EasyEDA library symbol and read them. Must happen before the netlist regardless |
+| **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
+| **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 8.75 J available against 2.14 J needed at the design point is 4×, which a package change does not eat. Thermal measurement on the first board |
+| **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
+| **0.09 W/cm² free-air** | rule of thumb; the ambient it assumes is not stated | thermal headroom is not 1.17× | **J4**, the fan header — see Cooling. The mitigation is fitted before the question is answered |
+| **XL1509 V_CE ≈ 0.30 + 0.45·I** | fitted to the single datasheet point, 1.2 V at 2 A | the vSafe5V brightness estimate is wrong | measurement on one module. Affects a convenience figure, not the design |
+| **Tier flags** (basic/extended) | jlcsearch's cached `is_basic` | an unexpected per-part assembly fee | confirm against JLCPCB when ordering. `./tools/stock.py` already covers the stock half |
+| **BSS138 R_DS at the FAULT gate drive** | not characterised at that V_GS | the interlock pulls SHDN down too slowly | 330 Ω is needed against a 909 Ω source, and the part is ~2 Ω fully on; the margin is two orders of magnitude |
+
+Three of these — the pad numbers, the FAULT default and the MISO pin — are not
+measurements at all. Two more are already mitigated by hardware that is on the
+board (the ADC divider, the fan header). The remainder change numbers in this
+document rather than decisions in the schematic.
+
 ## Known electrical limits
 
 **Live limits only.** Things that were found and then fixed belong in the commit
