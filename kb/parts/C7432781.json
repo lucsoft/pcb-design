@@ -1,24 +1,24 @@
 {
   "@context": "../context.jsonld",
-  "@id": "lcsc:C13585",
+  "@id": "lcsc:C7432781",
   "@type": "Component",
-  "lcscId": "C13585",
-  "mpn": "CL31A106KBHNNNE",
-  "manufacturer": "Samsung Electro-Mechanics",
+  "lcscId": "C7432781",
+  "mpn": "HGC1206R5106K500NSPJ",
+  "manufacturer": "Chinocera",
   "description": "10uF ±10% 50V Ceramic Capacitor X5R 1206",
   "category": "capacitor",
   "package": "1206",
-  "stock": 0,
-  "priceUsd": 0.2687,
+  "stock": 141350,
+  "priceUsd": 0.1533,
   "parameters": {
     "Capacitance": "10uF",
     "Temperature Coefficient": "X5R",
     "Tolerance": "±10%",
     "Voltage Rating": "50V"
   },
-  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/3025399970486160f9625970e5fd5973.pdf",
   "retrieved": "2026-10-02",
-  "tier": "basic",
+  "tier": null,
   "pins": [
     {
       "number": "1",
@@ -38,8 +38,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal passive - pads 1 and 2, no polarity",
-    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+    "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "REJECTED - zero live stock. Replaced by C7432781."
+  "designVerdict": "SELECTED as C10,C11 - TPS54360B output bulk. 10 uF 50 V 1206. Replaces C13585, zero stock."
 }

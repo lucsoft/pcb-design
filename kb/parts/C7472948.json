@@ -1,24 +1,24 @@
 {
   "@context": "../context.jsonld",
-  "@id": "lcsc:C52923",
+  "@id": "lcsc:C7472948",
   "@type": "Component",
-  "lcscId": "C52923",
-  "mpn": "CL05A105KA5NQNC",
-  "manufacturer": "Samsung Electro-Mechanics",
-  "description": "1uF ±10% 25V Ceramic Capacitor X5R 0402",
+  "lcscId": "C7472948",
+  "mpn": "HGC0402R5105K500NTEJ",
+  "manufacturer": "Chinocera",
+  "description": "1uF ±10% 50V Ceramic Capacitor X5R 0402",
   "category": "capacitor",
   "package": "0402",
-  "stock": 0,
-  "priceUsd": 0.01,
+  "stock": 809100,
+  "priceUsd": 0.0205,
   "parameters": {
     "Capacitance": "1uF",
     "Temperature Coefficient": "X5R",
     "Tolerance": "±10%",
-    "Voltage Rating": "25V"
+    "Voltage Rating": "50V"
   },
-  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/3025399970486160f9625970e5fd5973.pdf",
   "retrieved": "2026-10-02",
-  "tier": "basic",
+  "tier": null,
   "pins": [
     {
       "number": "1",
@@ -38,8 +38,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal passive - pads 1 and 2, no polarity",
-    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+    "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "REJECTED - zero live stock. Replaced by C7472948."
+  "designVerdict": "SELECTED as C17,C18 - ESP32-C6 EN delay and HUSB238A VDD. 1 uF 50 V 0402, a better rating than the 25 V part it replaces. Replaces C52923, zero stock."
 }

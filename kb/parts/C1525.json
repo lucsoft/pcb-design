@@ -39,5 +39,6 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2, no polarity"
   },
-  "tier": null
+  "tier": null,
+  "designVerdict": "REJECTED. Zero stock, and 16 V - this design's BOM claimed 50 V for it in six places, one of which (C9) sits on the 36 V bus at 2.4x the rating. Replaced by C131394."
 }

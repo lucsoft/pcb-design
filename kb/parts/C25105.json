@@ -44,5 +44,5 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 33 Ω 1% 0402. series at each MAX3485 driver output, 4 off - slows the edge against radiated emissions without disturbing the 120 Ω termination"
+  "designVerdict": "REJECTED - zero live stock. Replaced by C138002."
 }

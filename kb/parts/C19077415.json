@@ -47,10 +47,11 @@
     "category": "manual",
     "pins": "two-terminal Zener, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
   },
-  "designVerdict": "SELECTED - clamps the BSS138 follower gate",
+  "designVerdict": "REJECTED. Superseded by BZT52C27 (C173421). A 20 V clamp holds the HUSB238A VBUS pin below its own 22.4 V vVBUV_F2 disconnect threshold, so the board could not have held a 36 V contract.",
   "notes": [
     "BZT52C20, 20 V Zener, SOD-123, 184k stock, $0.017.",
-    "Hynetek's reference specifies 28 V. 20 V is chosen deliberately for margin: it puts the VBUS pin at roughly 18.5 V, comfortably inside its 3.15-29.4 V window, where a 28-30 V Zener would place it at ~28.5 V against a 29.4 V recommended maximum. The chip functions we rely on - VBUS presence detection and supply backup - work anywhere in that range, and OVP/UVP are lost to the clamp topology regardless.",
-    "DEVIATION FROM THE VENDOR REFERENCE. Worth validating that nothing else depends on the pin tracking VBUS more closely."
+    "RETIRED ARGUMENT: Hynetek's reference specifies 28 V. 20 V is chosen deliberately for margin: it puts the VBUS pin at roughly 18.5 V, comfortably inside its 3.15-29.4 V window, where a 28-30 V Zener would place it at ~28.5 V against a 29.4 V recommended maximum. The chip functions we rely on - VBUS presence detection and supply backup - work anywhere in that range, and OVP/UVP are lost to the clamp topology regardless.",
+    "DEVIATION FROM THE VENDOR REFERENCE. Worth validating that nothing else depends on the pin tracking VBUS more closely.",
+    "Was fitted as D1 for four revisions on the argument that 18.5 V sits 'comfortably inside the 3.15-29.4 V window'. That window is the recommended operating range, not the disconnect logic. The p.7 undervoltage table bands the falling threshold three ways and only vVBUV_F2 (RDO >= 26 V, a flat 22.4 V) applies at this design's headline PDO. The analysis that chose this part covered F0 and F1 and never reached F2."
   ]
 }

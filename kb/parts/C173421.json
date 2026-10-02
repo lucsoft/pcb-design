@@ -1,0 +1,55 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C173421",
+  "@type": "Component",
+  "lcscId": "C173421",
+  "mpn": "BZT52C27",
+  "manufacturer": "MDD(Microdiode Semiconductor)",
+  "description": "Zener Diode Independent 27V 500mW Surface Mount SOD-123",
+  "category": "diode",
+  "package": "SOD-123",
+  "stock": 25350,
+  "priceUsd": 0.0164,
+  "parameters": {
+    "Diode Configuration": "1 Independent",
+    "Tolerance": "±5%",
+    "Operating Junction Temperature Range": "-",
+    "Pd - Power Dissipation": "500mW",
+    "Reverse Leakage Current (Ir)": "100nA@21V",
+    "Impedance(Zzt)": "70Ω",
+    "Zener Voltage(Range)": "25.65V~28.35V",
+    "Zener Voltage(Nom)": "27V",
+    "Impedance(Zzk)": "-"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/61190d79e0f948958471ae8476bcd111.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "K",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "A",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "SOD-123 zener: pin 1 cathode (banded), pin 2 anode"
+  },
+  "designVerdict": "SELECTED as D1, the BSS138 follower gate clamp. BZT52C27, SOD-123, 25.65-28.35 V.",
+  "notes": [
+    "Replaces BZT52C20 (C19077415), which was wrong and would have broken the board. The HUSB238A's undervoltage table (p.7) has THREE bands and the third, vVBUV_F2, applies at any RDO >= 26 V: a flat 22.4 V. A 20 V clamp puts the VBUS pin at 17.4-20.2 V across tolerance - permanently below it - so the part would have dropped every 36 V contract and fallen back to vSafe5V in a loop.",
+    "At 25.65-28.35 V the pin lands at 24.1-27.6 V once the BSS138's V_GS (0.8-1.6 V at 800 uA) is taken off: 1.7 V clear of the 22.4 V disconnect at the low corner, 1.8 V under the 29.4 V recommended maximum at the high one. Margin at both ends.",
+    "Chosen over the BZT52C27S (C2993022), which is the same nominal voltage binned 25.1-28.9 V - the extra 1.1 V of spread eats most of the high-side margin.",
+    "Dissipation: (36 - 27)/10 kOhm = 0.9 mA through R44, so 24 mW in the Zener and 8 mW in the resistor - less than the 20 V part's 58 mW total."
+  ]
+}

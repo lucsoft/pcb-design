@@ -1,0 +1,44 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C131394",
+  "@type": "Component",
+  "lcscId": "C131394",
+  "mpn": "CC0402KRX7R9BB104",
+  "manufacturer": "YAGEO",
+  "description": "100nF ±10% 50V Ceramic Capacitor X7R 0402",
+  "category": "capacitor",
+  "package": "0402",
+  "stock": 6967350,
+  "priceUsd": 0.0098,
+  "parameters": {
+    "Capacitance": "100nF",
+    "Temperature Coefficient": "X7R",
+    "Tolerance": "±10%",
+    "Voltage Rating": "50V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2"
+  },
+  "designVerdict": "SELECTED as the board's general-purpose 100 nF: C5, C14, C16, C19-C24, C31, C32. 50 V 0402 X7R. Replaces C1525, which is 16 V and at zero stock."
+}

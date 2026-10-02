@@ -1,27 +1,27 @@
 {
   "@context": "../context.jsonld",
-  "@id": "lcsc:C11702",
+  "@id": "lcsc:C138002",
   "@type": "Component",
-  "lcscId": "C11702",
-  "mpn": "0402WGF1001TCE",
-  "manufacturer": "UNI-ROYAL",
-  "description": "1kΩ ±1% 62.5mW 0402 Thick Film Resistor",
+  "lcscId": "C138002",
+  "mpn": "RC0402FR-0733RL",
+  "manufacturer": "YAGEO",
+  "description": "62.5mW 33Ω 50V Thick Film Resistor ±100ppm/℃ ±1% 0402 Chip Resistor - Surface Mount RoHS",
   "category": "resistor",
   "package": "0402",
-  "stock": 0,
-  "priceUsd": 0.0019,
+  "stock": 7541100,
+  "priceUsd": 0.0036,
   "parameters": {
-    "Resistance": "1kΩ",
     "Power(Watts)": "62.5mW",
+    "Resistance": "33Ω",
     "Voltage Rating": "50V",
     "Operating Temperature": "-55℃~+155℃",
     "Type": "Thick Film Resistor",
     "Temperature Coefficient": "±100ppm/℃",
     "Tolerance": "±1%"
   },
-  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf",
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/b426be3ce22c6de3e0c3a2248e49159e.pdf",
   "retrieved": "2026-10-02",
-  "tier": "basic",
+  "tier": null,
   "pins": [
     {
       "number": "1",
@@ -41,8 +41,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal passive - pads 1 and 2, no polarity",
-    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+    "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "REJECTED - zero live stock. Replaced by C2906864."
+  "designVerdict": "SELECTED as R35-R38 - 33 Ohm series at the MAX3485 outputs. Replaces C25105, zero stock."
 }
