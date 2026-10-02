@@ -353,6 +353,15 @@ correction a reader would otherwise re-make while using the document -- a
 datasheet whose own prose contradicts its equation tags, say. That is not
 history, it is a live trap, and it stays.
 
+**Verify the commit body against the diff before committing.** Three times in
+this project a commit has described an edit the diff did not contain, and each
+time the cause was the same: a script that applies several replacements, asserts
+on each, and writes the file at the end. When one assertion fails the file is
+never written -- so the edit fails *closed* on disk and *open* in the message
+that was already drafted. Apply replacements one at a time, write after each,
+and report misses instead of aborting; then grep the finished file for every
+value the message claims.
+
 Commit messages follow the nixpkgs convention used in the home-manager
 repository:
 

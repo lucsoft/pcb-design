@@ -142,11 +142,9 @@ of eight is used.
 
 48 V is supported by the PD chip (p.16 Figure 6) but **destroys the modules** - the XL1509
 is 40 V operating, 45 V absolute. 240 W would need every module respun onto a 60 V-class
-buck. The controller's bus-side parts are rated **60 V class**, which does not leave room
-for 48 V — that would want 100 V throughout, and **nothing on this board is
-100 V where it would have to be**. The bus-side parts are **60 V class** — the
-eFuse at 60 V with a 67 V absolute, the TPS54360B, the SS36 — and that is what
-sets the limit. The only 100 V semiconductors fitted are D15/D16 on the *switched
+buck. 48 V would want 100 V throughout, and **nothing on this board is 100 V where it
+would have to be**. The bus-side parts are **60 V class** — the eFuse at 60 V with
+a 67 V absolute, the TPS54360B, the SS36 — and that is what sets the limit. The only 100 V semiconductors fitted are D15/D16 on the *switched
 outputs*, which is not the node a 48 V contract would stress. The 100 V figure in
 the original argument belonged to the discrete NSS085N100S that the eFuse
 replaced. The argument is stronger for it, not weaker. Since 48 V needs every module respun
@@ -282,7 +280,7 @@ is dark or the supply is small; without colour there is no way to tell those
 apart. That did not matter while 36 V was the only normal case — since the UVLO
 change, 12, 20, 28 and 36 V all are.
 
-Power is not the deciding factor: 67 mW is 1.6% of a budget sitting at 1.17×.
+Power is not the deciding factor: 67 mW is 1.6% of a budget sitting at 1.16×.
 
 **A real simplification does exist and is not taken:** three addressable LEDs
 showing two colours each would encode the same six power levels, so five parts
@@ -712,7 +710,7 @@ so 9 V, 12 V and 15 V all false-disconnect, and 20 V survives by 0.2 V. Those ar
 exactly the contracts the degradation story is built on.
 
 **Q3 becomes an NPN emitter follower (MMBT5551, C7420357) and R44 drops to
-4.7 kΩ.** A silicon base-emitter junction is 0.6-0.8 V where a BSS138 gate is
+3.24 kΩ.** A silicon base-emitter junction is 0.6-0.8 V where a BSS138 gate is
 0.8-1.6 V, and that halving is the whole fix. The lower R44 keeps the base
 current's own IR drop out of the margin:
 
@@ -750,17 +748,23 @@ scales with is published **only at VBUS = 5 V** (p.6: `VDD=3.3 V & VBUS=5 V`).
 That makes the margin sensitive to a number the datasheet does not give at the
 contract where it matters, so R44 is sized to be insensitive rather than optimal:
 
-| R44 | at 800 µA | at 1.8 mA | at 4.0 mA |
-|---|---|---|---|
-| 4.7 kΩ | 0.217 V | 0.139 V | **−0.033 V** |
-| **3.24 kΩ** | **0.237 V** | **0.183 V** | **0.064 V** |
-| 2.2 kΩ | 0.251 V | 0.214 V | 0.133 V |
+| R44 | at 800 µA | at 1.8 mA | at 4.0 mA | at **4.5 mA** |
+|---|---|---|---|---|
+| 4.7 kΩ | 0.217 V | 0.139 V | −0.033 V | **−0.073 V** |
+| **3.24 kΩ** | **0.237 V** | **0.183 V** | **0.064 V** | **0.037 V** |
+| 2.2 kΩ | 0.251 V | 0.214 V | 0.133 V | 0.115 V |
 
-4.0 mA is the hard upper bound — it is what the same table gives for the *other*
-VBUS current row, at 29.4 V with VDD unpowered. At 3.24 kΩ the 12 V margin stays
-positive across that whole range, the resistor sits at 40% of its 62.5 mW rating
-instead of 59%, and it is a part already in the BOM. The cost is 100 mW of board
-heat against 69 mW at 4.7 kΩ. And V_EBO is 6.0 V: at power-down D14 holds the pin at 4.19 V
+**4.5 mA is the hard upper bound**, not 4.0 — the other VBUS current row reads
+4 typ / 4.5 **max** at 29.4 V with VDD unpowered, and this document's own rule is
+to take the binding end of a spread. At 3.24 kΩ the 12 V margin stays positive
+across that whole range; at 4.7 kΩ it is negative over half of it.
+
+The cost is real and worth stating plainly: **100 mW** of board heat against
+69 mW, and R44's own dissipation goes **up** from 17 mW to 25 mW — 28% of its
+62.5 mW rating to 40%. Lowering a resistor with a fixed 9 V across it necessarily
+heats it more. 3.24 kΩ is where the margin stops depending on an unpublished
+number without the resistor leaving comfortable derating; it is also a part
+already in the BOM. And V_EBO is 6.0 V: at power-down D14 holds the pin at 4.19 V
 while the bus collapses, so the junction sees up to 4.19 V reversed. Inside the
 rating, and the datasheet characterises I_EBO at exactly 4.0 V, so it is a region
 the part is specified in.
@@ -2232,9 +2236,9 @@ At the 72 x 74 mm envelope the board is 53.3 cm2.
 
 The rows sum to 4.14 W against **4.80 W** of capacity at 0.09 W/cm² over
 53.3 cm², so **1.16x headroom** — down from 1.29x. The eFuse is most of that
-change but not all of it: of the 0.40 W added, **0.31 W** is the eFuse's 45 mΩ
+change but not all of it: of the 0.43 W added, **0.31 W** is the eFuse's 45 mΩ
 max against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
-lower-DCR inductor, **+0.01 W** is the PD follower (the 27 V clamp draws less than
+lower-DCR inductor, **+0.04 W** is the PD follower (the 27 V clamp draws less than
 the 20 V one did, but the NPN's 3.24 kΩ base pull-up draws considerably more than
 the 10 kΩ it replaced), and **0.12 W** is the status-LED row, which the 3.71 W figure simply
 did not count. On the eFuse alone the headroom would be 1.19x. And that is
@@ -2264,8 +2268,8 @@ preference:
 | **all eight, one colour, 25%** | **0.12 W** | **the budgeted case** |
 
 The budget carries **0.12 W**, giving a board total of **4.14 W against 4.80 W —
-1.17× headroom**. Budgeting the 70% tricolour case instead costs 1.01 W, which
-puts the board at 4.99 W and 1.04× *over* — but that case is a floodlight,
+1.16× headroom**. Budgeting the 70% tricolour case instead costs 1.01 W, which
+puts the board at 5.03 W and 1.05× *over* — but that case is a floodlight,
 not a status display, and nothing about indicating six power levels and two fault
 states needs white at 70%.
 
@@ -2306,20 +2310,20 @@ undetectable. None of these is all three.
 | Assumption | Rests on | If wrong | Settled by |
 |---|---|---|---|
 | **Q3 V_BE = 0.6-0.8 V** at 800 µA | silicon junction over −20…+85 °C. The MMBT5551 datasheet publishes no V_BE(on) at any current; its only V_BE figure is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
-| **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.86 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.19 V at β 40, 0.09 V at β 20, zero near β 10 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
+| **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.84 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.22 V at β 40, 0.15 V at β 20, zero near β 9 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
 | **C134462 / C3198004 pad numbers** | the KB keys them by *contact* designation (`J1-1 … J2-6`, `A1 … B12`); a netlist keys by pad number | `K3` fires on 27 pins, or worse, a netlist that imports onto the wrong pads | **a desk task.** Open the EasyEDA library symbol and read them. Must happen before the netlist regardless |
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
 | **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 8.75 J available against 2.14 J needed at the design point is 4×, which a package change does not eat. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
-| **0.09 W/cm² free-air** | rule of thumb, for a 40 °C rise from 25 °C ambient | thermal headroom is not 1.17× | **J4**, the fan header — see Cooling. The *footprint* exists before the question is answered; nothing is fitted by default |
+| **0.09 W/cm² free-air** | rule of thumb, for a 40 °C rise from 25 °C ambient | thermal headroom is not 1.16× | **J4**, the fan header — see Cooling. The *footprint* exists before the question is answered; nothing is fitted by default |
 | **XL1509 V_CE ≈ 0.30 + 0.45·I** | fitted to the single datasheet point, 1.2 V at 2 A | the vSafe5V brightness estimate is wrong | measurement on one module. Affects a convenience figure, not the design |
 | **Tier flags** (basic/extended) | jlcsearch's cached `is_basic` | an unexpected per-part assembly fee | confirm against JLCPCB when ordering. `./tools/stock.py` already covers the stock half |
 | **20 mA per LED channel → 10.8 W per module** | p.3 of the WS2812D-F8 datasheet gives I_F = 20 mA as the *test condition* for the die's V_F and I_v, not as a rating of the internal sink | **everything.** Every brightness row, every fps row, the 2.43 A channel current, the 4.0 A flash peak, R_ILIM and the whole 180 W budget derive from it; `figures.py` hard-codes it as `FULL_W` | measure one module at full white. This is the single most load-bearing unsourced number in the design |
 | **75% module buck efficiency** | characterised at 28 V, applied at 36 V | the bus-current model, hence the limiter divisor | measurement, or the XL1509 efficiency curve read at 36 V |
 | **ESP32-C6 claims beyond the pin table** | only the *module* datasheet is cached. GPIO14's absence, the strapping tables, the ADC pin set, the PARLIO and RMT channel counts and `clk_out_gpio_num` all rest on the chip datasheet, the TRM and IDF 5.3 | a GPIO assignment that does not exist, or one that conflicts with a peripheral | cache the chip datasheet and TRM, then re-check the GPIO table against them |
 | **TPS54360B R_DS(on) at 3 V gate drive** | the p.5 maximum of 190 mΩ is specified at `BOOT-SW = 6 V`; §8.2 says this design runs at low dropout, where Figure 1's 3 V curve applies. That curve's **maximum** is not published — only the typical, 0.12 Ω | the 5 V rail's floor. At the 1.25-1.30× Figure 1 ratio the worst case is ≈0.24 Ω and the rail is 4.48 V, under the 74AHCT541's 4.5 V minimum; at the published 190 mΩ it would be 4.515 V and clear | measure the rail at the bottom of vSafe5V on the first board. This is now the binding number for that floor, and it is an inference from a curve |
-| **HUSB238A VBUS-pin current above a 5 V contract** | p.6 gives 330 µA typ / 800 µA max at `VDD=3.3 V & **VBUS=5 V**` — the only condition published for it. The adjacent row is 4/4.5 mA at VBUS = 29.4 V with VDD unpowered, so the pin draw is clearly bias-dependent | the 12 V margin, through R44's IR drop. At 3.24 kΩ it is 0.237 V at 800 µA, 0.183 V at 1.8 mA and 0.064 V at 4.0 mA — positive across the range, which is why R44 was sized for insensitivity rather than for the nominal | measure I_VBUS at a 12 V contract. The design is already built not to need the answer |
+| **HUSB238A VBUS-pin current above a 5 V contract** | p.6 gives 330 µA typ / 800 µA max at `VDD=3.3 V & **VBUS=5 V**` — the only condition published for it. The adjacent row is 4/4.5 mA at VBUS = 29.4 V with VDD unpowered, so the pin draw is clearly bias-dependent | the 12 V margin, through R44's IR drop. At 3.24 kΩ it is 0.237 V at 800 µA, 0.183 V at 1.8 mA and 0.037 V at the 4.5 mA max — positive across the range, which is why R44 was sized for insensitivity rather than for the nominal | measure I_VBUS at a 12 V contract. The design is already built not to need the answer |
 | **BSS138 R_DS at the FAULT gate drive** | not characterised at that V_GS | the interlock pulls SHDN down too slowly | 330 Ω is needed against a 909 Ω source, and the part is ~2 Ω fully on; the margin is two orders of magnitude |
 
 Three of these — the pad numbers, the FAULT default and the MISO pin — are not
@@ -2339,13 +2343,13 @@ emitter follower feeding the HUSB238A VBUS pin subtracts a fixed V_BE while the
 disconnect threshold is 86% of the requested voltage, and 12 V sits just inside
 that band — where the required offset is at its smallest. Worked at V_BE 0.80 V
 and h_FE 60 the pin clears by 0.24 V on a 10.32 V threshold, i.e. 2.3%. Every other
-contract has 0.49 V or better. What would close it is a **measured V_BE**: the
+contract has 0.51 V or better. What would close it is a **measured V_BE**: the
 datasheet publishes no V_BE(on) at any current, and its only V_BE-family figure is
 V_BE(sat) ≤ 1.0 V at I_C = 10 mA with a forced β of 10 — deep saturation, which
 does not bound the active-region value at 800 µA and should not be read as if it
 did. h_FE is *not* the gap it was once called here: p.1 carries a row at
 **I_C = 1.0 mA → 80 min**, which brackets the operating point, and using 80
-instead of the conservative 60 widens the 12 V margin to 0.23 V. Treat 12 V as
+instead of the conservative 60 widens the 12 V margin to 0.25 V. Treat 12 V as
 the contract to test first on real hardware.
 
 One thing that makes the analysis above valid and is not obvious: the base sits
