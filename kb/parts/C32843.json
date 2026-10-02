@@ -8,7 +8,7 @@
   "description": "LQFP-48(7x7) Controllers RoHS",
   "category": "ic",
   "package": "LQFP-48(7x7)",
-  "stock": 16873,
+  "stock": 16139,
   "priceUsd": 2.8546,
   "parameters": {
     "Features": "Low-power mode;Wake-up function;Programmable LED indication",

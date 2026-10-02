@@ -8,7 +8,7 @@
   "description": "0V~36V 2.5uV 100pA VSSOP-10 Current Regulation/Management RoHS",
   "category": "ic",
   "package": "VSSOP-10",
-  "stock": 41398,
+  "stock": 40303,
   "priceUsd": 0.7621,
   "parameters": {
     "Features": "High-side detection;Low-side detection;Bidirectional detection;Power monitoring;Digital output interface;Programmable threshold alarm;Enable/shutdown function",

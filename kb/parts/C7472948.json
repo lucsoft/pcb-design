@@ -8,7 +8,7 @@
   "description": "1uF ±10% 50V Ceramic Capacitor X5R 0402",
   "category": "capacitor",
   "package": "0402",
-  "stock": 808300,
+  "stock": 800720,
   "priceUsd": 0.0205,
   "parameters": {
     "Capacitance": "1uF",

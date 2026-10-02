@@ -8,7 +8,7 @@
   "description": "10uF ±10% 25V Ceramic Capacitor X5R 0805",
   "category": "capacitor",
   "package": "0805",
-  "stock": 418760,
+  "stock": 271340,
   "priceUsd": 0.0656,
   "parameters": {
     "Capacitance": "10uF",

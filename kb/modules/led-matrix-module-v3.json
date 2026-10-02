@@ -340,8 +340,8 @@
       "1.00mm2": 21.5
     },
     "recommendedGauge": {
-      "practicalLength_m": 11,
-      "note": "a differential pair at 800 kbps is good for tens of metres, so the 5% voltage-drop line is now the only constraint",
+      "practicalLength_m": 9,
+      "note": "9 m at 0.5 mm2, which is the 5% drop limit at the 2.80 A per-channel worst case (one channel at the thermal cap, the other dark). The 10.8 m elsewhere in this record is the balanced 2.43 A series; 11 m is the retired AWG-era figure. 0.75 mm2 reaches 14.0 m.",
       "crossSection_mm2": 0.5
     },
     "signalIntegrity": [

@@ -8,7 +8,7 @@
   "description": "33nF ±10% 50V Ceramic Capacitor X7R 0402",
   "category": "capacitor",
   "package": "0402",
-  "stock": 519400,
+  "stock": 518300,
   "priceUsd": 0.0048,
   "parameters": {
     "Capacitance": "33nF",

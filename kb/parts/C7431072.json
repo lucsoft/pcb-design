@@ -8,7 +8,7 @@
   "description": "USB-C (USB TYPE-C) Receptacle Connector 16 Position Surface Mount, Right Angle",
   "category": "connector",
   "package": "SMD",
-  "stock": 17100,
+  "stock": 17105,
   "priceUsd": 0.1265,
   "parameters": {
     "Protocol Standard": "USB 3.1",

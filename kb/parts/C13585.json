@@ -8,7 +8,7 @@
   "description": "10uF ±10% 50V Ceramic Capacitor X5R 1206",
   "category": "capacitor",
   "package": "1206",
-  "stock": 0,
+  "stock": 39500,
   "priceUsd": 0.2687,
   "parameters": {
     "Capacitance": "10uF",

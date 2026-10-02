@@ -8,7 +8,7 @@
   "description": "3.3V Positive Fixed SOT-223 Voltage Regulators - Linear, Low Drop Out (LDO) Regulators RoHS",
   "category": "regulator",
   "package": "SOT-223",
-  "stock": 721360,
+  "stock": 703970,
   "priceUsd": 0.2093,
   "parameters": {
     "Output Voltage": "3.3V",

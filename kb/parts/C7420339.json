@@ -8,7 +8,7 @@
   "description": "N-Channel 50V 340mA 350mW Surface Mount SOT-23",
   "category": "transistor",
   "package": "SOT-23",
-  "stock": 106620,
+  "stock": 105860,
   "priceUsd": 0.0266,
   "parameters": {
     "Drain to Source Voltage": "50V",

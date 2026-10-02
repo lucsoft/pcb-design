@@ -8,7 +8,7 @@
   "description": "150pF ±10% 50V Ceramic Capacitor X7R 0402",
   "category": "capacitor",
   "package": "0402",
-  "stock": 53200,
+  "stock": 53300,
   "priceUsd": 0.0043,
   "parameters": {
     "Capacitance": "150pF",

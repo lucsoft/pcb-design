@@ -8,7 +8,7 @@
   "description": "100nF ±10% 100V Ceramic Capacitor X7R 0805",
   "category": "capacitor",
   "package": "0805",
-  "stock": 187950,
+  "stock": 0,
   "priceUsd": 0.036,
   "parameters": {
     "Capacitance": "100nF",

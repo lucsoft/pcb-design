@@ -8,7 +8,7 @@
   "description": "1/1 Transceiver Half RS422, RS485 SOIC-8",
   "category": "ic",
   "package": "SOIC-8",
-  "stock": 35242,
+  "stock": 35207,
   "priceUsd": 0.5864,
   "parameters": {
     "Voltage - Supply": "3V~3.6V",

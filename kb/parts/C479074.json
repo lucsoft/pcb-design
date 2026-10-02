@@ -8,7 +8,7 @@
   "description": "1.5MHz Step-down type Adjustable 2A SOT-23-5 Voltage Regulators - DC DC Switching Regulators ",
   "category": "regulator",
   "package": "SOT-23-5",
-  "stock": 99845,
+  "stock": 99375,
   "priceUsd": 0.0869,
   "parameters": {
     "Operating Temperature": "-40℃~+125℃@(TA/TJ)",

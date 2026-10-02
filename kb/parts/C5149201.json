@@ -8,7 +8,7 @@
   "description": "SMD LED Addressable, Specialty RoHS",
   "category": "led",
   "package": "SMD",
-  "stock": 187475,
+  "stock": 187590,
   "priceUsd": 0.0809,
   "parameters": {
     "Luminous Intensity - R": "160mcd~320mcd",

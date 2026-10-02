@@ -8,7 +8,7 @@
   "description": "N-Channel 30V Surface Mount SOT-23-3L",
   "category": "transistor",
   "package": "SOT-23",
-  "stock": 539925,
+  "stock": 526630,
   "priceUsd": 0.0898,
   "parameters": {
     "Output Capacitance(Coss)": "75pF",

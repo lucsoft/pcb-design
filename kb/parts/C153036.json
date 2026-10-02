@@ -1,0 +1,48 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C153036",
+  "@type": "Component",
+  "lcscId": "C153036",
+  "mpn": "FS32X225K101EGG",
+  "manufacturer": "PSA",
+  "description": "2.2uF ±10% 100V Ceramic Capacitor X7R 1210",
+  "category": "capacitor",
+  "package": "1210",
+  "stock": 325810,
+  "priceUsd": 0.0893,
+  "parameters": {
+    "Capacitance": "2.2uF",
+    "Temperature Coefficient": "X7R",
+    "Tolerance": "±10%",
+    "Voltage Rating": "100V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/a99e0252a05e00d2f66d6d299a8ef975.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2"
+  },
+  "designVerdict": "SELECTED as C33 - the 36 V bulk at the USB-C inlet. 2.2 uF 100 V X7R 1210.",
+  "notes": [
+    "2.2 uF rather than a second 4.7 uF, and the reason is the USB Type-C sink bypass limit of 10 uF. At attach the bus is at vSafe5V and both eFuses are off, so what counts is C33 + C8 + C9 + C3 + C4. With two 4.7 uF that is 10.06 uF nameplate - and at 5 V on 100 V-rated X7R there is almost no DC-bias derating to hide behind, so effective is near nameplate and the design would be just outside a limit it claims to respect. 2.2 uF brings the total to 7.56 uF.",
+    "The bulk that matters for the converter is C8, which stays at 4.7 uF. C33 exists for the connector transient at the inlet, where 2.2 uF is ample."
+  ]
+}

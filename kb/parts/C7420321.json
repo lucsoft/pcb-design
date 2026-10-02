@@ -8,7 +8,7 @@
   "description": "N-Channel 60V 115mA 225mW Surface Mount SOT-23",
   "category": "transistor",
   "package": "SOT-23",
-  "stock": 1169400,
+  "stock": 1167550,
   "priceUsd": 0.0179,
   "parameters": {
     "Drain to Source Voltage": "60V",

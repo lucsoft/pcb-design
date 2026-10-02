@@ -8,7 +8,7 @@
   "description": "10VC Clamp 5A Ipp ESD DIODE DFN1006-2L",
   "category": "diode",
   "package": "DFN1006-2L",
-  "stock": 10482850,
+  "stock": 10476050,
   "priceUsd": 0.0065,
   "parameters": {
     "Clamping Voltage": "10V",

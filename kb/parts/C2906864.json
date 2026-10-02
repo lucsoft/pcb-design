@@ -8,7 +8,7 @@
   "description": "1kΩ ±1% 62.5mW 0402 Thick Film Resistor",
   "category": "resistor",
   "package": "0402",
-  "stock": 14954800,
+  "stock": 14950200,
   "priceUsd": 0.0026,
   "parameters": {
     "Power(Watts)": "62.5mW",

@@ -8,7 +8,7 @@
   "description": "220nF ±10% 50V Ceramic Capacitor X7R 0603",
   "category": "capacitor",
   "package": "0603",
-  "stock": 313050,
+  "stock": 301000,
   "priceUsd": 0.0183,
   "parameters": {
     "Capacitance": "220nF",

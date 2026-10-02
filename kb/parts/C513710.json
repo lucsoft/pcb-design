@@ -40,7 +40,7 @@
     "category": "lcsc-api",
     "pins": "two-terminal passive - pads 1 and 2"
   },
-  "designVerdict": "SELECTED as C3/C4 and C34/C35 - the TPS16630 IN and OUT capacitors, one of each per channel. 220 nF 100 V X7R 0805.",
+  "designVerdict": "SELECTED as C3/C4 and C34/C35 - the TPS16630 IN and OUT capacitors, one of each per channel - and as C9, the TPS54360B input decoupling on the same 36 V bus. 220 nF 100 V X7R 0805.",
   "notes": [
     "220 nF against a datasheet MINIMUM of 0.1 uF, and the margin is the point. p.6 Recommended Operating Conditions gives 0.1 uF min at IN, P_IN and OUT. A nominal 100 nF +/-10% part meets that with ZERO margin: tolerance alone puts a bad unit at 90 nF, before X7R's temperature coefficient and before DC-bias loss at 36 V. 220 nF lands around 150-170 nF effective, which clears the minimum in every unit.",
     "This design already applies that reasoning one section away - the TPS54360B's C_IN is specified as >= 3 uF EFFECTIVE after DC-bias derating - and had not carried it to the eFuse's three 0.1 uF minimums.",

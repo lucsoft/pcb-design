@@ -409,7 +409,7 @@ basis for the thermal and contract budgets and the wrong one for the INA226's
 alert threshold and for anything about PD source behaviour. **Whether the ripple
 adds or averages across a chain depends on whether the modules' PWM phases stay
 correlated** — they re-latch every frame, so they plausibly do — and nothing here
-establishes which. Treat +0.5 / −0.8 A as the working figure and the correlation as
+establishes which. Treat +0.27 / −0.42 A as the working figure at the 10 m reference run, and +0.5 / −0.8 A as the short-cable bound and the correlation as
 unverified.
 
 **The INA226 is the slow loop**: calibrating the model, noticing the module
@@ -505,11 +505,26 @@ with R_dc = **0.0725 Ω** — the SPM6530T-100M's DCR — and R_DS(on) = **0.12 
 choice for this case (§8.2: *"the BOOT-SW = 3 V curve in Figure 1 was used for
 RDS(on) = 0.12 Ω because the device operates with low drop out"*).
 
-**That 0.12 Ω is a typical, and the table below is therefore a typical.** The p.5
-electrical table gives 92 mΩ typ / **190 mΩ max**, and the datasheet adds that
-values *"must include tolerance … at their maximum operating temperature"*. At
-190 mΩ the rail is **4.515 V** on a 4.75 V bus — still over the 74AHCT541's 4.5 V
-minimum, which the lower-DCR inductor bought — and D14 then holds the VBUS pin at
+**That 0.12 Ω is a typical, and the maximum that goes with it is not published.**
+The p.5 electrical table gives 92 mΩ typ / **190 mΩ max** — but explicitly at
+`VIN = 12 V, **BOOT-SW = 6 V**`, which is not the condition §8.2 just told us to
+use. Figure 1 plots both drives: the 3 V curve runs **1.25-1.30×** the 6 V curve
+at every junction temperature. Scaling the 6 V maximum by that ratio puts the
+applicable worst case at **≈0.24 Ω**, and there the rail is **4.48 V** — about
+20 mV **under** the 74AHCT541's 4.5 V minimum, with no fan fitted. The rail
+crosses that floor at 0.212 Ω, so the 6 V-drive 190 mΩ figure (4.515 V) is the
+only reading that clears it, and it is the wrong reading.
+
+**What that means, and what it does not.** `P1-undervoltage` fires on this
+design. It is not a reason to respin: the 74AHCT541 drives nothing but the status
+chain, so a marginal rail during the few seconds before negotiation means the
+indicators misbehave and not that the board fails to start — the same conclusion
+*Rail architecture* reaches below. What it does retire is the idea that fan size
+is the discriminator: the no-fan case is already under the floor at this corner,
+so §Cooling's 50 mA bound is about the *typical* part, not the worst one. And the
+1.25-1.30× ratio is read off a curve, not published — see Assumptions.
+
+At 190 mΩ the rail is 4.515 V and D14 then holds the VBUS pin at
 **4.15 V**, which takes `VBUS_OK` to **+0.15 V** and leaves the under-voltage detector at **+0.15 V on the adjacent F1 band, 0.15 V short on the pessimistic F0 reading** — see the residual table. The corner is flagged for the thresholds; the 4.56 V row
 itself should be read as typical, not as the floor.
 
@@ -1409,21 +1424,24 @@ fan hangs on the 5 V rail unswitched, so it runs whenever the board is powered �
 including at vSafe5V, where that rail is in pass-through and every milliamp costs
 voltage directly. The binding limit is the 74AHCT541's **4.5 V** supply minimum:
 
-| fan | 5 V rail at a 4.75 V bus, R_DS typ | at the 190 mΩ corner |
-|---|---|---|
-| none | 4.564 V | 4.515 V |
-| **25 mm, ~50 mA** | 4.554 V | **4.502 V** |
-| 58 mA | 4.553 V | 4.500 V — **on the floor** |
-| 30 mm, ~70 mA | 4.551 V | 4.497 V — **under it** |
-| 40 mm, ~100 mA | 4.545 V | 4.489 V |
+| fan | R_DS typ (0.12 Ω) | 6 V-drive max (0.190 Ω) | **applicable max (≈0.24 Ω)** |
+|---|---|---|---|
+| none | 4.564 V | 4.515 V | **4.480 V** |
+| 25 mm, ~50 mA | 4.554 V | 4.502 V | 4.465 V |
+| 58 mA | 4.552 V | 4.500 V | 4.462 V |
+| 30 mm, ~70 mA | 4.550 V | 4.497 V | 4.459 V |
+| 40 mm, ~100 mA | 4.544 V | 4.489 V | 4.449 V |
 
 Worked from the same inverted Eq. 1 as the dropout table above, **V_F term
-included** — dropping it moves every row about 5 mV optimistic and puts the
-crossing between 70 and 100 mA instead of at 58.
+included** — dropping it moves every row about 5 mV optimistic.
 
-So **fit a fan of 50 mA or less**, which is a 25 mm part. Note that even 50 mA
-clears by 2 mV, which is inside this model's own noise: treat it as "25 mm class,
-and confirm the rail on the first board", not as a margin.
+**The right-hand column is the one that decides, and it is under the floor in
+every row including the empty one.** So the fan is not what puts the 74AHCT541
+below its minimum; the converter's own worst-case on-resistance already does, and
+a fan adds 15-30 mV on top. The honest bound is therefore about the *typical*
+part: at 0.12 Ω every row clears by 44 mV or more, and a 25 mm fan costs 10 mV of
+that. **Fit 50 mA or less** and treat the floor as a measurement to make on the
+first board rather than a margin to spend.
 
 **This bound is deliberately conservative, and it is worth knowing why.** Rail
 architecture grades the same 4.5 V floor as non-fatal — the 74AHCT541 drives only
@@ -1485,13 +1503,16 @@ design it has specific gaps:
   all, and no record carried one: the 74AHCT541's VCC pin now does, at 4.5-5.5 V,
   which is the floor the whole dropout analysis is about. The rails file takes a
   `voltageMin` alongside `voltage` so the check sees the sag rather than the
-  nominal, and `BUS_5V` declares **4.515 V** — the 190 mΩ corner.
+  nominal, and `BUS_5V` declares **4.48 V** — the rail at the converter's
+  applicable worst-case on-resistance, see Rail architecture.
 
-  **It does not fire today, and that is the finding.** 4.515 V clears the
-  74AHCT541's floor by **15 mV**. Fit a 70 mA fan and §Cooling puts the rail at
-  4.497 V, where it does fire. So the rule is live and the margin is 15 mV, which
-  is a more useful thing to know than a clean report. E1, E2 and E3 needed only
-  the pin *types* those records already had.
+  **And it fires.** 4.48 V is about 20 mV under the 74AHCT541's floor, with no fan
+  fitted. That is the rule earning its place: the design had been reading its
+  margin off the 190 mΩ figure, which is specified at a gate drive this converter
+  does not use, and a check against the declared worst case is what surfaced it.
+  The consequence is the one *Rail architecture* already reaches — indicators
+  misbehave in the pre-negotiation window, the board still starts. E1, E2 and E3
+  needed only the pin *types* those records already had.
 
 One documentation gap feeding this: only the **module** datasheet for the
 ESP32-C6 is cached. Every GPIO, strapping, ADC and peripheral claim beyond the
@@ -1871,7 +1892,7 @@ table is the schematic checklist.
 | R_ILIM, ILIM→GND | **3.24 kΩ** 1% | §10.2.2.1 — sets the 5.56 A overload limit |
 | C_dVdT, dVdT→GND | **220 nF** | §10.2.2.3 — sets the output slew, and so the inrush |
 | UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, 1.2 V on both pins. UVLO is the **upper** tap — swapping them gives a part that never turns on |
-| C_IN, IN→GND | **100 nF** ≥100 V | §10.2.2 "a minimum of 0.1 µF is recommended" |
+| C_IN, IN→GND | **220 nF** ≥100 V | p.6 Recommended Operating Conditions: 0.1 µF **minimum** at IN, P_IN and OUT. Oversized because a nominal 100 nF ±10% meets a minimum with zero margin |
 | SHDN pull-down | **10 kΩ** to GND | active-low shutdown. 100 kΩ sits at 0.77 V against a 0.8 V threshold against the pin's own source — see Enable |
 | SHDN series from GPIO | **1 kΩ** | lets the FAULT transistor win without shorting the GPIO |
 | **P_IN (pin 6) to IN** | direct, no element | p.4 Pin Functions: "Always connect P_IN to IN directly" |
@@ -2263,6 +2284,7 @@ undetectable. None of these is all three.
 | **20 mA per LED channel → 10.8 W per module** | p.3 of the WS2812D-F8 datasheet gives I_F = 20 mA as the *test condition* for the die's V_F and I_v, not as a rating of the internal sink | **everything.** Every brightness row, every fps row, the 2.43 A channel current, the 4.0 A flash peak, R_ILIM and the whole 180 W budget derive from it; `figures.py` hard-codes it as `FULL_W` | measure one module at full white. This is the single most load-bearing unsourced number in the design |
 | **75% module buck efficiency** | characterised at 28 V, applied at 36 V | the bus-current model, hence the limiter divisor | measurement, or the XL1509 efficiency curve read at 36 V |
 | **ESP32-C6 claims beyond the pin table** | only the *module* datasheet is cached. GPIO14's absence, the strapping tables, the ADC pin set, the PARLIO and RMT channel counts and `clk_out_gpio_num` all rest on the chip datasheet, the TRM and IDF 5.3 | a GPIO assignment that does not exist, or one that conflicts with a peripheral | cache the chip datasheet and TRM, then re-check the GPIO table against them |
+| **TPS54360B R_DS(on) at 3 V gate drive** | the p.5 maximum of 190 mΩ is specified at `BOOT-SW = 6 V`; §8.2 says this design runs at low dropout, where Figure 1's 3 V curve applies. That curve's **maximum** is not published — only the typical, 0.12 Ω | the 5 V rail's floor. At the 1.25-1.30× Figure 1 ratio the worst case is ≈0.24 Ω and the rail is 4.48 V, under the 74AHCT541's 4.5 V minimum; at the published 190 mΩ it would be 4.515 V and clear | measure the rail at the bottom of vSafe5V on the first board. This is now the binding number for that floor, and it is an inference from a curve |
 | **BSS138 R_DS at the FAULT gate drive** | not characterised at that V_GS | the interlock pulls SHDN down too slowly | 330 Ω is needed against a 909 Ω source, and the part is ~2 Ω fully on; the margin is two orders of magnitude |
 
 Three of these — the pad numbers, the FAULT default and the MISO pin — are not
@@ -2597,13 +2619,20 @@ Kept so they are not re-opened:
   TPS16630 SHDN pins, not on driven gates, so two open drains on a
   logic input cannot contend. (Its *drive level* is still marginal and stays in
   Known electrical limits.)
-- **Type-C bypass capacitance** — inside the 10 µF limit once the hold-up was
-  deleted. Worth re-checking when CIN is finally sized, since "≥3 µF effective
-  after derating" can mean 10 µF of nameplate.
+- **Type-C bypass capacitance** — **7.56 µF** against the 10 µF limit, now
+  computed rather than asserted. At attach the bus is at vSafe5V and both eFuses
+  are off, so what counts is C33 (2.2) + C8 (4.7) + C9 (0.22) + C3 (0.22) +
+  C4 (0.22). These are 100 V parts at 5 V, so DC-bias derating is negligible and
+  effective is near nameplate — there is nothing to hide behind. C33 is 2.2 µF
+  rather than a second 4.7 µF for exactly this reason: two of them would be
+  **10.06 µF** and just outside.
 - **FAULT interlock drive** — **BSS138** rather than 2N7002 for Q1/Q2.
   V_GS(th) **1.6 V max** (C7420339 datasheet, not the 1.5 V of other vendors' BSS138) against the 2N7002's 2.5 V, so the HUSB238A's 2.64 V V_OH leaves 1.04 V
-  of worst-case overdrive instead of 0.14 V. The part was already fitted as the
-  VBUS follower, so this costs a BOM line rather than a new part. The *current*
+  of worst-case overdrive instead of 0.14 V. (The 2.64 V is `0.8 × VDD`, the
+  ESP32-C6's guaranteed V_OH — the HUSB238A datasheet does not publish a V_OH for
+  FAULT, so that is the floor the interlock is sized against rather than a figure
+  read off it.) Q3, the follower, is no longer a BSS138, so this is two parts
+  rather than a reuse. The *current*
   half of the problem was removed by the eFuse, whose SHDN is a logic input
   rather than a divider node.
 - **Channel switching** — one **TPS16630** eFuse per channel, after four discrete

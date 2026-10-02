@@ -8,7 +8,7 @@
   "description": "10kΩ ±1% 250mW 1206 Thick Film Resistor",
   "category": "resistor",
   "package": "1206",
-  "stock": 2120500,
+  "stock": 2099800,
   "priceUsd": 0.0084,
   "parameters": {
     "Resistance": "10kΩ",

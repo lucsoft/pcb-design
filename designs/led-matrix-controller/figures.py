@@ -45,7 +45,7 @@ def fig_brightness(ax, pal):
     limit_line(ax, CAP * 100, "module thermal ceiling 70%", side="left")
     ax.axvline(20, color=pal[1], linewidth=1, alpha=0.35, zorder=0)
     annotate(ax, 20, 8, "  20 modules\n  (target)", color=pal[1])
-    ax.legend(loc="center right")
+    ax.legend(loc="lower left", framealpha=0.9)
 
 
 def fig_fps(ax, pal):

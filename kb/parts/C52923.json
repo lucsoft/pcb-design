@@ -8,7 +8,7 @@
   "description": "1uF ±10% 25V Ceramic Capacitor X5R 0402",
   "category": "capacitor",
   "package": "0402",
-  "stock": 0,
+  "stock": 2621500,
   "priceUsd": 0.01,
   "parameters": {
     "Capacitance": "1uF",
