@@ -46,7 +46,7 @@ finding prints in brackets.
 
 | id | severity | catches |
 |----|----------|---------|
-| `E1-driver-contention` | error (warning on a declared rail) | two push-pull outputs **from different parts** on one net. Several output pads of one part are how power silicon is bonded out — the TPS16630 has three OUT pins — and paralleling them is required wiring, not contention |
+| `E1-driver-contention` | error (warning on a declared rail) | two push-pull outputs **from different drivers** on one net — including two drivers inside one package, so a 74AHCT541's Y0 shorted to its Y1 is caught. What is *not* contention is one driver bonded out to several pads, which is how power silicon is packaged: the TPS16630's three OUT pins share the name `OUT`, and the pin name is what separates the two cases |
 | `E2-no-driver` | warning | a net of inputs with nothing driving it |
 | `E3-missing-pullup` | warning | open-drain pins with no pull-up |
 

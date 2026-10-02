@@ -53,13 +53,17 @@ rails:
 
   # The HUSB238A's VBUS pin sits behind the Figure 6 follower - an MMBT5551
   # emitter follower here, not the vendor's BSS138 - which holds it near 26.3 V
-  # on a 36 V bus - set by the BZT52C27 gate clamp. It was
-  # 18.5 V with a 20 V clamp, which is below the part's vVBUV_F2 disconnect
-  # threshold of 22.4 V and would have dropped every 36 V contract. Declaring it as its own rail is what
-  # stops P1 reading the 36 V bus straight onto a 33 V-absolute pin - the
-  # follower is the whole reason that pin survives.
+  # on a 36 V bus, set by the BZT52C27 clamp on Q3's BASE. Declaring it as its
+  # own rail is what stops P1 reading the 36 V bus straight onto a 33 V-absolute
+  # pin: the follower is the whole reason that pin survives.
   PD_VBUS_SENSE:
     voltage: 26.3
+    # The low end matters as much as the high one here. At the bottom of
+    # vSafe5V D14 holds this pin at 4.11 V against the part's 3.15 V minimum
+    # with VDD tied to 3V3 - 0.96 V of margin, and the tightest rail on the
+    # board. Declared so P1-undervoltage can see it; without it the check is
+    # blind on the one rail whose margin the design argues about most.
+    voltageMin: 4.11
     # The Zener's high corner (28.35 V) less the follower's low V_BE (0.6 V).
     voltageMax: 27.75
 

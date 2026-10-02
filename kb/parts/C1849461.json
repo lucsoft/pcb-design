@@ -33,22 +33,19 @@
       "number": "1",
       "name": "IN",
       "type": "power_in",
-      "vMax": 67.0,
-      "vMin": 4.5
+      "vMax": 67.0
     },
     {
       "number": "2",
       "name": "IN",
       "type": "power_in",
-      "vMax": 67.0,
-      "vMin": 4.5
+      "vMax": 67.0
     },
     {
       "number": "3",
       "name": "IN",
       "type": "power_in",
-      "vMax": 67.0,
-      "vMin": 4.5
+      "vMax": 67.0
     },
     {
       "number": "4",
@@ -64,18 +61,19 @@
       "number": "6",
       "name": "P_IN",
       "type": "power_in",
-      "vMax": 67.0,
-      "vMin": 4.5
+      "vMax": 67.0
     },
     {
       "number": "7",
       "name": "UVLO",
-      "type": "input"
+      "type": "input",
+      "vMax": 67.0
     },
     {
       "number": "8",
       "name": "OVP",
-      "type": "input"
+      "type": "input",
+      "vMax": 5.5
     },
     {
       "number": "9",
@@ -85,37 +83,44 @@
     {
       "number": "10",
       "name": "dVdT",
-      "type": "passive"
+      "type": "passive",
+      "vMax": 5.5
     },
     {
       "number": "11",
       "name": "ILIM",
-      "type": "passive"
+      "type": "passive",
+      "vMax": 5.5
     },
     {
       "number": "12",
       "name": "MODE",
-      "type": "input"
+      "type": "input",
+      "vMax": 5.5
     },
     {
       "number": "13",
       "name": "SHDN",
-      "type": "input"
+      "type": "input",
+      "vMax": 5.5
     },
     {
       "number": "14",
       "name": "IMON",
-      "type": "output"
+      "type": "output",
+      "vMax": 5.5
     },
     {
       "number": "15",
       "name": "FLT",
-      "type": "open_collector"
+      "type": "open_collector",
+      "vMax": 67.0
     },
     {
       "number": "16",
       "name": "PGOOD",
-      "type": "open_collector"
+      "type": "open_collector",
+      "vMax": 67.0
     },
     {
       "number": "17",
@@ -153,7 +158,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "datasheet p.4 Pin Configuration, TPS16630 PWP (HTSSOP-20) top view",
+    "pins": "datasheet p.4-5 Pin Functions (names, types) and p.6 Table 7.1 Absolute Maximum Ratings (vMax). Two groups and nothing between them: IN, P_IN, OUT, UVLO, FLT, PGOOD at 67 V; OVP, dVdT, IMON, MODE, SHDN, ILIM at 5.5 V. UVLO sitting in the 67 V group and OVP in the 5.5 V one is not an oddity - it is why UVLO must be the UPPER tap of the divider.",
     "vMin": "p.6 Recommended Operating Conditions: 4.5 V <= VIN <= 60 V"
   },
   "designVerdict": "SELECTED as U10/U11, one per channel. 60 V / 6 A eFuse with an integrated FET.",

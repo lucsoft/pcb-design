@@ -349,6 +349,15 @@ def main():
     for p in problems:
         print(f"error: {p}", file=sys.stderr)
     out = HERE / "netlist.json"
+    if problems:
+        # Do not write. The earlier version printed the problems and wrote the
+        # file anyway, which fails OPEN on disk: a netlist with a duplicate
+        # designator or an empty net name would sit there looking generated,
+        # and the only record that it was rejected is a stderr line nobody
+        # re-reads. CLAUDE.md has the matching rule for commit messages.
+        print(f"error: {out.name} NOT written — fix the above first",
+              file=sys.stderr)
+        return 1
     out.write_text(json.dumps(net, indent=2) + "\n", encoding="utf-8")
     pins = sum(len(c["pins"]) for c in net.values())
     nets = {n for c in net.values() for n in c["pins"].values()} - {"NC"}

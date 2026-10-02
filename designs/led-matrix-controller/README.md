@@ -1392,7 +1392,7 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V** — stays off at the PDO's +5% and clamps under the eFuse's 67 V absolute, though only by 1.15x; the 60 V parts it does *not* clear are the TPS54360B and the SS36 |
+| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V**. Clamps under the eFuse's 67 V absolute, by 1.15x; the 60 V parts it does *not* clear are the TPS54360B and the SS36. **Vrwm is 36 V against a bus that may sit at 37.8 V indefinitely** — leakage above Vrwm is unspecified, so this is not a part that is comfortably off. See below |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
@@ -2345,6 +2345,7 @@ undetectable. None of these is all three.
 | **Q3 V_BE = 0.6-0.8 V** at 800 µA | silicon junction over −20…+85 °C. The MMBT5551 datasheet publishes no V_BE(on) at any current; its only V_BE figure is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
 | **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.84 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.22 V at β 40, 0.15 V at β 20, zero near β 9 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
+| **Rd survives the powered-but-disabled window** | not stated. p.11 says that with EN_N high "the whole system is disabled"; p.14 guarantees Rd only "even in the un-powered state". Between those two the board sits powered with EN_N held high by its internal pull-up for the whole MCU boot — see Cold-start step 3 — and no line covers it | the source detaches after tCCDebounce, VBUS drops, the rails collapse and the board power-cycles in a loop. This is the one assumption here that could stop it booting at all | **bench, and cheap**: plug into a PD source and watch CC with firmware never pulling EN_N low. If it fails, the fix is a pull-down on `PD_EN_N` so the chip enables before the MCU does — a part this board has room for |
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
 | **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 6.5-7.7 J available against 2.14 J needed at the design point is 3-3.6×, which a package change does not eat. The spread is the reading uncertainty on a light-grey trace over a log grid. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
@@ -2631,6 +2632,10 @@ Wired to a net literally named `NC`, which `erc.py` treats as "open on
 purpose" rather than "nobody got to it". The distinction matters: the second
 one is a bug and the checker has to be able to tell them apart.
 
+**Thirty pins, and this list is all of them** — `grep '"NC"' netlist.json` is the
+check, because a table that silently omits one is worse than no table: the point
+of it is to let a reviewer tell a decision from an oversight.
+
 | Pin | Why it is open |
 |---|---|
 | U1.1, U1.2 (D+/D−) | the pair belongs to the MCU's native USB; sharing it would break enumeration |
@@ -2642,6 +2647,7 @@ one is a bug and the checker has to be able to tell them apart.
 | U10/U11 .14, .15 (IMON, FLT) | real losses, argued in Known electrical limits — there are no GPIOs left |
 | J1.A8, J1.B8 (SBU1/2) | no audio accessory or debug accessory mode |
 | LED8.2 (DOUT) | end of the status chain |
+| U10/U11 .4, .5, .17; U2.22; U3.9 | the parts' own **NC** pins — eight of the thirty. Typed `nc` in the knowledge base, so `K5` would object if any were wired to a real net |
 
 ### Hand-drawn after import
 
