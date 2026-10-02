@@ -1,0 +1,37 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C18734467",
+  "@type": "Component",
+  "lcscId": "C18734467",
+  "mpn": "CD43-100M",
+  "manufacturer": "ZE",
+  "description": "1.15A 10uH ±20% 182mΩ Unshielded Inductor SMD,4.5x4mm Fixed Inductors RoHS",
+  "category": "inductor",
+  "package": "SMD,4.5x4mm",
+  "stock": 52040,
+  "priceUsd": 0.0303,
+  "parameters": {
+    "Current Rating": "1.15A",
+    "Inductance": "10uH",
+    "Tolerance": "±20%",
+    "DC Resistance(DCR)": "182mΩ",
+    "Type": "Unshielded Inductor"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/e1ae9ede6f47c2b829ec7b22b56bf4df.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - 1.15 A rated, far under requirement.",
+  "notes": [
+    "Evaluated during the L1 saturation search and not chosen. The requirement was Isat >= 4.5 A to clear the TPS54360B open-loop limit; nothing in the catalogue met it at usable stock."
+  ]
+}

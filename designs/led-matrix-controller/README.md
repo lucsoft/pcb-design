@@ -354,7 +354,7 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
    the chip "self-powers from VBUS, so it needs nothing from us", and that is
    exactly what does not work here: behind the Figure 6 follower the VBUS pin
    sees only 3.05-3.75 V at vSafe5V, under the 4.5 V the chip needs when VDD is
-   absent. D14 holds the pin at ~4.13 V and VDD does the supplying.
+   absent. D14 holds the pin at ~4.19 V and VDD does the supplying.
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
 6. Past ~4.5 V each TPS16630 is above its own operating minimum, and firmware
@@ -405,8 +405,7 @@ Output across the input range at 0.7 A, from the datasheet's p.12 Eq. 1, inverte
 
     V_OUT = 0.99·V_IN + 0.99·V_F − 0.99·R_DS(on)·I_OUT − V_F − R_dc·I_OUT
 
-with R_dc = **0.163 Ω** — the inductor DCR implied by this document's own thermal
-row, 0.08 W at 0.7 A — and R_DS(on) = **0.12 Ω**, which is the datasheet's own
+with R_dc = **0.0725 Ω** — the SPM6530T-100M's DCR — and R_DS(on) = **0.12 Ω**, which is the datasheet's own
 choice for this case (§8.2: *"the BOOT-SW = 3 V curve in Figure 1 was used for
 RDS(on) = 0.12 Ω because the device operates with low drop out"*).
 
@@ -420,19 +419,19 @@ itself should be read as typical, not as the floor.
 
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
 |---|---|---|
-| 4.75 V (USB-C low tolerance) | **4.50 V** | **at the floor, zero margin** |
-| 5.00 V | 4.75 V | ok |
+| 4.75 V (USB-C low tolerance) | **4.56 V** | 0.06 V over the floor |
+| 5.00 V | 4.81 V | ok |
 | >= 5.25 V | 5.00 V | ok |
 
-**An earlier version of this table claimed 4.60 V at a 4.75 V bus**, which assumed
-a flat 0.15 V drop rather than working the equation with a real DCR. The 0.10 V
-difference matters twice: the 74AHCT541 lands exactly on its 4.5 V minimum, and
-D14 then holds the HUSB238A VBUS pin at **4.13 V** rather than 4.23 V.
+Two earlier versions of this table were wrong in opposite directions: one assumed
+a flat 0.15 V drop and got 4.60 V, the other used a 163 mΩ inductor and got
+4.50 V — exactly the 74AHCT541's floor. With the lower-DCR part it is **4.56 V**,
+and D14 holds the HUSB238A VBUS pin at **4.19 V**.
 
 **Neither is fatal, and here is why.** The 74AHCT541 only drives the status LED
 chain; a marginal rail during the few seconds of the 5 V phase means the
 indicators may misbehave before negotiation, not that the board fails to start.
-And 4.13 V still clears the VBUS pin's 3.15 V minimum by 0.98 V. What it does
+And 4.19 V still clears the VBUS pin's 3.15 V minimum by 0.98 V. What it does
 erode is the margin against two 4.0 V thresholds — see Known electrical limits.
 
 **The sag at low bus voltage matters locally, not across the cable.** An earlier
@@ -504,7 +503,7 @@ are all worse:
   drives the modules' LEDs, which this one stopped doing when the link went
   differential. Three things on **this** board need 5 V and no module revision
   touches any of them: the 74AHCT541, the SK6812 status chain it buffers, and
-  **D14**, which must sit above the HUSB238A's VBUS pin to hold it at 4.13 V.
+  **D14**, which must sit above the HUSB238A's VBUS pin to hold it at 4.19 V.
 
 So the two stages are forced by the 5 V logic requirement, and the cascade is
 the cheapest way to meet it.
@@ -581,23 +580,23 @@ they are fed from the bus directly.
 
 **Second: a Schottky from the 5 V rail to the VBUS pin.** At a 4.75 V bus the
 rail sits at **4.50 V** (the dropout table), and an RB751V-40 drops **0.37 V max
-at 1 mA** (p.2), so the pin is held at **4.13 V** — and the follower, seeing its
+at 1 mA** (p.2), so the pin is held at **4.19 V** — and the follower, seeing its
 source above (Vgate − Vth), simply stops conducting. Once the bus rises the
 follower takes the pin to ~18.5 V and the Schottky is reverse-biased by 13.5 V,
 well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 
 | | Follower alone | With D14 |
 |---|---|---|
-| Pin at a 4.75 V bus | 3.05 – 3.75 V | **4.13 V** |
+| Pin at a 4.75 V bus | 3.05 – 3.75 V | **4.19 V** |
 | Against the 3.15 V minimum | **fails at the low corner** | 1.08 V margin |
 
 **Two residuals at the bottom of vSafe5V, and they are tighter than they look.**
-Both are 4.0 V thresholds against the 4.13 V the Schottky delivers:
+Both are 4.0 V thresholds against the 4.19 V the Schottky delivers:
 
-| Threshold | Value | Margin at 4.13 V |
+| Threshold | Value | Margin at 4.19 V |
 |---|---|---|
-| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.6) | +0.13 V on typ, **−0.27 V on max** |
-| VBUS UV falling, vVBUV_F1 | **80% of the requested voltage** = 4.0 V on a 5 V RDO (p.6) | +0.13 V |
+| `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.6) | +0.19 V on typ, **−0.27 V on max** |
+| VBUS UV falling, vVBUV_F1 | **80% of the requested voltage** = 4.0 V on a 5 V RDO (p.6) | +0.19 V |
 
 The first decides whether VBUS-present is seen; the second is the under-voltage
 detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
@@ -608,7 +607,7 @@ the `AttachWait.SNK → Attached.SNK` transition on VBUS detection, which is wha
 vVBPRS_R implements, and the UV detector was not mentioned at all.
 
 **Honest position: this works on a typical part and is not guaranteed at the
-corner.** Both margins are 0.13 V, and both would widen by 0.35 V if the 5 V rail
+corner.** Both margins are 0.19 V, and both would widen by 0.35 V if the 5 V rail
 were not at its own dropout floor. Bench-check it on the first board; if it
 fails, the lever is the rail, not the diode — a lower-DCR inductor buys back
 more than any Schottky swap can.
@@ -719,7 +718,7 @@ port. The TPS16630 works from **4.5 V**.
 | dissipation | 0.35 W | 0.66 W |
 
 The last row is the cost and it is real: 31 mΩ integrated against 9.5 mΩ discrete
-plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.19x**, on a board
+plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.20x**, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
 **What it buys back is three of this document's own known limits.** The inrush is
@@ -861,7 +860,7 @@ Active parts. Passives are listed below the table.
 | U9 | 74AHCT541 | C84548 | 1 | status-chain level shift (oversized, see KB) | 0.224 |
 | U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.80 |
 | Q1,Q2 | 2N7002 | C7420321 | 2 | pulls its channel's SHDN low to disable | 0.018 |
-| Q3,Q4 | 2N7002 | C7420321 | 2 | FAULT interlock, **one per channel** | 0.018 |
+| Q3,Q4 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see below | 0.027 |
 | Q5 | BSS138 | C7420339 | 1 | source follower feeding the VBUS pin | 0.027 |
 | D1 | BZT52C20 | C19077415 | 1 | clamps the BSS138 follower gate | 0.017 |
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
@@ -869,7 +868,7 @@ Active parts. Passives are listed below the table.
 | D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the 100 V FET is 1.72x that, but the 60 V bus parts are only **1.03x** | 0.037 |
 | D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.043 |
 | D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
-| L1 | ANR5040T100M | C7427121 | 1 | 10 uH, TPS54360B output, 2.9 A Isat | 0.058 |
+| L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.228 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
 | R1 | FRM252WFR010TN | C7419995 | 1 | 10 mΩ 1% shunt, low-side | 0.058 |
 | R2 | 10 kΩ 0.25 W 1206 | — | 1 | bus bleeder, jellybean, final selection at layout | — |
@@ -1171,7 +1170,7 @@ around it, and a small board has less of it.
 The TPS16630's integrated FET is **31 mΩ typ / 45 mΩ max at 85 °C**, so at
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
-the price of the part — thermal headroom goes from 1.29x to **1.19x**.
+the price of the part — thermal headroom goes from 1.29x to **1.20x**.
 
 **The ramp is the device's own problem now, by design.** There is no SOA
 calculation to do and no power limit to set: the part regulates its own junction
@@ -1685,15 +1684,15 @@ At the 72 x 74 mm envelope the board is 53 cm2.
 | 2x TPS16630 IQ + dividers | 0.13 | 1.7 mA max at 37.8 V, plus the 1 MΩ strings |
 | shunt 10 mΩ | 0.25 | at full 5 A |
 | SY8089 + inductor | 0.19 | |
-| 10 µH inductor DCR | 0.08 | |
+| 10 µH inductor DCR | 0.04 | 72 mΩ at 0.7 A |
 | BSS138 follower + 10 kΩ + D1 | 0.07 | 14 mW channel at the 800 µA the pin draws with VDD tied, 26 mW pull-up, 32 mW Zener |
 | 2x MAX3485 driving 120 Ω | 0.06 | DE tied high, line never idle |
 | 74AHCT541 | 0.02 | |
 | R2 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
-| **total** | **4.02** | status LEDs excluded; TVS leakage not counted |
+| **total** | **3.98** | status LEDs excluded; TVS leakage not counted |
 
-The rows sum to 4.02 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
-53 cm², so **1.19x headroom** — down from 1.29x, and the integrated eFuse is why:
+The rows sum to 3.98 W against roughly **4.8 W** of capacity at 0.09 W/cm² over
+53 cm², so **1.20x headroom** — down from 1.29x, and the integrated eFuse is why:
 31 mΩ against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced — and that is at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
@@ -1746,7 +1745,7 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.19x** headroom
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.20x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
 roughly 2.4 W, and the board is at **0.65x** — over budget, not merely tight.
@@ -1801,28 +1800,31 @@ Nothing on this board disconnects them from a sustained overvoltage. Setting OVP
 lower than 43.8 V is not available either — it has to clear the 37.8 V maximum
 bus with tolerance.
 
-**The FAULT interlock gate drive is marginal.** HUSB238A FAULT/OUT2 is push-pull
-with V_OH ≥ 0.8 × VDD (p.8), so **2.64 V** on a 3.3 V rail, against the 2N7002's
-V_GS(th) of **2.5 V max** (at 250 µA) — about 0.14 V of worst-case overdrive.
+**L1 still saturates before the converter current-limits, but less.** The part
+was changed from ANR5040T100M (2.9 A Isat, 163 mΩ) to **SPM6530T-100M** (3.8 A,
+72 mΩ): a metal-composite type in a 7.1 × 6.5 mm package. Against the
+TPS54360B's 4.5 A minimum open-loop limit that is **0.84x** rather than 0.64x —
+the inductor now saturates just as protection acts rather than well before it.
 
-**The eFuse made this easier, though, and the margin is still not comfortable.**
-SHDN is a logic input with a 100 kΩ pull-down rather than a divider node carrying
-hundreds of microamps, so the transistor only has to sink what that pull-up-free
-node leaks — microamps, not the 380 µA the LM5069's UVLO divider demanded. What
-remains marginal is the gate drive itself: 0.14 V of overdrive on a worst-case
-pair. A logic-level MOSFET removes the question. **Open.** A logic-level MOSFET, or a small
-pull-up on the FAULT line, would remove the question. **Open.**
+**Nothing in the catalogue closes it fully.** A 10 µH part with Isat ≥ 4.5 A was
+searched for and not found at usable stock; SRP6540-100M reaches 4.0 A at five
+times the price. Accepted at 0.84x.
 
-**L1 saturates before the converter current-limits.** 2.9 A Isat against a
-4.5 A minimum open-loop limit, so any 5 V-rail overload saturates the inductor
-first. Wants Isat ≥ 7 A.
+The swap pays for itself elsewhere: **halving the DCR** lifts the 5 V rail from
+4.50 V to **4.56 V** at the bottom of vSafe5V, which was sitting exactly on the
+74AHCT541's floor, and cuts the inductor's own loss from 0.08 W to 0.04 W.
 
 **TPS54360B at 963 kHz sits at its pulse-skip boundary.** Equation 9 gives
 f_SW(max skip) ≈ 1.13 MHz typ, falling to 1.07 MHz at a +5 % PDO — a margin of
-1.01-1.17×, where TI's own example sits at 0.85×. RT = 200 kΩ (500 kHz) gives
-2.2× and halves switching loss. **The 1 MHz choice should probably be reverted**;
-it was made to raise the inductor's saturation margin, which a higher-Isat part
-would do without this cost.
+1.01-1.17×, where TI's own example sits at 0.85×. RT = 200 kΩ (500 kHz) would
+give 2.2× and halve switching loss.
+
+**Reverting is not the cheap fix it looked like.** At 500 kHz a 10 µH inductor
+gives **123% ripple** (0.86 A on a 0.7 A load), so the revert needs ~22 µH at the
+same ≥3.8 A saturation — and the SPM6530 family has no 22 µH part in stock. It
+would mean a different family and a larger package. The original reason for 1 MHz
+(buying saturation margin) is weaker now that L1 is a 3.8 A part, but the revert
+costs more than it saves. **Accepted at 1.01-1.17×.**
 
 ## Open questions
 
@@ -1955,9 +1957,9 @@ Kept so they are not re-opened:
 - **HUSB238A supply at vSafe5V** — **VDD (pin 5) tied to 3V3**, plus **D14**
   (RB751V-40) from the 5 V rail to the VBUS pin. VDD is an input supply, not an
   output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
-  draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.13 V on a
+  draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.19 V on a
   4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: two 4.0 V
-  thresholds — `VBUS_OK` rising and the under-voltage detector — each sit 0.13 V
+  thresholds — `VBUS_OK` rising and the under-voltage detector — each sit 0.19 V
   below it, so this works on a typical part and is not guaranteed at the corner.
 - **USB-C receptacle** — **CX90B-16P** (C3198004), Hirose CX series, **5 A /
   48 V AC/DC**, 16-position USB 2.0. Closes the longest-standing blocking
@@ -1985,6 +1987,12 @@ Kept so they are not re-opened:
 - **Type-C bypass capacitance** — inside the 10 µF limit once the hold-up was
   deleted. Worth re-checking when CIN is finally sized, since "≥3 µF effective
   after derating" can mean 10 µF of nameplate.
+- **FAULT interlock drive** — **BSS138** rather than 2N7002 for Q3/Q4.
+  V_GS(th) 1.5 V max against 2.5 V, so the HUSB238A's 2.64 V V_OH leaves 1.14 V
+  of worst-case overdrive instead of 0.14 V. The part was already fitted as the
+  VBUS follower, so this costs a BOM line rather than a new part. The *current*
+  half of the problem was removed by the eFuse, whose SHDN is a logic input
+  rather than a divider node.
 - **Channel switching** — one **TPS16630** eFuse per channel, after four discrete
   gate networks and one LM5069 arrangement. Integrated 60 V FET, dV/dt-controlled
   inrush, adjustable current limit and overvoltage cut-off, working from 4.5 V so

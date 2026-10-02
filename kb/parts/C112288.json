@@ -1,0 +1,38 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C112288",
+  "@type": "Component",
+  "lcscId": "C112288",
+  "mpn": "SPM6530T-100M",
+  "manufacturer": "TDK",
+  "description": "3.6A 10uH ±20% 3.8A 72.49mΩ SMD,7.1x6.5mm Fixed Inductors RoHS",
+  "category": "inductor",
+  "package": "SMD,7.1x6.5mm",
+  "stock": 4935,
+  "priceUsd": 0.2279,
+  "parameters": {
+    "Current Rating": "3.6A",
+    "Inductance": "10uH",
+    "Tolerance": "±20%",
+    "Current - Saturation(Isat)": "3.8A",
+    "DC Resistance(DCR)": "72.49mΩ",
+    "Type": "-"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/fb6435f7e470c35c7cb73fca05b32a75.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED as L1, the TPS54360B output inductor.",
+  "notes": [
+    "Replaces ANR5040T100M (C7427121): 3.8 A Isat against 2.9 A, and 72 mOhm DCR against 163 mOhm. Against the TPS54360B's 4.5 A minimum open-loop current limit that is 0.84x rather than 0.64x - the inductor now saturates just as protection acts rather than well before it. A 10 uH part with Isat >= 4.5 A was searched for and not found at usable stock; SRP6540-100M (C780191) reaches 4.0 A at five times the price. Accepted at 0.84x."
+  ]
+}

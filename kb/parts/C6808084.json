@@ -1,0 +1,37 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C6808084",
+  "@type": "Component",
+  "lcscId": "C6808084",
+  "mpn": "ANR4018T100M",
+  "manufacturer": "APV",
+  "description": "1.2A 10uH ±20% 1.6A Magnetic Shielded Inductor SMD,4x4mm Fixed Inductors RoHS",
+  "category": "inductor",
+  "package": "SMD,4x4mm",
+  "stock": 36860,
+  "priceUsd": 0.0464,
+  "parameters": {
+    "Current Rating": "1.2A",
+    "Inductance": "10uH",
+    "Tolerance": "±20%",
+    "Current - Saturation(Isat)": "1.6A",
+    "Type": "Magnetic Shielded Inductor"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/a15e54507aca7b688df779462a1a4487.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - 1.6 A Isat, far under requirement.",
+  "notes": [
+    "Evaluated during the L1 saturation search and not chosen. The requirement was Isat >= 4.5 A to clear the TPS54360B open-loop limit; nothing in the catalogue met it at usable stock."
+  ]
+}

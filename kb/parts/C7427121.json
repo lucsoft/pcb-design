@@ -41,12 +41,13 @@
     "category": "manual",
     "pins": "two-terminal inductor, symmetric package outline - no polarity"
   },
-  "designVerdict": "SELECTED - TPS54360B output inductor, replaces the 22 uH part",
+  "designVerdict": "REJECTED - replaced by SPM6530T-100M (C112288) on saturation and DCR.",
   "notes": [
     "10 uH, 2.4 A rated, 2.9 A saturation, shielded, 5x5 mm, 31k stock, $0.058.",
     "REPLACES ANR5040T220M (C7427126, 22 uH). That part's saturation is 1.62 A *max* - the 1.9 A figure quoted earlier was the typ column - against a 1.18 A peak, giving only 1.38x. This gives 2.4x at the same package size.",
     "Needs the TPS54360B at ~1 MHz rather than 500 kHz to keep the same ripple: dIL = 5 x 31 / (36 x 1e6 x 10e-6) = 0.43 A. Set RT to ~100 kOhm, confirmed against the datasheet equation.",
     "Still below the TPS54360B's 4.5 A minimum current limit, so a hard output short saturates the inductor before the cycle-by-cycle limit acts. TI's procedure sizes for the current limit; 2.4x operating margin is the accepted compromise, with the IC's thermal and hiccup protection as the backstop.",
-    "SEVERITY CORRECTION: this record called the sub-current-limit saturation \"the accepted compromise\". The README records it as a defect: 2.9 A Isat against a 4.5 A minimum open-loop limit means any 5 V-rail overload saturates the inductor before the converter limits, and it wants Isat >= 7 A. The 1 MHz operating point this record justifies is also flagged for reversion to 500 kHz, because it was chosen to buy saturation margin that a higher-Isat part would give without the pulse-skip and switching-loss cost."
+    "SEVERITY CORRECTION: this record called the sub-current-limit saturation \"the accepted compromise\". The README records it as a defect: 2.9 A Isat against a 4.5 A minimum open-loop limit means any 5 V-rail overload saturates the inductor before the converter limits, and it wants Isat >= 7 A. The 1 MHz operating point this record justifies is also flagged for reversion to 500 kHz, because it was chosen to buy saturation margin that a higher-Isat part would give without the pulse-skip and switching-loss cost.",
+    "RETIRED. 2.9 A Isat was 0.64x the converter's 4.5 A minimum limit, and its 163 mOhm DCR put the 5 V rail at exactly the 74AHCT541's 4.5 V floor at the bottom of vSafe5V. The replacement halves the DCR, which lifts that rail to 4.56 V."
   ]
 }

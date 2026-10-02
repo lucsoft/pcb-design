@@ -1,0 +1,38 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C780191",
+  "@type": "Component",
+  "lcscId": "C780191",
+  "mpn": "SRP6540-100M",
+  "manufacturer": "BOURNS",
+  "description": "4A 10uH ±20% 78.5mΩ 4A SMD,7.2x6.5mm Fixed Inductors RoHS",
+  "category": "inductor",
+  "package": "SMD,7.2x6.5mm",
+  "stock": 1788,
+  "priceUsd": 1.1309,
+  "parameters": {
+    "Current Rating": "4A",
+    "Inductance": "10uH",
+    "Tolerance": "±20%",
+    "DC Resistance(DCR)": "78.5mΩ",
+    "Current - Saturation(Isat)": "4A",
+    "Type": "-"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/14681929d0a7c9b20e10b4dd4ab30dec.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - 4.0 A Isat at five times the price of SPM6530T-100M (C112288), which gives 3.8 A.",
+  "notes": [
+    "Evaluated during the L1 saturation search and not chosen. The requirement was Isat >= 4.5 A to clear the TPS54360B open-loop limit; nothing in the catalogue met it at usable stock."
+  ]
+}

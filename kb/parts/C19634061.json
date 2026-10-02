@@ -1,0 +1,38 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19634061",
+  "@type": "Component",
+  "lcscId": "C19634061",
+  "mpn": "PNR3015-100M",
+  "manufacturer": "APV",
+  "description": "2A 10uH ±20% 357mΩ 2A Magnetic Shielded Inductor SMD,3x3mm Fixed Inductors RoHS",
+  "category": "inductor",
+  "package": "SMD,3x3mm",
+  "stock": 10890,
+  "priceUsd": 0.0724,
+  "parameters": {
+    "Current Rating": "2A",
+    "Inductance": "10uH",
+    "Tolerance": "±20%",
+    "DC Resistance(DCR)": "357mΩ",
+    "Current - Saturation(Isat)": "2A",
+    "Type": "Magnetic Shielded Inductor"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/1365c017e1a6878bfe2096e8c35a6ffa.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - 2.0 A Isat, under the 2.9 A it would replace.",
+  "notes": [
+    "Evaluated during the L1 saturation search and not chosen. The requirement was Isat >= 4.5 A to clear the TPS54360B open-loop limit; nothing in the catalogue met it at usable stock."
+  ]
+}
