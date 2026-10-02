@@ -1,0 +1,49 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C2909058",
+  "@type": "Component",
+  "lcscId": "C2909058",
+  "mpn": "SK6812-EC20",
+  "manufacturer": "OPSCO Optoelectronics",
+  "description": "SMD,2x2mm LED Addressable, Specialty RoHS",
+  "category": "led",
+  "package": "SMD,2x2mm",
+  "stock": 35510,
+  "priceUsd": 0.1112,
+  "parameters": {
+    "Luminous Intensity - R": "100mcd~200mcd",
+    "Luminous Intensity - G": "160mcd~320mcd",
+    "Luminous Intensity - B": "50mcd~100mcd",
+    "Data Transmission Rate": "800Kbit/s",
+    "Dominant Wavelength - R": "620nm~630nm",
+    "Dominant Wavelength - G": "520nm~535nm",
+    "Dominant Wavelength - B": "460nm~475nm",
+    "Fixed-Frequency Pwm Mode": "1kHz",
+    "Features": "Built-in power-on reset circuit;Built-in one-way transmission function",
+    "Length": "2mm",
+    "Operating Temperature": "-40℃~+80℃",
+    "Height": "0.65mm",
+    "ESD Withstand Voltage": "2000V",
+    "Width": "2mm",
+    "Lens Color": "Semi-transparent lens",
+    "Viewing Angle": "160°"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/71bc9889daf7731d2def479e04f99e6c.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "REJECTED - evaluated against C2890041 and not chosen.",
+  "notes": [
+    "SK6812-EC20, 2 x 2 mm top-view. Its VIH of 0.6 x VDD is the most permissive of the three variants evaluated, which raised the question of whether the 74AHCT541 could be deleted - it cannot. 0.6 x 5.0 V = 3.0 V against the ESP32-C6's guaranteed V_OH of 0.8 x VDD = 2.64 V. No SK6812 in this family can be driven directly.",
+    "Rejected in favour of the side-emitting C2890041, which suits an enclosure better. Area is comparable (4.0 mm2 against 3.52) and price nearly identical."
+  ]
+}

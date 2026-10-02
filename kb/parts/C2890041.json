@@ -1,0 +1,70 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C2890041",
+  "@type": "Component",
+  "lcscId": "C2890041",
+  "mpn": "SK6812D-EC3210R",
+  "manufacturer": "OPSCO Optoelectronics",
+  "description": "SMD-4P,3.2x1.1mm LED Addressable, Specialty RoHS",
+  "category": "led",
+  "package": "SMD-4P,3.2x1.1mm",
+  "stock": 52310,
+  "priceUsd": 0.1129,
+  "parameters": {
+    "Features": "Built-in power-on reset circuit;Built-in power-on reset circuit",
+    "Length": "3.2mm",
+    "Operating Temperature": "-40℃~+80℃",
+    "Data Transmission Rate": "800Kbit/s",
+    "Height": "1mm",
+    "ESD Withstand Voltage": "2000V",
+    "Dominant Wavelength - R": "620nm~630nm",
+    "Installation method": "Side View Mount",
+    "Width": "1.08mm",
+    "Dominant Wavelength - G": "520nm~535nm",
+    "Dominant Wavelength - B": "460nm~475nm",
+    "Fixed-Frequency Pwm Mode": "4kHz"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/57f43637a1958549b2f499b8d2b2dcf9.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "GND",
+      "type": "power_in"
+    },
+    {
+      "number": "2",
+      "name": "DOUT",
+      "type": "output"
+    },
+    {
+      "number": "3",
+      "name": "DIN",
+      "type": "input"
+    },
+    {
+      "number": "4",
+      "name": "VDD",
+      "type": "power_in",
+      "vMax": 6.0
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "datasheet section 5 Pin Function Description (SMD-4P side-mount)"
+  },
+  "designVerdict": "SELECTED as LED1-8, the status chain. Side-emitting SK6812 variant.",
+  "notes": [
+    "Side-emitting, 3.2 x 1.1 mm. Replaces SK6812MINI-E (C5149201), a 3.5 x 3.5 mm top-view part. In an enclosure a top-view indicator needs a window in the lid; a side-view one shines out the board edge, which is where someone looking at a wall-mounted controller already is.",
+    "ELECTRICALLY THE SAME FAMILY: IDOUT 10.5/12/13.5 mA against the MINI-E's 10/12/14.5 mA, VIH 0.65 x VDD, VDD 3.7-5.5 V. The 0.12 W budgeted figure (eight, one colour, 25% duty) is unchanged.",
+    "PIN ORDER DIFFERS FROM THE MINI-E: 1 GND / 2 DOUT / 3 DIN / 4 VDD here, against 1 GND / 2 DIN / 3 VDD / 4 DOUT there. DIN and VDD are swapped. A netlist written for one part is wrong for the other, which is the failure the standing rule about pin numbers exists for.",
+    "COSTS BOARD EDGE, which is the scarce resource. Eight at 3.2 mm need ~26 mm plus spacing, about 35 mm of one 72 mm edge, and all four edges already carry USB-C, two picoMAX, the Ethernet module's RJ45 and the antenna keep-out. Area is cheaper (3.52 mm2 each against 12.25) but placement is harder.",
+    "Price 8 x $0.113 = $0.90 against $0.65. Stock 52k against 187k - both ample."
+  ]
+}

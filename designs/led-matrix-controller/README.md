@@ -116,7 +116,7 @@ flowchart LR
         RS485["2x MAX3485<br/>differential, 3.3 V"] -->|"A/B"| CN1["ch1 connector"]
         RS485 -->|"A/B"| CN2["ch2 connector"]
         BUF["HCT buffer<br/>3.3 V -> 5 V"]
-        BUF -->|status| LEDS["8x SK6812MINI-E"]
+        BUF -->|status| LEDS["8x SK6812D-EC3210R<br/>side-emitting"]
     end
 
     SW1["ch1 load switch"]
@@ -231,7 +231,7 @@ would be 32% of the supply; at 36 V it is 4.5%.
 
 ## Status indication
 
-Eight SK6812MINI-E in a chain on ONE GPIO, level-shifted through a 74AHCT541.
+Eight SK6812D-EC3210R in a chain on ONE GPIO, level-shifted through a 74AHCT541.
 
 **Why all eight are RGB when only two need colour for their own job.** The
 obvious saving is two addressable LEDs for the fault indicators plus six plain
@@ -274,8 +274,37 @@ glance and a colour-coded bar is read twice.
   LED rather than one per time window: bright red = limiting now, orange = within
   5 min, dim yellow = within 10 min, off = clean for 10+ min.
 
-Selected: SK6812MINI-E (C5149201). WS2812C-2020 (C2976072, 2x2 mm) is the smaller
-alternative if board area gets tight.
+Selected: **SK6812D-EC3210R** (C2890041), a **side-emitting** 3.2 × 1.1 mm part.
+
+**Side-emitting is the point.** In an enclosure a top-view indicator needs a
+window in the lid; a side-view one shines out the board edge, which is where
+someone looking at a wall-mounted controller already is. Electrically it is the
+same part family: IDOUT 10.5/12/13.5 mA against the MINI-E's 10/12/14.5 mA, so
+the 0.12 W budget is unchanged.
+
+| | SK6812MINI-E | **SK6812D-EC3210R** |
+|---|---|---|
+| area each | 12.25 mm² | **3.52 mm²** — saves 70 mm² over eight |
+| emission | top | **side** |
+| price for eight | $0.65 | $0.90 |
+| stock | 187k | 52k |
+
+**It costs board edge, which is the scarce thing here.** Eight at 3.2 mm need
+~26 mm plus spacing, call it 35 mm of one 72 mm edge — and the mechanical section
+already has USB-C, two picoMAX, the Ethernet module's RJ45 and the antenna
+keep-out committed to the four edges. The LEDs have to share an edge with
+something, and that is a placement constraint rather than an area one.
+
+**The pin order is not the same as the MINI-E's** — 1 GND / 2 DOUT / 3 DIN /
+4 VDD against 1 GND / 2 DIN / 3 VDD / 4 DOUT. A netlist written for one is wrong
+for the other, with DIN and VDD swapped, which is the failure mode the standing
+rule about pin numbers exists for.
+
+**The level shifter stays regardless of which variant is chosen.** Every SK6812
+in this family wants VIH ≥ 0.6-0.65 × VDD, i.e. 3.0-3.25 V on a 5 V rail, and the
+ESP32-C6 guarantees only V_OH ≥ 0.8 × VDD = **2.64 V**. Even the SK6812-EC20
+(C2909058), whose 0.6 × VDD is the most permissive of the three, is out of reach.
+The 74AHCT541 is not a part any LED choice can delete.
 
 **The thermal indicator is a model, not a measurement.** There is no temperature sensor
 on the modules - the controller infers thermal state from commanded brightness
@@ -487,7 +516,7 @@ HUSB238A's VDD, and 5 V for the 74AHCT541, the SK6812 status chain and **D14**.
 paragraph argued from the WS2812's 0.7 x VDD = 3.5 V threshold — but the
 controller does not drive any WS2812. It drives two MAX3485s at 3.3 V, and the
 3.3 -> 5 V shift lives on the converter board, which the module record states
-outright. The governing number is the **SK6812MINI-E's 0.65 x 5.0 = 3.25 V** on
+outright. The governing number is the **status chain's 0.65 x 5.0 = 3.25 V** on
 the controller's own rail, which a 3.3 V GPIO clears by only 50 mV — margin, plus
 the rail's own sag, is what justifies the buffer.
 
@@ -961,7 +990,7 @@ Active parts. Passives are listed below the table.
 | R2 | 10 kΩ 0.25 W 1206 | — | 1 | bus bleeder, jellybean, final selection at layout | — |
 | J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.99 |
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
-| LED1-8 | SK6812MINI-E | C5149201 | 8 | status chain | 0.081 |
+| LED1-8 | SK6812D-EC3210R | C2890041 | 8 | status chain, **side-emitting**, 3.2 × 1.1 mm | 0.113 |
 
 **Not from LCSC/JLCPCB.** Two board items are hand-fitted — the Ethernet module
 and the picoMAX headers — so the board is not fully JLCPCB-assemblable. The third
@@ -1114,7 +1143,7 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7045 mm2.**
 
-Component area estimates at **~2410 mm2** — the Ethernet module made the board
+Component area estimates at **~2340 mm2** — the Ethernet module made the board
 slightly *bigger*, 575 mm2 against the ~496 it replaced, and an earlier 2310
 figure predates that swap. At 45% utilisation (2-layer, relaxed) that is roughly
 **72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
@@ -1126,6 +1155,7 @@ The largest items are where any further shrink comes from:
 |---|---|---|
 | ESP32-C6-WROOM-1-N8 | 459 | ESP32-C6-MINI-1 is 219 mm2 — saves 240 |
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
+| 8x status LED, side-emitting | 28 | 3.52 mm² each; the top-view part was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
 
 
@@ -1802,7 +1832,7 @@ the switched path is 0.66 W, and the two largest rows are the MCU and that path.
 
 ### Status LEDs: why addressable, and why capped
 
-**They are not plain SMD LEDs.** Each SK6812MINI-E contains a controller and
+**They are not plain SMD LEDs.** Each SK6812 contains a controller and
 three 12 mA constant-current drivers, which is where the power goes — and what
 buys the thing the GPIO budget cannot otherwise afford: **eight indicators on one
 pin.** Eight discrete LEDs would need eight pins, and the assignment table has
