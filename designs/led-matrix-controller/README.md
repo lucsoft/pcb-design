@@ -293,7 +293,7 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
 6. Past ~28 V each LM5069 releases its own UVLO, and firmware enables the
    channels by pulling the enable GPIOs low.
 7. **Nothing happens for several seconds.** Each controller holds its gate down
-   for its insertion time — 6.1 s typical, 3.6-13.6 s over the spread — counted
+   for its insertion time — 6.1 s typical, 2.9-13.6 s over the spread — counted
    from when VBUS crossed ~5.5-7.5 V, and no firmware action shortens it.
 8. Each channel then ramps its own 3.3 mF under a 39.8 W power limit, taking
    **61 ms** typical and 96 ms at the corners. The bus is already static at 36 V,
@@ -634,7 +634,7 @@ locked together at 17.5:1 by the datasheet's own currents (4 uA insertion agains
 |---|---|---|
 | Fault timeout | C x V_TMRH / 70 uA (Eq. 11) | **350 ms** typ, **183 ms** worst case after 20% derating |
 | Required | 1.5 x t_start | **144 ms** — so 1.27x margin at the corner |
-| **Insertion delay** | C x V_TMRH / 4 uA | **6.1 s** typ, **3.6-13.6 s** over the spread |
+| **Insertion delay** | C x V_TMRH / 4 uA | **6.1 s** typ, **2.9-13.6 s** over the spread |
 
 **So the board waits several seconds at power-on before the LEDs can come on**,
 and nothing firmware does shortens it. That is a behaviour to know about, not a
@@ -671,16 +671,26 @@ rating, and on this board R_thJA is 50 C/W, so 39.8 W sustained would be fatal.
 But **Fig. 13 p.6** publishes normalised transient thermal impedance against
 pulse width, single-pulse plus six duty cycles, with its own formula
 `T_J,PK = T_C + P_DM x Z_TH-JC x R_TH-JC`. At the 96 ms worst-case ramp the
-single-pulse curve reads **Z ≈ 0.45**, and the figure annotates R_TH-JC =
-4.5 C/W:
+single-pulse curve reads **Z ≈ 0.45–0.50** — it is a log-log plot and the band is
+the honest width of the reading — and the figure annotates R_TH-JC = 4.5 C/W:
 
-    dT = 39.8 W x 0.45 x 4.5 C/W = 81 C
+| Z | rise | T_J at 25 °C ambient | T_J at 45 °C ambient |
+|---|---|---|---|
+| 0.45 | 81 °C | 106 °C | 126 °C |
+| **0.50** | **90 °C** | **115 °C** | **135 °C** |
 
 Case temperature is essentially ambient here, since steady-state dissipation is
-0.079 W. So T_J ≈ **106 °C** at 25 °C ambient and **126 °C** at 45 °C, both under
-the 150 °C limit. Note the datasheet contradicts itself — the p.1 thermal table
-gives R_θJC = 0.84 C/W against Fig. 13's 4.5 C/W — and the figure above uses the
-**pessimistic** one, so the real margin is wider.
+0.079 W. **The binding case is the top of the band at 45 °C ambient: 135 °C
+against a 150 °C limit, 15 °C of margin** — thin, and in the same enclosure
+condition the thermal budget already calls over-budget. At 25 °C ambient it is
+comfortable either way.
+
+Two things widen it in practice. The datasheet contradicts itself — the p.1
+thermal table gives R_θJC = **0.84 C/W** against Fig. 13's 4.5 C/W, a 5.4x
+difference — and the figures above use the pessimistic one. And 39.8 W is the
+power limit, reached only at the start of the ramp where V_DS is largest; the
+average over the ramp is lower. Neither is quantified here, so **15 °C is the
+number to design against**, not the one to be reassured by.
 
 **The two channels must be ramped one at a time.** Under power limit the current
 *rises* as the output charges — it is P_LIM/V_DS — so it starts at 1.05 A and
