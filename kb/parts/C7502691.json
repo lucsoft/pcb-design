@@ -1,0 +1,40 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7502691",
+  "@type": "Component",
+  "lcscId": "C7502691",
+  "mpn": "RB751V-40",
+  "manufacturer": "R+O",
+  "description": "Diode Independent 40V 0.03A Surface Mount SOD-323",
+  "category": "diode",
+  "package": "SOD-323",
+  "stock": 621200,
+  "priceUsd": 0.0179,
+  "parameters": {
+    "Diode Configuration": "Standalone",
+    "Voltage - DC Reverse (Vr) (Max)": "40V",
+    "Voltage - Forward(Vf@If)": "370mV@1mA",
+    "Reverse Leakage Current (Ir)": "500nA",
+    "Non-Repetitive Peak Forward Surge Current": "200mA",
+    "Current - Rectified": "30mA"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/03241c0735ccd51dc7a8adf53caddb72.pdf",
+  "retrieved": "2026-10-02",
+  "tier": null,
+  "pins": [],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": ""
+  },
+  "designVerdict": "SELECTED as D14 - lifts the HUSB238A VBUS pin at vSafe5V, where the BSS138 follower falls short.",
+  "notes": [
+    "Anode on the 5 V rail, cathode on the HUSB238A VBUS pin. At a 4.75 V bus the rail is 4.60 V and this part drops 0.37 V max at 1 mA (datasheet p.2), holding the pin at 4.23 V against a 3.15 V minimum - where the follower alone gives 3.05-3.75 V and fails at the low corner.",
+    "It conducts only at low bus voltage. Once the bus rises the follower takes the pin to ~18.5 V and this diode is reverse-biased by 13.5 V, inside its 40 V rating - including during a 58.1 V TVS clamp, because the follower's Zener holds the pin at 18.5 V regardless of the drain.",
+    "Chosen for low Vf at small current rather than for current capability: the load is 800 uA max. A 1N5819-class power Schottky would drop more at this current, which is the opposite of what is wanted."
+  ]
+}

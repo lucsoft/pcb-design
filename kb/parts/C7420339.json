@@ -40,6 +40,8 @@
   "notes": [
     "BSS138, low-Vth N-channel, SOT-23, 127k stock, $0.027.",
     "THIS IS THE UNLABELLED BOX. Hynetek publishes the Figure 6 'Voltage Regulator' with values at https://www.hynetek.com/2730.html - never in the datasheet. It is a BSS138 SOURCE FOLLOWER: gate pulled up through 10 kOhm and clamped by a 28 V Zener, source feeding the HUSB238A VBUS pin. A 0 Ohm link (RJ2 in their reference) bypasses it for builds at 28 V or below.",
-    "A source follower, NOT the resistor-plus-Zener shunt assumed earlier. The distinction matters: a follower holds the pin at roughly (Vgate - Vth) with low output impedance, whereas a series resistor would drop voltage with load current."
+    "A source follower, NOT the resistor-plus-Zener shunt assumed earlier. The distinction matters: a follower holds the pin at roughly (Vgate - Vth) with low output impedance, whereas a series resistor would drop voltage with load current.",
+    "FOLLOWER DROP RESOLVED, two parts. (1) HUSB238A VDD (pin 5) is an INPUT supply, not an output - p.4 recommends tying it to a 3.3 V rail - which drops the VBUS-pin requirement from 4.5 V to 3.15 V and its draw from 4.5 mA to 800 uA. (2) D14 (RB751V-40, C7502691) from the 5 V rail to the VBUS pin holds it at 4.23 V on a 4.75 V bus. This part's Vgs was never the thing to fix; the pin's requirement was.",
+    "Residual: VBUS_OK asserts at 3.67 V typ but 4.4 V worst case (p.6), so 4.23 V clears typical and misses the worst corner by 0.17 V. The datasheet files VBUS_OK under VBUS Present and Protection and does not gate PD negotiation on it - negotiation runs on CC - so this is a status flag, not a start-up blocker. Bench-check it."
   ]
 }

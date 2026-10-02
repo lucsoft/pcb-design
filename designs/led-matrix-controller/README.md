@@ -418,6 +418,49 @@ This replaces the earlier assumption of a resistor-plus-Zener shunt, and the
 difference matters: a follower holds the pin near (Vgate − Vth) with low output
 impedance, where a series resistor would drop voltage with load current.
 
+#### The follower is too lossy at 5 V, and the fix is two parts
+
+The follower costs one Vgs, and it costs it exactly where there is no room. At
+the bottom of vSafe5V — a **4.75 V** bus — it delivers only **3.05-3.75 V**,
+against a VBUS-pin minimum of 4.5 V when VDD is unpowered. The chip would not
+reliably come up.
+
+**First: VDD (pin 5) is an input supply, so tie it to 3V3.** The datasheet is
+explicit — *"It is recommended to tie this pin to the single cell battery or a
+3.3 V power rail. When the power is not available from this pin, the VBUS pin may
+power the internal circuitry"* (p.4). That one connection changes two numbers at
+once:
+
+| With VDD = 3.3 V | With VDD unpowered |
+|---|---|
+| VBUS pin range **3.15 – 29.4 V** | 4.5 – 29.4 V |
+| VBUS pin current **330 µA typ / 800 µA max** | 4.5 mA |
+
+The requirement drops by 1.35 V and the current by **5.6x**, which also shrinks
+the follower's own Vgs. Sequencing makes this safe: nothing has to happen until
+firmware pulls EN_N low, and by then the 5 V and 3.3 V rails are both up, because
+they are fed from the bus directly.
+
+**Second: a Schottky from the 5 V rail to the VBUS pin.** At a 4.75 V bus the
+rail sits at **4.60 V** (the dropout table), and an RB751V-40 drops **0.37 V max
+at 1 mA** (p.2), so the pin is held at **4.23 V** — and the follower, seeing its
+source above (Vgate − Vth), simply stops conducting. Once the bus rises the
+follower takes the pin to ~18.5 V and the Schottky is reverse-biased by 13.5 V,
+well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
+
+| | Follower alone | With D14 |
+|---|---|---|
+| Pin at a 4.75 V bus | 3.05 – 3.75 V | **4.23 V** |
+| Against the 3.15 V minimum | **fails at the low corner** | 1.08 V margin |
+
+**One residual, stated rather than hidden.** `VBUS_OK` asserts at 3.67 V typ but
+**4.4 V worst case** (p.6), and 4.23 V clears the typical by 0.23 V while falling
+0.17 V short of the worst case. The datasheet lists VBUS_OK under "VBUS Present
+and Protection" and does not say PD negotiation is gated on it — negotiation runs
+on CC — so this is a status flag that may read 0 on a worst-case part at the
+bottom of vSafe5V, not a start-up blocker. Worth a bench check on the first
+board.
+
 **Hynetek's >28 V gate drive is not built here, and this note survives only to
 say why.** Figures 4, 5 and 6 all draw the *same* Zener gate network — the 28 V
 one, not a 48 V feature — and above 28 V Hynetek replaces it with GATE pulled to
@@ -760,6 +803,7 @@ Active parts. Passives are listed below the table.
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
 | D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the 100 V FET is 1.72x that, but the 60 V bus parts are only **1.03x** | 0.037 |
 | D10-D13 | SMAJ15CA | C7466491 | 4 | 15 V TVS on the A/B pair, 2 per output | 0.031 |
+| D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
 | L1 | ANR5040T100M | C7427121 | 1 | 10 uH, TPS54360B output, 2.9 A Isat | 0.058 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
 | R1 | FRM252WFR010TN | C7419995 | 1 | 10 mΩ 1% shunt, low-side | 0.058 |
@@ -1064,6 +1108,22 @@ Two checks at layout, each worth a minute: confirm **pin 1 from the square pad**
 rather than from reading direction, and **ring out `WT` to the W5500's MISO**.
 Both guard the one error class that survives fabrication.
 
+**Symbol, footprint and 3D model come free, via the official part.** The clone
+has no EasyEDA library entry, but it does not need one: put **C3198004's
+neighbour C134462** — the WIZ850io — in the netlist as the `Supplier Part`, and
+EasyEDA resolves the symbol, the footprint and the 3D model from its own library.
+The clone drops into that footprint because it is the same one.
+
+**Mark it do-not-fit for assembly.** The netlist exists to place the part on the
+schematic; it must not end up on a JLCPCB PCBA order, or they will fit a $22.89
+WIZ850io where a $4 clone was intended. Treat it like J2/J3, which are in the
+BOM but hand-fitted.
+
+Whether EasyEDA actually carries C134462 is a one-click check in the editor and
+has not been verified here — the LCSC detail endpoint does not report library
+availability. If it does not, the fallback is drawing a 2 × 1×6 header footprint
+by hand, which is the simplest footprint on the board.
+
 **Area is not the reason to do this.** The module is ~25 × 23 mm = 575 mm²
 against roughly 496 mm² for the chip, crystal, jack and support passives, so the
 board gets slightly *bigger*. The win is the two retired open questions, the six
@@ -1085,7 +1145,9 @@ design is built around had no entry.
 
 | Part | Value | Source |
 |---|---|---|
+| **VDD (pin 5) to 3V3** | tie it, do not leave it on VBUS alone | p.4: VDD is an **input supply**, "recommended to tie this pin to … a 3.3 V power rail". This is what makes the follower's drop survivable — see below |
 | VDD decoupling | **1 µF ceramic** | p.4, pin 5 — and an error-severity rule in the part's KB record |
+| D14, 5V rail → VBUS pin | **RB751V-40** (C7502691) | lifts the VBUS pin at vSafe5V; reverse-biased once the follower takes over |
 | ADDR, DEBUG_N | 900 kΩ each | p.4-5, keeps standby current low |
 | INT_N pull-up | 10 kΩ | p.5, open-drain |
 | BSS138 gate pull-up | 10 kΩ | same source |
@@ -1253,14 +1315,14 @@ At the 72 x 71 mm envelope the board is 51 cm2.
 | shunt 10 mΩ | 0.25 | at full 5 A |
 | SY8089 + inductor | 0.19 | |
 | 10 µH inductor DCR | 0.08 | |
-| BSS138 follower + 10 kΩ | 0.11 | ~17.5 V at 4.5 mA with BZT52C20, plus 26 mW in the pull-up |
+| BSS138 follower + 10 kΩ + D1 | 0.07 | 14 mW channel at the 800 µA the pin draws with VDD tied, 26 mW pull-up, 32 mW Zener |
 | 2x MAX3485 driving 120 Ω | 0.06 | DE tied high, line never idle |
 | 74AHCT541 | 0.02 | |
 | R4 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
-| **total** | **3.75** | status LEDs excluded; TVS leakage not counted |
+| **total** | **3.71** | status LEDs excluded; TVS leakage not counted |
 
-The rows sum to 3.75 W against roughly **4.6 W** of capacity at 0.09 W/cm² over
-51 cm², so **1.22x headroom** — and that is at **25 °C ambient**. Inside an
+The rows sum to 3.71 W against roughly **4.6 W** of capacity at 0.09 W/cm² over
+51 cm², so **1.24x headroom** — and that is at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
 switching to the LM5069 and an N-channel FET moved the whole switched path to
@@ -1334,7 +1396,7 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.22x** headroom
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.24x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
 roughly 2.3 W, and the board is at **0.6x** — over budget, not merely tight.
@@ -1456,16 +1518,9 @@ would do without this cost.
    against roughly $3-6 for a clone and $4.65 for the discrete parts it replaces,
    so buying official costs about five times the discrete BOM for this block.
 
-3. **The BSS138 follower may not clear the HUSB238A's UVLO at vSafe5V.** With VDD
-   unavailable the chip needs VBUS ≥ 3.67-4.4 V and draws 4.5 mA; at 5 V in, the
-   follower delivers roughly 2.8-3.5 V. Feeding the rails pre-FET means VDD is
-   powered before this matters, which should resolve it — but the margin at the
-   3.15 V floor is thin and Hynetek's 36 V reference should be checked for how
-   they bias the follower at 5 V.
-
 ### Verification, not design
 
-4. **The SOA margin rests on a graphical reading, now taken by pixel.** The
+3. **The SOA margin rests on a graphical reading, now taken by pixel.** The
    NSS085N100S's Fig. 12 p.4 has no 100 ms curve, so the 61-96 ms ramp is bounded
    by the **DC** line: a constant-power asymptote at ~72 W at Vds 36 V, giving
    **1.8x** over the 39.8 W power limit and **1.46x** at the PWR_ILM max corner.
@@ -1476,7 +1531,7 @@ would do without this cost.
    The thermal half of this is no longer open: Fig. 13 p.6 gives single-pulse
    transient thermal impedance, and at 96 ms it puts the junction rise at ~81 °C.
 
-5. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
+4. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
    not observed. Testable for free using the XL1509's own thermal shutdown: run
    one module at full white for 15 minutes and watch for the LEDs cutting out and
    recovering. The TSD threshold is unspecified, so a pass means "below some
@@ -1484,26 +1539,26 @@ would do without this cost.
 
 ### Depends on the converter board
 
-6. **The differential receiver footprint and 120 Ω termination** must exist on
+5. **The differential receiver footprint and 120 Ω termination** must exist on
    the first converter board of each chain. Populating only the controller end is
    useless.
 
-7. **The module's inductor, catch diode and input bulk capacitor** are unknown —
+6. **The module's inductor, catch diode and input bulk capacitor** are unknown —
    the .epro2 converter sheet has no LCSC parts assigned. None of them block the
    controller: the inrush ramp was sized for a worst case beyond what it can
    power.
 
 ### Accepted
 
-8. **No overvoltage protection above 28 V**, inherent to the HUSB238A topology.
+7. **No overvoltage protection above 28 V**, inherent to the HUSB238A topology.
     The SMAJ36CA and the ADC divider carry it.
 
-9. **Connector orientation is handled mechanically** — picoMAX is polarised and
+8. **Connector orientation is handled mechanically** — picoMAX is polarised and
     each module sits in a hard shell. The residual risk is a mis-wired cable, and
     the failure modes are asymmetric: A/B swapped is non-destructive, power onto
     a data pole destroys the transceiver.
 
-10. **The OVLO cannot be set to protect the modules.** Carrying both the ±10%
+9. **The OVLO cannot be set to protect the modules.** Carrying both the ±10%
     comparator spread and the 1% resistors, an OVLO that stays above the 37.8 V
     maximum bus at its *low* extreme needs **≥42.8 V** nominal, and one that stays
     below the modules' 45 V absolute at its *high* extreme needs **≤40.1 V**.
@@ -1537,6 +1592,12 @@ Kept so they are not re-opened:
 - **Channel count** — two, verified against three and four. See Why two channels.
 - **Module BOM** — extracted from the .epro2 with `tools/epro.py`. The project is
   titled V2 but is V3.
+- **HUSB238A supply at vSafe5V** — **VDD (pin 5) tied to 3V3**, plus **D14**
+  (RB751V-40) from the 5 V rail to the VBUS pin. VDD is an input supply, not an
+  output, so tying it drops the VBUS-pin requirement from 4.5 V to 3.15 V and its
+  draw from 4.5 mA to 800 µA; the Schottky then holds the pin at 4.23 V on a
+  4.75 V bus where the follower alone gave 3.05-3.75 V. Residual: `VBUS_OK` may
+  read 0 on a worst-case part at the bottom of vSafe5V.
 - **USB-C receptacle** — **CX90B-16P** (C3198004), Hirose CX series, **5 A /
   48 V AC/DC**, 16-position USB 2.0. Closes the longest-standing blocking
   question. Note LCSC's parameter table says 20 V for it and is **wrong**; the
