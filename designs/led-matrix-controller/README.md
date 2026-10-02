@@ -1899,7 +1899,7 @@ design is built around had no entry.
 | D14, 5V rail → VBUS pin | **RB751V-40** (C7502691) | lifts the VBUS pin at vSafe5V; reverse-biased once the follower takes over |
 | ADDR, DEBUG_N | 910 kΩ each | p.4-5 calls for 900 kΩ, which is not an E96 value; 910 kΩ is the nearest stocked one. Keeps standby current low |
 | INT_N pull-up | 10 kΩ | p.5, open-drain |
-| Q3 follower base pull-up (R44) | **4.7 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — those are Q1/Q2 with 10 kΩ pull-**downs** (R15/R16), because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
+| Q3 follower base pull-up (R44) | **3.24 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — those are Q1/Q2 with 10 kΩ pull-**downs** (R15/R16), because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
 | Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
 | EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest E96 value that is stocked. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
 | FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V). Its only function is disabling the GATE driver, and GATE is unconnected, so a defined low is the whole requirement |
@@ -2235,8 +2235,8 @@ The rows sum to 4.14 W against **4.80 W** of capacity at 0.09 W/cm² over
 change but not all of it: of the 0.40 W added, **0.31 W** is the eFuse's 45 mΩ
 max against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
 lower-DCR inductor, **+0.01 W** is the PD follower (the 27 V clamp draws less than
-the 20 V one did, but the NPN's 4.7 kΩ base pull-up draws more than the 10 kΩ it
-replaced), and **0.12 W** is the status-LED row, which the 3.71 W figure simply
+the 20 V one did, but the NPN's 3.24 kΩ base pull-up draws considerably more than
+the 10 kΩ it replaced), and **0.12 W** is the status-LED row, which the 3.71 W figure simply
 did not count. On the eFuse alone the headroom would be 1.19x. And that is
 at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
