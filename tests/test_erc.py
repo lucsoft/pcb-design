@@ -322,18 +322,33 @@ def _():
     assert "P1-overvoltage" in rules(run(n, worst))
 
 
-@case("E1 does not fire on two output pads of the same part")
+@case("E1 does not fire on several pads of ONE driver")
 def _():
-    # The TPS16630 bonds its output to three pads and the ESP32-C6 module its
-    # ground to nine. Paralleling them is the required wiring, so counting pads
-    # rather than parts made correct boards look like driver contention -- and
-    # a rule that fires on a correct board is a rule people stop reading.
+    # The TPS16630 bonds its output to three pads, all named OUT. Paralleling
+    # them is the required wiring, so counting pads made a correct board look
+    # like driver contention -- and a rule that fires on a correct board is a
+    # rule people stop reading.
     n = {
-        **comp("gge1", "U1", "C84548",
-               {"20": "VBUS", "10": "GND", "11": "SIG", "12": "SIG"}),
-        **comp("gge2", "R1", "C25744", {"1": "SIG", "2": "GND"}),
+        **comp("gge1", "U1", "C1849461",
+               {"1": "VBUS", "9": "GND", "21": "GND",
+                "18": "OUT1", "19": "OUT1", "20": "OUT1"}),
+        **comp("gge2", "R1", "C25744", {"1": "OUT1", "2": "GND"}),
     }
     assert "E1-driver-contention" not in rules(run(n))
+
+
+@case("E1 still fires on two independent drivers inside one part")
+def _():
+    # The narrowing above must not reach this far. A 74AHCT541's Y0 and Y1 are
+    # separate totem-pole stages in one package, and shorting them is a dead
+    # short -- not one output bonded out twice. The pin name is what tells the
+    # two cases apart: OUT/OUT/OUT against Y0/Y1.
+    n = {
+        **comp("gge1", "U1", "C84548",
+               {"20": "VBUS", "10": "GND", "17": "SIG", "18": "SIG"}),
+        **comp("gge2", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    }
+    assert "E1-driver-contention" in rules(run(n))
 
 
 @case("K5 does not fire on a pin wired to the NC net")

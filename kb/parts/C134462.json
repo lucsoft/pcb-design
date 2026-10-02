@@ -60,7 +60,8 @@
       "number": "7",
       "name": "MISO",
       "type": "output",
-      "contact": "J2-6"
+      "contact": "J2-6",
+      "source": "inferred - by elimination, the only mandatory SPI signal left unexposed on the twelfth pad. Not stated by WIZnet. Settle it with a continuity check before soldering the module down."
     },
     {
       "number": "8",
@@ -102,7 +103,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "EasyEDA Pro symbol WIZ850IO read with tools/eda.py (pin numbers); datasheet p.2 Pin Description, J1 and J2 tables (names and types). The J2 header maps 12->7, NOT 7->12: all six names agree on that direction and none on the other. J2-6 MISO is by elimination. The symbol spells J1-5 SCNn; the datasheet says SCSn and the name here follows the datasheet."
+    "pins": "EasyEDA Pro symbol WIZ850IO read with tools/eda.py (pin numbers); datasheet p.2 Pin Description, J1 and J2 tables (names and types). The J2 header maps 12->7, NOT 7->12: all six names agree on that direction and none on the other. The symbol spells pin 5 SCNn; the datasheet says SCSn and the name here follows the datasheet."
   },
   "designVerdict": "SELECTED as the footprint reference for U3. The board is drawn to this pin map; the intended purchase is a cheaper W5500 Lite clone whose silkscreen has been read and matches.",
   "notes": [

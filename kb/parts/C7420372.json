@@ -46,7 +46,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "two-terminal TVS, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
+    "pins": "two-terminal BIDIRECTIONAL TVS in DFN1006-2L, pins named A1/A2 by the EasyEDA Pro symbol (tools/eda.py). There is no cathode band and no polarity to get wrong: either pin may sit on the signal and the other on ground."
   },
   "designVerdict": "SELECTED as D3-D6 - ESD on the USB-C D+/D- and CC1/CC2 lines.",
   "notes": [

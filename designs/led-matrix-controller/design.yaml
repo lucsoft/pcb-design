@@ -78,14 +78,9 @@ buses:
 
 # Suppress a rule here, with a comment saying why, rather than working
 # around it in the netlist.
+# Scope each entry as `rule@where` unless it genuinely applies board-wide. A
+# bare id is how a working check quietly stops working.
 ignore:
-  # J2/J3 are Wago picoMAX 3.5 headers, hand-fitted from Reichelt and not
-  # orderable through LCSC, so they carry no Supplier Part. They are real
-  # parts with real order numbers (2091-1424 board side, 2091-1104 plugs) -
-  # see the sourcing table - but the importer cannot resolve them and
-  # S4 would fire on every build.
-  - S4-missing-lcsc
-
   # The HUSB238A's VBUS pin is a sense input behind the Figure 6 follower, not
   # a supply. The chip's actual supply is VDD, tied to 3V3 and decoupled with
   # C18 (1 uF, datasheet-mandated) and C19 (100 nF). P2 fires because the kb

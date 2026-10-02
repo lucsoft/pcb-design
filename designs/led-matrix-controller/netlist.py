@@ -56,8 +56,8 @@ COMPONENTS = [
     ("D5", "C7420372", "H5VL10B", "ESD 5V", {"1": "CC1", "2": "GND"}),
     ("D6", "C7420372", "H5VL10B", "ESD 5V", {"1": "CC2", "2": "GND"}),
 
-    ("C33", "C153036", "CGA5L3X7R2A225K", "2.2uF 100V", {"1": "VBUS", "2": "GND"}),
-    ("R2", "C17902", "RC1206FR-0710KL", "10k 1206", {"1": "VBUS", "2": "GND"}),
+    ("C33", "C153036", "FS32X225K101EGG", "2.2uF 100V", {"1": "VBUS", "2": "GND"}),
+    ("R2", "C17902", "1206W4F1002T5E", "10k 1206", {"1": "VBUS", "2": "GND"}),
     ("D7", "C19077551", "SMAJ36CA", "TVS 36V", {"1": "VBUS", "2": "GND"}),
 
     # U1 pin 17 is the exposed pad and the ONLY ground connection.
@@ -75,7 +75,7 @@ COMPONENTS = [
     ("R22", "C25800", "0402WGF9103TCE", "910k", {"1": "PD_DEBUG_N", "2": "GND"}),
     ("R23", "C25800", "0402WGF9103TCE", "910k", {"1": "PD_EN_HVDCP", "2": "GND"}),
     ("R19", "C25744", "0402WGF1002TCE", "10k", {"1": "PD_INT_N", "2": "BUS_3V3"}),
-    ("C18", "C7472948", "CL05A105KA5NQNC", "1uF", {"1": "BUS_3V3", "2": "GND"}),
+    ("C18", "C7472948", "HGC0402R5105K500NTEJ", "1uF", {"1": "BUS_3V3", "2": "GND"}),
     ("C19", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
 
     # The Figure 6 follower. Q3 is an NPN emitter follower, not the vendor's
@@ -106,12 +106,12 @@ COMPONENTS = [
     ("R27", "C25900", "0402WGF4701TCE", "4.7k", {"1": "COMP_5V", "2": "COMP_MID"}),
     ("C6", "C106862", "CC0402KRX7R9BB333", "33nF", {"1": "COMP_MID", "2": "GND"}),
     ("C7", "C1527", "0402B151K500NT", "150pF", {"1": "COMP_5V", "2": "GND"}),
-    ("C8", "C2840282", "CGA6M3X7R2A475K", "4.7uF 100V", {"1": "VBUS", "2": "GND"}),
-    ("C9", "C513710", "CL21B224KBFNNNE", "220nF 100V", {"1": "VBUS", "2": "GND"}),
+    ("C8", "C2840282", "1210B475K101NT", "4.7uF 100V", {"1": "VBUS", "2": "GND"}),
+    ("C9", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "VBUS", "2": "GND"}),
     ("D2", "C2903825", "SS36", "schottky 60V", {"1": "SW_5V", "2": "GND"}),
     ("L1", "C112288", "SPM6530T-100M", "10uH", {"1": "SW_5V", "2": "BUS_5V"}),
-    ("C10", "C7432781", "CL31A106KBHNNNE", "10uF 50V", {"1": "BUS_5V", "2": "GND"}),
-    ("C11", "C7432781", "CL31A106KBHNNNE", "10uF 50V", {"1": "BUS_5V", "2": "GND"}),
+    ("C10", "C7432781", "HGC1206R5106K500NSPJ", "10uF 50V", {"1": "BUS_5V", "2": "GND"}),
+    ("C11", "C7432781", "HGC1206R5106K500NSPJ", "10uF 50V", {"1": "BUS_5V", "2": "GND"}),
 
     # ---- 5 V -> 3.3 V -------------------------------------------------
     ("U5", "C479074", "SY8089A1AAC", "buck 3V3", {
@@ -119,10 +119,10 @@ COMPONENTS = [
     ("R30", "C25741", "0402WGF1003TCE", "100k", {"1": "SY_EN", "2": "BUS_5V"}),
     ("R28", "C25741", "0402WGF1003TCE", "100k", {"1": "BUS_3V3", "2": "FB_3V3"}),
     ("R29", "C43473", "0402WGF2212TCE", "22.1k", {"1": "FB_3V3", "2": "GND"}),
-    ("C12", "C15850", "CL21A106KOQNNNE", "10uF 25V", {"1": "BUS_5V", "2": "GND"}),
+    ("C12", "C15850", "CL21A106KAYNNNE", "10uF 25V", {"1": "BUS_5V", "2": "GND"}),
     ("C14", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_5V", "2": "GND"}),
     ("L2", "C7427146", "ANR6028T2R2M", "2.2uH", {"1": "LX_3V3", "2": "BUS_3V3"}),
-    ("C13", "C45783", "CL21A226MOQNNNE", "22uF 25V", {"1": "BUS_3V3", "2": "GND"}),
+    ("C13", "C45783", "CL21A226MAQNNNE", "22uF 25V", {"1": "BUS_3V3", "2": "GND"}),
 
     # ---- MCU ----------------------------------------------------------
     # Pins 29-37 are the module's thermal pad, broken out by the symbol as nine
@@ -139,8 +139,8 @@ COMPONENTS = [
         "30": "GND", "31": "GND", "32": "GND", "33": "GND", "34": "GND",
         "35": "GND", "36": "GND", "37": "GND"}),
     ("R39", "C25744", "0402WGF1002TCE", "10k", {"1": "MCU_EN", "2": "BUS_3V3"}),
-    ("C17", "C7472948", "CL05A105KA5NQNC", "1uF", {"1": "MCU_EN", "2": "GND"}),
-    ("C15", "C45783", "CL21A226MOQNNNE", "22uF 25V", {"1": "BUS_3V3", "2": "GND"}),
+    ("C17", "C7472948", "HGC0402R5105K500NTEJ", "1uF", {"1": "MCU_EN", "2": "GND"}),
+    ("C15", "C45783", "CL21A226MAQNNNE", "22uF 25V", {"1": "BUS_3V3", "2": "GND"}),
     ("C16", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
     ("SW1", "C720477", "TS-1088-AR02016", "BOOT", {"1": "MCU_BOOT", "2": "GND"}),
     ("SW2", "C720477", "TS-1088-AR02016", "EN", {"1": "MCU_EN", "2": "GND"}),
@@ -169,7 +169,7 @@ COMPONENTS = [
         "1": "GND", "2": "GND", "3": "INA_ALERT", "4": "I2C_SDA",
         "5": "I2C_SCL", "6": "BUS_3V3", "7": "GND", "8": "BUS_3V3",
         "9": "GND", "10": "LED_RTN"}),
-    ("R1", "C7419995", "WSL2512R0100FEA", "10mR 2512", {"1": "LED_RTN", "2": "GND"}),
+    ("R1", "C7419995", "FRM252WFR010TN", "10mR 2512", {"1": "LED_RTN", "2": "GND"}),
     ("R45", "C25744", "0402WGF1002TCE", "10k", {"1": "INA_ALERT", "2": "BUS_3V3"}),
     ("C20", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
     ("R17", "C25900", "0402WGF4701TCE", "4.7k", {"1": "I2C_SDA", "2": "BUS_3V3"}),
@@ -184,7 +184,7 @@ COMPONENTS = [
     # OE0 (1) and OE1 (19) are active-low enables and must go to GND or every
     # output stays high-Z. The seven unused A inputs are tied; the seven unused
     # outputs are not, and say so.
-    ("U9", "C84548", "74AHCT541PW", "level shift", {
+    ("U9", "C84548", "74AHCT541PW,118", "level shift", {
         "1": "GND", "2": "LED_DATA_BUF", "3": "GND", "4": "GND", "5": "GND",
         "6": "GND", "7": "GND", "8": "GND", "9": "GND", "10": "GND",
         "11": "NC", "12": "NC", "13": "NC", "14": "NC", "15": "NC",
@@ -207,18 +207,18 @@ COMPONENTS = [
         "10": "CH1_DVDT", "11": "CH1_ILIM", "12": "NC", "13": "CH1_SHDN",
         "14": "NC", "15": "NC", "16": "PGOOD", "17": "NC",
         "18": "CH1_36V", "19": "CH1_36V", "20": "CH1_36V", "21": "GND"}),
-    ("R5", "C5159692", "0402WGF7323TCE", "732k", {"1": "VBUS", "2": "CH1_UVLO"}),
+    ("R5", "C5159692", "FRC0402F7323TS", "732k", {"1": "VBUS", "2": "CH1_UVLO"}),
     ("R7", "C270623", "0402WGF2553TCE", "255k", {"1": "CH1_UVLO", "2": "CH1_OVP"}),
-    ("R9", "C2909347", "0402WGF3002TCE", "30.0k", {"1": "CH1_OVP", "2": "GND"}),
-    ("C1", "C64705", "CC0603KRX7R9BB224", "220nF", {"1": "CH1_DVDT", "2": "GND"}),
+    ("R9", "C2909347", "FRC0402F3002TS", "30.0k", {"1": "CH1_OVP", "2": "GND"}),
+    ("C1", "C64705", "CL10B224KB8NNNC", "220nF", {"1": "CH1_DVDT", "2": "GND"}),
     ("R3", "C11457", "0402WGF3241TCE", "3.24k", {"1": "CH1_ILIM", "2": "GND"}),
-    ("C3", "C513710", "CL21B224KBFNNNE", "220nF 100V", {"1": "VBUS", "2": "GND"}),
-    ("C34", "C513710", "CL21B224KBFNNNE", "220nF 100V", {"1": "CH1_36V", "2": "GND"}),
+    ("C3", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "VBUS", "2": "GND"}),
+    ("C34", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "CH1_36V", "2": "GND"}),
     # Cathode on the output. SS11.1: interrupting the current drives OUT
     # negative against a -0.3 V absolute maximum.
     ("D15", "C12790", "MBRS3100T3G", "schottky 100V", {"1": "CH1_36V", "2": "GND"}),
     ("D8", "C19077551", "SMAJ36CA", "TVS 36V", {"1": "CH1_36V", "2": "LED_RTN"}),
-    ("R11", "C2906864", "0402WGF1001TCE", "1k", {"1": "CH1_EN", "2": "CH1_SHDN"}),
+    ("R11", "C2906864", "FRC0402F1001TS", "1k", {"1": "CH1_EN", "2": "CH1_SHDN"}),
     ("R13", "C25744", "0402WGF1002TCE", "10k", {"1": "CH1_SHDN", "2": "GND"}),
     ("Q1", "C7420339", "BSS138", "interlock ch1", {
         "1": "PD_FAULT", "2": "GND", "3": "CH1_SHDN"}),
@@ -231,16 +231,16 @@ COMPONENTS = [
         "10": "CH2_DVDT", "11": "CH2_ILIM", "12": "NC", "13": "CH2_SHDN",
         "14": "NC", "15": "NC", "16": "PGOOD", "17": "NC",
         "18": "CH2_36V", "19": "CH2_36V", "20": "CH2_36V", "21": "GND"}),
-    ("R6", "C5159692", "0402WGF7323TCE", "732k", {"1": "VBUS", "2": "CH2_UVLO"}),
+    ("R6", "C5159692", "FRC0402F7323TS", "732k", {"1": "VBUS", "2": "CH2_UVLO"}),
     ("R8", "C270623", "0402WGF2553TCE", "255k", {"1": "CH2_UVLO", "2": "CH2_OVP"}),
-    ("R10", "C2909347", "0402WGF3002TCE", "30.0k", {"1": "CH2_OVP", "2": "GND"}),
-    ("C2", "C64705", "CC0603KRX7R9BB224", "220nF", {"1": "CH2_DVDT", "2": "GND"}),
+    ("R10", "C2909347", "FRC0402F3002TS", "30.0k", {"1": "CH2_OVP", "2": "GND"}),
+    ("C2", "C64705", "CL10B224KB8NNNC", "220nF", {"1": "CH2_DVDT", "2": "GND"}),
     ("R4", "C11457", "0402WGF3241TCE", "3.24k", {"1": "CH2_ILIM", "2": "GND"}),
-    ("C4", "C513710", "CL21B224KBFNNNE", "220nF 100V", {"1": "VBUS", "2": "GND"}),
-    ("C35", "C513710", "CL21B224KBFNNNE", "220nF 100V", {"1": "CH2_36V", "2": "GND"}),
+    ("C4", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "VBUS", "2": "GND"}),
+    ("C35", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "CH2_36V", "2": "GND"}),
     ("D16", "C12790", "MBRS3100T3G", "schottky 100V", {"1": "CH2_36V", "2": "GND"}),
     ("D9", "C19077551", "SMAJ36CA", "TVS 36V", {"1": "CH2_36V", "2": "LED_RTN"}),
-    ("R12", "C2906864", "0402WGF1001TCE", "1k", {"1": "CH2_EN", "2": "CH2_SHDN"}),
+    ("R12", "C2906864", "FRC0402F1001TS", "1k", {"1": "CH2_EN", "2": "CH2_SHDN"}),
     ("R14", "C25744", "0402WGF1002TCE", "10k", {"1": "CH2_SHDN", "2": "GND"}),
     ("Q2", "C7420339", "BSS138", "interlock ch2", {
         "1": "PD_FAULT", "2": "GND", "3": "CH2_SHDN"}),
@@ -251,7 +251,7 @@ COMPONENTS = [
     # ---- Differential link ------------------------------------------------
     # RE_N to VCC as well as DE: RE is a CMOS input and "unused" is not a state.
     # RO is then permanently high-Z and says so.
-    ("U7", "C6395158", "MAX3485CSA", "RS-485 ch1", {
+    ("U7", "C6395158", "MAX3485CSA-JSM", "RS-485 ch1", {
         "1": "NC", "2": "BUS_3V3", "3": "BUS_3V3", "4": "CH1_DI",
         "5": "GND", "6": "CH1_A_DRV", "7": "CH1_B_DRV", "8": "BUS_3V3"}),
     ("C21", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
@@ -261,7 +261,7 @@ COMPONENTS = [
     ("D10", "C19077529", "SMAJ7.0CA", "TVS 7V", {"1": "CH1_A", "2": "LED_RTN"}),
     ("D11", "C19077529", "SMAJ7.0CA", "TVS 7V", {"1": "CH1_B", "2": "LED_RTN"}),
 
-    ("U8", "C6395158", "MAX3485CSA", "RS-485 ch2", {
+    ("U8", "C6395158", "MAX3485CSA-JSM", "RS-485 ch2", {
         "1": "NC", "2": "BUS_3V3", "3": "BUS_3V3", "4": "CH2_DI",
         "5": "GND", "6": "CH2_A_DRV", "7": "CH2_B_DRV", "8": "BUS_3V3"}),
     ("C22", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
@@ -324,6 +324,22 @@ def selfcheck(net):
         for pin, n in comp["pins"].items():
             if not n:
                 problems.append(f"{d}.{pin}: empty net name")
+
+        # device_name is cosmetic -- the importer resolves by Supplier Part
+        # alone -- but it is also the string a reviewer reads off the canvas,
+        # so a label naming a different manufacturer's part is a trap laid for
+        # the one person most likely to catch something else. Fifteen of them
+        # had drifted before this check existed.
+        lcsc = comp["props"]["Supplier Part"]
+        rec = PARTS / f"{lcsc}.json"
+        if rec.exists():
+            mpn = json.loads(rec.read_text(encoding="utf-8")).get("mpn")
+            if mpn and mpn != comp["props"]["device_name"]:
+                problems.append(
+                    f"{d}: device_name '{comp['props']['device_name']}' is not "
+                    f"{lcsc}'s part number '{mpn}'")
+        else:
+            problems.append(f"{d}: {lcsc} has no kb record")
     return problems
 
 

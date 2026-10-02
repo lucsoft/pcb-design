@@ -179,7 +179,10 @@ nothing downstream reports it. Run `eda.py verify` on the whole BOM before
 writing a netlist, the way `stock.py` is run before ordering one.
 
 Where the two numbering schemes differ, record both: `--pin "1:GND:power_in:contact=J1-1"`
-keeps the silkscreen designation that assembly reads.
+keeps the silkscreen designation that assembly reads. A single pin whose
+provenance is weaker than the rest of the map takes `source=` of its own —
+`erc.py` prefers it over `provenance.pins`, so one inferred pin does not drag
+eleven datasheet-backed ones down to warning severity.
 
 Turn datasheet requirements into part rules while the datasheet is open — a
 required decoupling capacitor, a strapping pin that must not be pulled low.

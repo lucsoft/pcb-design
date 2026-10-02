@@ -115,7 +115,7 @@
       ],
       "requires": "pullup",
       "severity": "error",
-      "note": "open-drain output - it cannot assert high without R19's class of pull-up. Configured as a shunt-overvoltage comparator it is the only sub-millisecond hardware shed path on the board."
+      "note": "open-drain output - it cannot assert high without a pull-up (R45 on the LED matrix controller). Configured as a shunt-overvoltage comparator it is the only sub-millisecond hardware shed path on the board."
     },
     {
       "id": "a0-tied",

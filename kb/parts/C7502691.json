@@ -42,7 +42,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal Schottky, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
+    "pins": "two-terminal Schottky in SOD-323: pin 1 = cathode, the banded end; pin 2 = anode. Polarity from the package drawing, not inferred from function."
   },
   "designVerdict": "SELECTED as D14 - lifts the HUSB238A VBUS pin at vSafe5V, where the emitter follower falls short.",
   "notes": [

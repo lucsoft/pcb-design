@@ -111,7 +111,7 @@
       ],
       "requires": "connected",
       "severity": "error",
-      "note": "driver enable must be driven or strapped; this design ties DE high and RE low, so the line is never idle."
+      "note": "driver enable must be driven or strapped; this design ties DE high AND RE_N high - RE is active-low, so high disables the receiver, which is what an unused CMOS input needs. The line is never idle."
     }
   ]
 }

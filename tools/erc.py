@@ -434,11 +434,14 @@ class Check:
             passives = [(c, p) for c, p, t in types if t == "passive"]
             unknown = any(t == "unspecified" for _, _, t in types)
 
-            # Count distinct parts, not pins. A power part routinely bonds one
-            # output to several pads -- the TPS16630 has three OUT pins and the
-            # ESP32-C6 module nine GND -- and paralleling them is the required
-            # wiring, not contention. Contention needs two different drivers.
-            drivers = {c.designator for c, _ in strong}
+            # Count distinct DRIVERS, which is neither pins nor parts. A power
+            # part bonds one output to several pads -- the TPS16630's three OUT
+            # pins are one FET -- and paralleling those is required wiring. But
+            # one part also holds several independent drivers: a 74AHCT541's Y0
+            # and Y1 are separate totem-pole stages and shorting them is a dead
+            # short. The pin NAME separates the two cases, because the pads of
+            # one driver share a name and independent drivers do not.
+            drivers = {(c.designator, c.pin_name(p)) for c, p in strong}
             if len(drivers) > 1:
                 who = ", ".join(f"{c.designator}.{p} ({c.pin_name(p)})"
                                 for c, p in strong)

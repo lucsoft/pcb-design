@@ -80,7 +80,7 @@
   "gge6": {
     "props": {
       "Designator": "C33",
-      "device_name": "CGA5L3X7R2A225K",
+      "device_name": "FS32X225K101EGG",
       "value": "2.2uF 100V",
       "Supplier Part": "C153036"
     },
@@ -92,7 +92,7 @@
   "gge7": {
     "props": {
       "Designator": "R2",
-      "device_name": "RC1206FR-0710KL",
+      "device_name": "1206W4F1002T5E",
       "value": "10k 1206",
       "Supplier Part": "C17902"
     },
@@ -191,7 +191,7 @@
   "gge14": {
     "props": {
       "Designator": "C18",
-      "device_name": "CL05A105KA5NQNC",
+      "device_name": "HGC0402R5105K500NTEJ",
       "value": "1uF",
       "Supplier Part": "C7472948"
     },
@@ -379,7 +379,7 @@
   "gge29": {
     "props": {
       "Designator": "C8",
-      "device_name": "CGA6M3X7R2A475K",
+      "device_name": "1210B475K101NT",
       "value": "4.7uF 100V",
       "Supplier Part": "C2840282"
     },
@@ -391,7 +391,7 @@
   "gge30": {
     "props": {
       "Designator": "C9",
-      "device_name": "CL21B224KBFNNNE",
+      "device_name": "CC0805KKX7R0BB224",
       "value": "220nF 100V",
       "Supplier Part": "C513710"
     },
@@ -427,7 +427,7 @@
   "gge33": {
     "props": {
       "Designator": "C10",
-      "device_name": "CL31A106KBHNNNE",
+      "device_name": "HGC1206R5106K500NSPJ",
       "value": "10uF 50V",
       "Supplier Part": "C7432781"
     },
@@ -439,7 +439,7 @@
   "gge34": {
     "props": {
       "Designator": "C11",
-      "device_name": "CL31A106KBHNNNE",
+      "device_name": "HGC1206R5106K500NSPJ",
       "value": "10uF 50V",
       "Supplier Part": "C7432781"
     },
@@ -502,7 +502,7 @@
   "gge39": {
     "props": {
       "Designator": "C12",
-      "device_name": "CL21A106KOQNNNE",
+      "device_name": "CL21A106KAYNNNE",
       "value": "10uF 25V",
       "Supplier Part": "C15850"
     },
@@ -538,7 +538,7 @@
   "gge42": {
     "props": {
       "Designator": "C13",
-      "device_name": "CL21A226MOQNNNE",
+      "device_name": "CL21A226MAQNNNE",
       "value": "22uF 25V",
       "Supplier Part": "C45783"
     },
@@ -609,7 +609,7 @@
   "gge45": {
     "props": {
       "Designator": "C17",
-      "device_name": "CL05A105KA5NQNC",
+      "device_name": "HGC0402R5105K500NTEJ",
       "value": "1uF",
       "Supplier Part": "C7472948"
     },
@@ -621,7 +621,7 @@
   "gge46": {
     "props": {
       "Designator": "C15",
-      "device_name": "CL21A226MOQNNNE",
+      "device_name": "CL21A226MAQNNNE",
       "value": "22uF 25V",
       "Supplier Part": "C45783"
     },
@@ -771,7 +771,7 @@
   "gge57": {
     "props": {
       "Designator": "R1",
-      "device_name": "WSL2512R0100FEA",
+      "device_name": "FRM252WFR010TN",
       "value": "10mR 2512",
       "Supplier Part": "C7419995"
     },
@@ -867,7 +867,7 @@
   "gge65": {
     "props": {
       "Designator": "U9",
-      "device_name": "74AHCT541PW",
+      "device_name": "74AHCT541PW,118",
       "value": "level shift",
       "Supplier Part": "C84548"
     },
@@ -964,7 +964,7 @@
   "gge70": {
     "props": {
       "Designator": "R5",
-      "device_name": "0402WGF7323TCE",
+      "device_name": "FRC0402F7323TS",
       "value": "732k",
       "Supplier Part": "C5159692"
     },
@@ -988,7 +988,7 @@
   "gge72": {
     "props": {
       "Designator": "R9",
-      "device_name": "0402WGF3002TCE",
+      "device_name": "FRC0402F3002TS",
       "value": "30.0k",
       "Supplier Part": "C2909347"
     },
@@ -1000,7 +1000,7 @@
   "gge73": {
     "props": {
       "Designator": "C1",
-      "device_name": "CC0603KRX7R9BB224",
+      "device_name": "CL10B224KB8NNNC",
       "value": "220nF",
       "Supplier Part": "C64705"
     },
@@ -1024,7 +1024,7 @@
   "gge75": {
     "props": {
       "Designator": "C3",
-      "device_name": "CL21B224KBFNNNE",
+      "device_name": "CC0805KKX7R0BB224",
       "value": "220nF 100V",
       "Supplier Part": "C513710"
     },
@@ -1036,7 +1036,7 @@
   "gge76": {
     "props": {
       "Designator": "C34",
-      "device_name": "CL21B224KBFNNNE",
+      "device_name": "CC0805KKX7R0BB224",
       "value": "220nF 100V",
       "Supplier Part": "C513710"
     },
@@ -1072,7 +1072,7 @@
   "gge79": {
     "props": {
       "Designator": "R11",
-      "device_name": "0402WGF1001TCE",
+      "device_name": "FRC0402F1001TS",
       "value": "1k",
       "Supplier Part": "C2906864"
     },
@@ -1152,7 +1152,7 @@
   "gge84": {
     "props": {
       "Designator": "R6",
-      "device_name": "0402WGF7323TCE",
+      "device_name": "FRC0402F7323TS",
       "value": "732k",
       "Supplier Part": "C5159692"
     },
@@ -1176,7 +1176,7 @@
   "gge86": {
     "props": {
       "Designator": "R10",
-      "device_name": "0402WGF3002TCE",
+      "device_name": "FRC0402F3002TS",
       "value": "30.0k",
       "Supplier Part": "C2909347"
     },
@@ -1188,7 +1188,7 @@
   "gge87": {
     "props": {
       "Designator": "C2",
-      "device_name": "CC0603KRX7R9BB224",
+      "device_name": "CL10B224KB8NNNC",
       "value": "220nF",
       "Supplier Part": "C64705"
     },
@@ -1212,7 +1212,7 @@
   "gge89": {
     "props": {
       "Designator": "C4",
-      "device_name": "CL21B224KBFNNNE",
+      "device_name": "CC0805KKX7R0BB224",
       "value": "220nF 100V",
       "Supplier Part": "C513710"
     },
@@ -1224,7 +1224,7 @@
   "gge90": {
     "props": {
       "Designator": "C35",
-      "device_name": "CL21B224KBFNNNE",
+      "device_name": "CC0805KKX7R0BB224",
       "value": "220nF 100V",
       "Supplier Part": "C513710"
     },
@@ -1260,7 +1260,7 @@
   "gge93": {
     "props": {
       "Designator": "R12",
-      "device_name": "0402WGF1001TCE",
+      "device_name": "FRC0402F1001TS",
       "value": "1k",
       "Supplier Part": "C2906864"
     },
@@ -1321,7 +1321,7 @@
   "gge98": {
     "props": {
       "Designator": "U7",
-      "device_name": "MAX3485CSA",
+      "device_name": "MAX3485CSA-JSM",
       "value": "RS-485 ch1",
       "Supplier Part": "C6395158"
     },
@@ -1411,7 +1411,7 @@
   "gge105": {
     "props": {
       "Designator": "U8",
-      "device_name": "MAX3485CSA",
+      "device_name": "MAX3485CSA-JSM",
       "value": "RS-485 ch2",
       "Supplier Part": "C6395158"
     },

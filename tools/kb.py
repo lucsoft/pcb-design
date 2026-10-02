@@ -296,7 +296,7 @@ def cmd_check() -> int:
 
 
 def parse_pin_spec(spec: str) -> dict:
-    """Parse `number:name:type[:vmax=V][:vmin=V][:imax=mA][:contact=D]`.
+    """Parse `number:name:type[:vmax=V][:vmin=V][:imax=mA][:contact=D][:source=S]`.
 
     Example: 2:VOUT:power_out:vmax=7.0
 
@@ -321,10 +321,15 @@ def parse_pin_spec(spec: str) -> dict:
             raise ValueError(f"'{extra}' should look like vmax=7.0")
         key, _, val = extra.partition("=")
         key = key.strip().lower()
-        if key == "contact":
-            # Free text, not a measurement: it is a designation like "J1-1" or
-            # "A5", so it must not go through float().
-            pin["contact"] = val.strip()
+        if key in ("contact", "source"):
+            # Free text, not a measurement, so neither goes through float().
+            # `contact` is a designation like "J1-1" or "A5". `source` overrides
+            # the record-level provenance for THIS pin, which is what lets one
+            # inferred pin sit in an otherwise datasheet-backed map without
+            # dragging the other eleven down to warning severity -- erc.py's
+            # unverified() prefers it. Avoid ':' in the value; it is the
+            # field separator.
+            pin[key] = val.strip()
             continue
         field = {"vmax": "vMax", "vmin": "vMin", "imax": "iMaxMa"}.get(key)
         if not field:
