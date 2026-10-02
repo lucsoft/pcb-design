@@ -78,7 +78,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "datasheet p.? PIN CONFIGURATION + PIN DESCRIPTION (SOP-8)"
+    "pins": "datasheet p.3 PIN DESCRIPTION table (SOP-8)"
   },
   "designVerdict": "SELECTED - differential data link, 2 off (one per channel)",
   "notes": [

@@ -732,8 +732,8 @@ Known electrical limits rather than claimed as solved.
 
 At the top end the swap helps as well: the pin lands at 24.85-27.75 V against the
 22.4 V threshold and the 29.4 V recommended maximum, with more room at both ends
-than the MOSFET gave, because V_BE is smaller than V_GS. V_CE is 9.8 V in normal
-operation and 31.9 V during a 58.1 V TVS clamp, against the part's **160 V**
+than the MOSFET gave, because V_BE is smaller than V_GS. V_CE is 9.7 V in normal
+operation and 31.8 V during a 58.1 V TVS clamp, against the part's **160 V**
 V_CEO — where the BSS138's 50 V was only 1.6× that event.
 
 **What is not datasheet-backed here is V_BE.** The MMBT5551 datasheet specifies
@@ -1217,7 +1217,7 @@ Active parts. Passives are listed below the table.
 |---|---|---|---|---|---|
 | U1 | HUSB238A-BB001-QN16R | C24833806 | 1 | USB PD sink, I2C mode | 0.66 |
 | U2 | ESP32-C6-WROOM-1-N8 | C5366877 | 1 | MCU, native USB | 4.25 |
-| U3 | W5500 module, WIZ850io-class | — | 1 | 10/100 Ethernet, **soldered down**, see Ethernet module | — |
+| U3 | W5500 module, WIZ850io-class | **C134462, DO NOT FIT** | 1 | 10/100 Ethernet, **soldered down**. The C-number is in the netlist so EasyEDA resolves the symbol and footprint — it must **not** reach a PCBA order, where it buys the $22.89 WIZnet original instead of the €12.30 JOY-IT clone in the sourcing table below. See Ethernet module | — |
 | U4 | TPS54360B | C524806 | 1 | bus to 5 V, ~100% duty | 0.760 |
 | U5 | SY8089A1AAC | C479074 | 1 | 5 V to 3.3 V | 0.087 |
 | U6 | INA226 | C49851 | 1 | low-side current sense | 0.76 |
@@ -1265,7 +1265,7 @@ C-number here has been checked against the **live** stock endpoint with
 `./tools/stock.py`, not against a catalogue mirror — five of them were at zero
 when this table first claimed otherwise — the importer resolves by `Supplier Part` alone, so a passive without a C-number cannot go into the netlist at all, and omitting it instead trips the decoupling and pull-up rules that check for it.
 
-**Resistors** — 48 parts, 0402 1% unless stated.
+**Resistors** — 47 parts, 0402 1% unless stated. R16 is unused.
 
 | Ref | Value | LCSC | Role |
 |---|---|---|---|
@@ -1277,7 +1277,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | R9,R10 | **30.0 kΩ 1% 0402** | C2909347 | R_UV3, bottom leg — sets OVP |
 | R11,R12 | **1 kΩ 1% 0402** | C2906864 | GPIO → SHDN series, lets FAULT override a driven-high GPIO |
 | R13,R14 | **10 kΩ 1% 0402** | C25744 | SHDN pull-down — makes reset the off state |
-| R15,R16 | **10 kΩ 1% 0402** | C25744 | FAULT interlock gate pull-down (a pull-*up* latches both channels off) |
+| R15 | **10 kΩ 1% 0402** | C25744 | FAULT interlock gate pull-down, **one**, on the shared `PD_FAULT` net. A pull-*up* here latches both channels off. R16 was a second in parallel from reading "one per channel" off a net that is not per channel; the designator is left unused rather than renumbering everything after it |
 | R17,R18 | **4.7 kΩ 1% 0402** | C25900 | I²C pull-ups, SDA and SCL |
 | R19 | **10 kΩ 1% 0402** | C25744 | HUSB238A INT_N pull-up |
 | R20 | **10 kΩ 1% 0402** | C25744 | shared PGOOD pull-up (both eFuses wire-ORed) |
@@ -1457,7 +1457,7 @@ The largest items are where any further shrink comes from:
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
 | 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
-| 84 passives | ~198 | 68 × 0402 at ~1.5 mm² with pads, 8 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
+| 83 passives | ~196 | 67 × 0402 at ~1.5 mm² with pads, 8 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
 | SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
 
@@ -1595,8 +1595,12 @@ longer once the thermal regulation loop takes over.
 opened at 26.2 V on any 36 → 28 → 20 V transition, isolating the module banks.
 At the eFuse's 4.28 V they stay closed throughout, so the modules' 6.6 mF now rides the
 transition. The attach-time isolation argument still holds — at attach the bus is
-5 V, and the inrush is dV/dt-limited in any case — but the renegotiation case is not covered
-by it and the 15 ms tSnkNewPower paragraph predates the change.
+5 V, and the inrush is dV/dt-limited in any case — but the renegotiation case is not
+covered by it. What that changes for the 15 ms `tSnkNewPower` window below: firmware
+has to cut brightness **into a live load**, because the eFuses no longer open to buy
+it time. The conclusion there is unaffected — the window is shorter than it looks and
+the FAULT interlock is the backstop — but it is now the only mechanism, not the
+second one.
 
 **The operator needs to know which contract was negotiated**, and no indicator
 currently shows it. The document already notes that "voltage can be encoded in
@@ -1927,7 +1931,7 @@ design is built around had no entry.
 | Q3 follower base pull-up (R44) | **3.24 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — those are Q1/Q2 with 10 kΩ pull-**downs** (R15/R16), because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
 | Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
 | EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest E96 value that is stocked. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
-| FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V). Its only function is disabling the GATE driver, and GATE is unconnected, so a defined low is the whole requirement |
+| FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V) that cannot float. p.5 gives it **two** functions — disabling the GATE driver *and* raising an INT_N interrupt on a valid high voltage — and either can be configured alone. Neither is wanted here; p.5 Table 1 makes HIGH the assert level, so GND is the inactive state. **The vendor leaves this pin open in all three application figures**, so tying it low is a deliberate deviation, taken because an unterminated CMOS input is not a state |
 
 Pin 17 is the exposed pad and the **only** GND connection.
 
@@ -1954,7 +1958,7 @@ table is the schematic checklist.
 | C_IN, IN→GND | **220 nF** ≥100 V | p.6 Recommended Operating Conditions: 0.1 µF **minimum** at IN, P_IN and OUT. Oversized because a nominal 100 nF ±10% meets a minimum with zero margin |
 | SHDN pull-down | **10 kΩ** to GND | active-low shutdown. 100 kΩ sits at 0.77 V against a 0.8 V threshold against the pin's own source — see Enable |
 | SHDN series from GPIO | **1 kΩ** | lets the FAULT transistor win without shorting the GPIO |
-| **P_IN (pin 6) to IN** | direct, no element | p.4 Pin Functions: "Always connect P_IN to IN directly" |
+| **P_IN (pin 6) to IN** | direct, no element | p.5 Pin Functions: "Always connect P_IN to IN directly" |
 | **GND (pin 9)** | wired, **in addition to** the PowerPAD | p.5: "Do not use PowerPad as the only electrical connection to GND" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain |
 | C_OUT, **OUT → GND** | **220 nF** ≥100 V | p.6 Recommended Operating Conditions: 0.1 µF **minimum** at IN, P_IN *and* OUT. C34/C35, oversized so the minimum survives tolerance and DC bias |
@@ -2594,7 +2598,7 @@ See Netlist for what is in it and what the clean report does not mean.
 ## Netlist
 
 `netlist.json` is generated by `netlist.py`, not written by hand, and both are
-committed. **128 components, 439 pins, 76 real nets** — `erc.py` prints 77
+committed. **127 components, 437 pins, 76 real nets** — `erc.py` prints 77
 because it counts the literal `NC` net alongside them. The ERC reports
 **0 errors** and one warning, the documented `P1-undervoltage` on U9.20.
 

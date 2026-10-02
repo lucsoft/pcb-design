@@ -1296,18 +1296,6 @@
   },
   "gge96": {
     "props": {
-      "Designator": "R16",
-      "device_name": "0402WGF1002TCE",
-      "value": "10k",
-      "Supplier Part": "C25744"
-    },
-    "pins": {
-      "1": "PD_FAULT",
-      "2": "GND"
-    }
-  },
-  "gge97": {
-    "props": {
       "Designator": "R20",
       "device_name": "0402WGF1002TCE",
       "value": "10k",
@@ -1318,7 +1306,7 @@
       "2": "BUS_3V3"
     }
   },
-  "gge98": {
+  "gge97": {
     "props": {
       "Designator": "U7",
       "device_name": "MAX3485CSA-JSM",
@@ -1336,7 +1324,7 @@
       "8": "BUS_3V3"
     }
   },
-  "gge99": {
+  "gge98": {
     "props": {
       "Designator": "C21",
       "device_name": "CC0402KRX7R9BB104",
@@ -1348,7 +1336,7 @@
       "2": "GND"
     }
   },
-  "gge100": {
+  "gge99": {
     "props": {
       "Designator": "R42",
       "device_name": "0402WGF1002TCE",
@@ -1360,7 +1348,7 @@
       "2": "GND"
     }
   },
-  "gge101": {
+  "gge100": {
     "props": {
       "Designator": "R35",
       "device_name": "RC0402FR-0733RL",
@@ -1372,7 +1360,7 @@
       "2": "CH1_A"
     }
   },
-  "gge102": {
+  "gge101": {
     "props": {
       "Designator": "R36",
       "device_name": "RC0402FR-0733RL",
@@ -1384,7 +1372,7 @@
       "2": "CH1_B"
     }
   },
-  "gge103": {
+  "gge102": {
     "props": {
       "Designator": "D10",
       "device_name": "SMAJ7.0CA",
@@ -1396,7 +1384,7 @@
       "2": "LED_RTN"
     }
   },
-  "gge104": {
+  "gge103": {
     "props": {
       "Designator": "D11",
       "device_name": "SMAJ7.0CA",
@@ -1408,7 +1396,7 @@
       "2": "LED_RTN"
     }
   },
-  "gge105": {
+  "gge104": {
     "props": {
       "Designator": "U8",
       "device_name": "MAX3485CSA-JSM",
@@ -1426,7 +1414,7 @@
       "8": "BUS_3V3"
     }
   },
-  "gge106": {
+  "gge105": {
     "props": {
       "Designator": "C22",
       "device_name": "CC0402KRX7R9BB104",
@@ -1438,7 +1426,7 @@
       "2": "GND"
     }
   },
-  "gge107": {
+  "gge106": {
     "props": {
       "Designator": "R43",
       "device_name": "0402WGF1002TCE",
@@ -1450,7 +1438,7 @@
       "2": "GND"
     }
   },
-  "gge108": {
+  "gge107": {
     "props": {
       "Designator": "R37",
       "device_name": "RC0402FR-0733RL",
@@ -1462,7 +1450,7 @@
       "2": "CH2_A"
     }
   },
-  "gge109": {
+  "gge108": {
     "props": {
       "Designator": "R38",
       "device_name": "RC0402FR-0733RL",
@@ -1474,7 +1462,7 @@
       "2": "CH2_B"
     }
   },
-  "gge110": {
+  "gge109": {
     "props": {
       "Designator": "D12",
       "device_name": "SMAJ7.0CA",
@@ -1486,7 +1474,7 @@
       "2": "LED_RTN"
     }
   },
-  "gge111": {
+  "gge110": {
     "props": {
       "Designator": "D13",
       "device_name": "SMAJ7.0CA",
@@ -1498,7 +1486,7 @@
       "2": "LED_RTN"
     }
   },
-  "gge112": {
+  "gge111": {
     "props": {
       "Designator": "J4",
       "device_name": "PZ254V-11-02P",
@@ -1510,7 +1498,7 @@
       "2": "GND"
     }
   },
-  "gge113": {
+  "gge112": {
     "props": {
       "Designator": "LED1",
       "device_name": "SK6812-EC20",
@@ -1524,7 +1512,7 @@
       "4": "LED_D1"
     }
   },
-  "gge114": {
+  "gge113": {
     "props": {
       "Designator": "C24",
       "device_name": "CC0402KRX7R9BB104",
@@ -1536,7 +1524,7 @@
       "2": "GND"
     }
   },
-  "gge115": {
+  "gge114": {
     "props": {
       "Designator": "LED2",
       "device_name": "SK6812-EC20",
@@ -1550,7 +1538,7 @@
       "4": "LED_D2"
     }
   },
-  "gge116": {
+  "gge115": {
     "props": {
       "Designator": "C25",
       "device_name": "CC0402KRX7R9BB104",
@@ -1562,7 +1550,7 @@
       "2": "GND"
     }
   },
-  "gge117": {
+  "gge116": {
     "props": {
       "Designator": "LED3",
       "device_name": "SK6812-EC20",
@@ -1576,7 +1564,7 @@
       "4": "LED_D3"
     }
   },
-  "gge118": {
+  "gge117": {
     "props": {
       "Designator": "C26",
       "device_name": "CC0402KRX7R9BB104",
@@ -1588,7 +1576,7 @@
       "2": "GND"
     }
   },
-  "gge119": {
+  "gge118": {
     "props": {
       "Designator": "LED4",
       "device_name": "SK6812-EC20",
@@ -1602,7 +1590,7 @@
       "4": "LED_D4"
     }
   },
-  "gge120": {
+  "gge119": {
     "props": {
       "Designator": "C27",
       "device_name": "CC0402KRX7R9BB104",
@@ -1614,7 +1602,7 @@
       "2": "GND"
     }
   },
-  "gge121": {
+  "gge120": {
     "props": {
       "Designator": "LED5",
       "device_name": "SK6812-EC20",
@@ -1628,7 +1616,7 @@
       "4": "LED_D5"
     }
   },
-  "gge122": {
+  "gge121": {
     "props": {
       "Designator": "C28",
       "device_name": "CC0402KRX7R9BB104",
@@ -1640,7 +1628,7 @@
       "2": "GND"
     }
   },
-  "gge123": {
+  "gge122": {
     "props": {
       "Designator": "LED6",
       "device_name": "SK6812-EC20",
@@ -1654,7 +1642,7 @@
       "4": "LED_D6"
     }
   },
-  "gge124": {
+  "gge123": {
     "props": {
       "Designator": "C29",
       "device_name": "CC0402KRX7R9BB104",
@@ -1666,7 +1654,7 @@
       "2": "GND"
     }
   },
-  "gge125": {
+  "gge124": {
     "props": {
       "Designator": "LED7",
       "device_name": "SK6812-EC20",
@@ -1680,7 +1668,7 @@
       "4": "LED_D7"
     }
   },
-  "gge126": {
+  "gge125": {
     "props": {
       "Designator": "C30",
       "device_name": "CC0402KRX7R9BB104",
@@ -1692,7 +1680,7 @@
       "2": "GND"
     }
   },
-  "gge127": {
+  "gge126": {
     "props": {
       "Designator": "LED8",
       "device_name": "SK6812-EC20",
@@ -1706,7 +1694,7 @@
       "4": "LED_D8"
     }
   },
-  "gge128": {
+  "gge127": {
     "props": {
       "Designator": "C31",
       "device_name": "CC0402KRX7R9BB104",

@@ -158,7 +158,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "datasheet p.4-5 Pin Functions (names, types) and p.6 Table 7.1 Absolute Maximum Ratings (vMax). Two groups and nothing between them: IN, P_IN, OUT, UVLO, FLT, PGOOD at 67 V; OVP, dVdT, IMON, MODE, SHDN, ILIM at 5.5 V. UVLO sitting in the 67 V group and OVP in the 5.5 V one is not an oddity - it is why UVLO must be the UPPER tap of the divider.",
+    "pins": "datasheet p.5 Pin Functions (names, types) - EXCEPT pin 21, the PowerPAD, which the datasheet leaves unnumbered; 21 is the EasyEDA symbol's number for it, confirmed with tools/eda.py and p.6 Table 7.1 Absolute Maximum Ratings (vMax). Two groups and nothing between them: IN, P_IN, OUT, UVLO, FLT, PGOOD at 67 V; OVP, dVdT, IMON, MODE, SHDN, ILIM at 5.5 V. UVLO sitting in the 67 V group and OVP in the 5.5 V one is not an oddity - it is why UVLO must be the UPPER tap of the divider.",
     "vMin": "p.6 Recommended Operating Conditions: 4.5 V <= VIN <= 60 V"
   },
   "designVerdict": "SELECTED as U10/U11, one per channel. 60 V / 6 A eFuse with an integrated FET.",
@@ -190,7 +190,7 @@
       ],
       "requires": "connected",
       "severity": "error",
-      "note": "datasheet p.25 §10.2.1: 'Always connect P_IN to IN directly'. P_IN is the sense tap for the internal FET; leaving it off IN makes the current limit read nothing."
+      "note": "datasheet p.5 Pin Functions: 'Always connect P_IN to IN directly'. P_IN is the sense tap for the internal FET; leaving it off IN makes the current limit read nothing."
     },
     {
       "id": "in-decoupling",
@@ -208,7 +208,7 @@
       ],
       "requires": "connected",
       "severity": "error",
-      "note": "datasheet p.25: do not use the PowerPAD as the only electrical connection to GND. The GND pin is wired as well as the pad."
+      "note": "datasheet p.5 Pin Functions: 'Do not use PowerPad as the only electrical connection to GND'. The GND pin is wired as well as the pad."
     },
     {
       "id": "shdn-defined",

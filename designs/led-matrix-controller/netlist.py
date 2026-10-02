@@ -222,6 +222,11 @@ COMPONENTS = [
     ("R13", "C25744", "0402WGF1002TCE", "10k", {"1": "CH1_SHDN", "2": "GND"}),
     ("Q1", "C7420339", "BSS138", "interlock ch1", {
         "1": "PD_FAULT", "2": "GND", "3": "CH1_SHDN"}),
+    # ONE 10k on the shared PD_FAULT net, not one per channel. FAULT/OUT2 is
+    # push-pull and drives both interlock gates from a single output, so a
+    # second resistor in parallel would halve the pull-down to 5k and load
+    # the driver twice as hard for nothing. R16 is dropped; the designator
+    # is left unused rather than renumbering 32 resistors after it.
     ("R15", "C25744", "0402WGF1002TCE", "10k", {"1": "PD_FAULT", "2": "GND"}),
 
     # ---- Channel 2 eFuse -------------------------------------------------
@@ -244,7 +249,6 @@ COMPONENTS = [
     ("R14", "C25744", "0402WGF1002TCE", "10k", {"1": "CH2_SHDN", "2": "GND"}),
     ("Q2", "C7420339", "BSS138", "interlock ch2", {
         "1": "PD_FAULT", "2": "GND", "3": "CH2_SHDN"}),
-    ("R16", "C25744", "0402WGF1002TCE", "10k", {"1": "PD_FAULT", "2": "GND"}),
 
     ("R20", "C25744", "0402WGF1002TCE", "10k", {"1": "PGOOD", "2": "BUS_3V3"}),
 
