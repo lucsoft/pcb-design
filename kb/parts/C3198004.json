@@ -111,7 +111,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "Hirose CX series catalogue, Product Specifications block: power contacts named A1/A4/A9/A12/B1/B4/B9/B12 at 1.25 A each, VCON = B5. USB Type-C 16-position contact set. NOTE: these are CONTACT designations; the EasyEDA symbol pad numbers must be reconciled at netlist time"
+    "pins": "Hirose CX series catalogue, Product Specifications block: power contacts named A1/A4/A9/A12/B1/B4/B9/B12 at 1.25 A each, B5 is VCONN on a plug and CC2 on a receptacle - this is a receptacle, so the pin map below reads B5 = CC2. USB Type-C 16-position contact set. NOTE: these are CONTACT designations; the EasyEDA symbol pad numbers must be reconciled at netlist time"
   },
   "designVerdict": "SELECTED as J1, the USB-C receptacle. Resolves the longest-standing blocking open question: 5 A and 48 V AC/DC rated, against a 5 A / 37.8 V requirement.",
   "notes": [

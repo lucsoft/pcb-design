@@ -58,6 +58,14 @@ def fig_fps(ax, pal):
     ax.set_xlim(2, 30)
     limit_line(ax, 100, "100 fps preferred", side="right")
     limit_line(ax, 60, "60 fps floor", side="right")
+    # The binding constraint is not frame rate. Above ~12.7 modules per channel
+    # the LM5069 fault timer expires during the ramp and the channel never comes
+    # up - see the growth bullet in Why two channels. A 36 V number; it relaxes
+    # at lower PD contracts because t_start scales with V_INMAX squared.
+    ax.axvspan(12.7, 30, color="0.5", alpha=0.12, zorder=0)
+    ax.axvline(12.7, color="0.35", linewidth=1.2, linestyle="--", zorder=1)
+    annotate(ax, 12.7, 250, "  12.7/channel:\n  start-up ceiling\n  at 36 V",
+             color="0.35")
     ax.plot([10], [fps(10)], "o", color=pal[1], zorder=5)
     annotate(ax, 10, fps(10), "  10/channel = 90 fps", color=pal[1])
 

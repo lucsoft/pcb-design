@@ -271,12 +271,18 @@ the first:
            +  controller overhead
 
 - **The sum is amperes at the module's 5 V rail**, and the contract is amperes
-  at 36 V. The conversion is ÷7.2 and ÷η — a factor of about **9.6** at the
-  design's 75% efficiency estimate — which the earlier formula omitted entirely.
+  at 36 V. The divisor is **5.4** — `36 × η / 5` at the design's 75% efficiency
+  estimate. Dividing by η *raises* the bus current, so it belongs in the
+  numerator of that ratio, not the denominator: an earlier version of this bullet
+  said 9.6 (= 7.2/0.75) and would have **under-predicted bus current by 44%**, in
+  the one computation whose whole purpose is to stop the source cutting VBUS.
+  Sanity check against this document's own numbers: 20 modules at full white is
+  43.2 A at 5 V, and 43.2/5.4 = **8.0 A**, which is exactly the 2 × 4.0 A per
+  channel stated in Cabling.
 - **An all-black frame does not draw zero.** The WS2812D-F8 specifies no
   quiescent current; the sibling SK6812 gives 0.6 mA per IC and the family runs
   0.5-1 mA. At 720 ICs that is 0.36-0.72 A at 5 V, i.e. **2.4-4.8 W off the
-  bus** — 1.5-2.7% of a budget this document already computes at 5.2 A against a
+  bus** — 1.3-2.7% of a budget this document already computes at 5.2 A against a
   5.0 A contract. The floor is not optional headroom; it is always present.
 - η is the same optimistic 75% the whole power budget rests on, characterised at
   28 V rather than 36 V. The limiter inherits that error and should carry a
@@ -290,11 +296,22 @@ worth stating because the earlier wording argued the opposite way.
 **And "61% brightness" is not 61% of the current, continuously.** The WS2812
 dims by duty-cycling its constant-current sinks at roughly **400 Hz**, so at 61%
 a module draws its *full-white* 3.98 A for 61% of each 2.5 ms period and nothing
-for the rest. What reaches the bus is set by a current divider: the channel's
-3.3 mF bank is **0.121 Ω** at 400 Hz against roughly **0.35 Ω** of cable, switch
-and sense resistance, so the bank absorbs about **74%** of the swing and the bus
-sees the remaining quarter — on the order of **±0.5 A per channel** of 400 Hz
-ripple on top of the average.
+for the rest. What reaches the bus is set by a current divider, and it is a **phasor** divider
+— an earlier version of this paragraph added a resistance to a reactance as
+scalars and got the wrong fraction. The channel's 3.3 mF bank is **0.121 Ω** at
+400 Hz; the path is cable, switch and sense resistance:
+
+    bus share = |Z_C| / |R + Z_C| = 0.121 / sqrt(R² + 0.121²)
+
+| cable | R (loop) | bus share | ripple seen |
+|---|---|---|---|
+| ~5 m, 0.5 mm² | 0.35 Ω | 32.7% | **±0.51 A** |
+| 10 m, 0.5 mm² | 0.69 Ω | 17.3% | **±0.27 A** |
+
+The two shares do not sum to one with the capacitor's — they are orthogonal
+components, which is exactly what the scalar version got wrong. **The document's
+own worked case is 10 m**, so ±0.27 A is the figure that matches the rest of the
+design; ±0.5 A applies to a short cable and is the conservative end.
 
 Every current figure in this document is a frame average, which is the right
 basis for the thermal and contract budgets and the wrong one for the INA226's
@@ -339,7 +356,9 @@ trap into the correct safe default — nothing negotiates until firmware is aliv
 5. VBUS rises to 36 V. The rails ride through it; the TPS54360B is a 60 V part
    and simply leaves pass-through.
 6. Past ~8 V each LM5069 releases its own UVLO, and firmware enables the
-   channels by pulling the enable GPIOs low.
+   channels **one at a time** — not both together. This is the staggering
+   requirement from Channel switching and inrush, and it is normative: releasing
+   both at once puts **11 A** against a 5.0 A contract.
 7. **Nothing happens for several seconds.** Each controller holds its gate down
    for its insertion time — 6.1 s typical, 2.9-13.6 s over the spread — counted
    from when VBUS crossed ~5.5-7.5 V, and no firmware action shortens it.
@@ -386,8 +405,18 @@ Output across the input range at 0.7 A, from the datasheet's p.12 Eq. 1, inverte
 
     V_OUT = 0.99·V_IN + 0.99·V_F − 0.99·R_DS(on)·I_OUT − V_F − R_dc·I_OUT
 
-with R_DS(on) = 0.12 Ω (p.5) and R_dc = **0.163 Ω** — the inductor DCR implied by
-this document's own thermal row, 0.08 W at 0.7 A.
+with R_dc = **0.163 Ω** — the inductor DCR implied by this document's own thermal
+row, 0.08 W at 0.7 A — and R_DS(on) = **0.12 Ω**, which is the datasheet's own
+choice for this case (§8.2: *"the BOOT-SW = 3 V curve in Figure 1 was used for
+RDS(on) = 0.12 Ω because the device operates with low drop out"*).
+
+**That 0.12 Ω is a typical, and the table below is therefore a typical.** The p.5
+electrical table gives 92 mΩ typ / **190 mΩ max**, and the datasheet adds that
+values *"must include tolerance … at their maximum operating temperature"*. At
+190 mΩ the rail is **~4.45 V** on a 4.75 V bus — under the 74AHCT541's 4.5 V
+minimum — and D14 then holds the VBUS pin at ~4.08 V, cutting both 4.0 V margins
+from 0.13 V to ~0.08 V. The corner is flagged for the thresholds; the 4.50 V row
+itself should be read as typical, not as the floor.
 
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
 |---|---|---|
@@ -998,8 +1027,10 @@ Active parts. Passives are listed below the table.
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
 | LED1-8 | SK6812MINI-E | C5149201 | 8 | status chain | 0.081 |
 
-**Not from LCSC/JLCPCB.** Three line items are hand-fitted, so the board is not
-fully JLCPCB-assemblable. Order numbers so the build is reproducible:
+**Not from LCSC/JLCPCB.** Two board items are hand-fitted — the Ethernet module
+and the picoMAX headers — so the board is not fully JLCPCB-assemblable. The third
+row below is the cable-side plug, which is not a board part at all and is listed
+because a 20-module run needs twenty of them. Order numbers so the build is reproducible:
 
 | Ref | Part | Source | Order no. | Price |
 |---|---|---|---|---|
@@ -1052,8 +1083,11 @@ p.52), and it prepends an 8-byte PACKET-INFO header per datagram. Packet 1 of a
 20-module frame occupies 1088 B; packet 2 arrives about 92 µs later on a 100 Mbit
 link, while draining packet 1 over SPI costs 109 µs at 80 MHz and 218 µs at
 40 MHz before interrupt latency. With 960 B free the W5500 **discards a datagram
-that does not fit**. The fix is one register write at init: `Sn_RXBUF_SIZE = 8`
-for the pixel socket, taking it to 8 kB.
+that does not fit**. The fix is **eight** register writes at init, not one: the W5500's 16 kB of RX
+is shared, and the sum over all eight sockets must not exceed it. Setting
+`Sn_RXBUF_SIZE = 8` on the pixel socket while sockets 1-7 keep their 2 kB default
+allocates **22 kB** and aliases buffer memory. Write 8 for the pixel socket and
+0 or 1 for the rest.
 
 Keep each datagram under the ~1400 byte MTU rather than relying on IP
 fragmentation, which is fragile over UDP and makes a single lost fragment cost
@@ -1170,10 +1204,13 @@ ratings, decoupling, I2C pull-ups and part-specific rules. Against *this*
 design it has specific gaps:
 
 - **`S6-shorted-two-terminal` was added for this board** — a two-terminal part
-  with the same net on every pin. It exists because the low-side shunt dies
-  silently if the output connectors' return is called `GND`: the pour shorts it
-  and the current sense reads zero. Nothing else in the checker looks at a part's
-  own pins as a set.
+  with the same net on every pin. It catches the *degenerate* form of the shunt
+  mistake: both of R1's pins literally written `GND`. **It does not catch the
+  likelier form**, where J2/J3 pin 2 is called `GND` and R1 therefore sits
+  between two legitimately different nets — that is a connectivity fact about a
+  different component, and no rule inspects it. An earlier version of this
+  section claimed S6 covered that case; it does not, and the split return below
+  remains a layout-discipline item with no automated backstop.
 - **No I2C address-collision rule.** This design has already got that question
   wrong once (0x42 against the INA226), and the fix depends on pinning A0/A1 by
   hand — which the checker cannot see.
@@ -1226,22 +1263,28 @@ says so.** R1 sits in the ground return so that both channels' current passes
 through it before joining board ground. If the netlist calls J2/J3 pin 2 `GND` —
 which is what the connector pinout says in six places — the shunt is shorted by
 the ground pour and **the current sense reads zero**. The output connectors'
-return must be its own net, joined to board ground only at the shunt. No ERC rule
-catches a two-terminal part with identical nets on both pins, so this is a layout
-discipline item with no automated backstop.
+return must be its own net, joined to board ground only at the shunt. **No ERC
+rule catches this** - S6 sees a part shorted by its own two pins, not a connector
+wired to the wrong net one component away - so it is a layout-discipline item
+with no automated backstop.
 
 On a 2-layer board that also means the bottom layer is **not** a continuous
 ground plane under the SPI bus, the differential pair and the ADC divider. Either
 accept that and route the return deliberately, or go to 4 layers — which the
 area table already shows the board does not need for density.
 
-**The ESP32-C6 module's antenna keep-out is not in the area budget.** Its
-recommended footprint (datasheet Figure 10 p.30) marks an **18 × 6 mm antenna
-area** that must be copper-free on all layers and normally overhangs the board
-edge. The mechanical table lists the module at 459 mm², which is 18 × 25.5 — the
-bare outline with no keep-out allowance. With USB-C, two angled picoMAX, the
-Ethernet module's RJ45 and this keep-out, **all four edges are committed**, and
-the keep-out punches a hole in the return path of a board carrying 5 A.
+**The ESP32-C6 module's antenna keep-out is a copper and placement constraint,
+not an area one.** Its recommended footprint (datasheet Figure 10 p.30) marks an
+**18 × 6 mm antenna area** that must be copper-free on all layers. That area lies
+*inside* the 18 × 25.5 mm outline, so the mechanical table's 459 mm² already
+contains it — an earlier version of this paragraph claimed the budget was short
+by the keep-out, and it is not.
+
+What is still true is everything downstream: those 108 mm² carry **no copper on
+any layer**, the module wants that edge overhanging the board, and with USB-C,
+two angled picoMAX and the Ethernet module's RJ45 **all four edges are
+committed**. On a 2-layer board the keep-out punches a hole in the return path of
+a board carrying 5 A, which is a routing problem rather than a space one.
 
 ## Thermals and the FET choice
 
@@ -1807,7 +1850,7 @@ transceiver's *capability*, not what this cable imposes.
 **This link is not a bus.** Both ends share GND in the same 4-pole picoMAX shell,
 so the real common-mode excursion is the cable's own IR drop — the table above
 budgets 1.67 V round-trip at 0.5 mm² over 10 m, so the return carries ~0.84 V, and
-~1.5 V on a 4.0 A white flash. SMAJ7.0CA stands off **7 V** against that (4.7x)
+**1.38 V** on a 4.0 A white flash. SMAJ7.0CA stands off **7 V** against that (5.1x)
 and clamps at **12 V**, below the ±15 V limit. That is the ordering the SMAJ15CA
 could never achieve, and it closes an item that had been open since the first
 review.

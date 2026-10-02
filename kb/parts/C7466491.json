@@ -37,7 +37,7 @@
   },
   "designVerdict": "REJECTED - clamps at 24.4 V, above the MAX3485 A/B absolute maximum of +/-15 V. Superseded by SMAJ7.0CA (C19077529).",
   "notes": [
-    "SMAJ15CA, 15 V bidirectional TVS, SMA, 26k stock, $0.031. Two per output connector, one on each of A and B to ground.",
+    "HISTORICAL: this part WAS specified two per output connector, one on each of A and B to ground. It is no longer fitted - see the REJECTED verdict. SMAJ7.0CA (C19077529) takes that role.",
     "CORRECTS AN EARLIER ERROR: the H5VL10B (5 V) picked for 'data lines' is wrong for RS-485. The standard defines a common-mode range of -7 V to +12 V, so a 5 V clamp would conduct during normal operation and corrupt the bus. 15 V standoff clears the +12 V limit with margin.",
     "H5VL10B remains correct for the USB-C D+/D- and CC lines, which are genuine 5 V-class signals and need the low capacitance.",
     "Bidirectional is required: RS-485 swings both polarities relative to ground.",

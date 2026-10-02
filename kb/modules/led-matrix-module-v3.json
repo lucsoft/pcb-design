@@ -75,7 +75,7 @@
     "catchDiodeDissipation": {
       "value": 0.89,
       "unit": "W",
-      "note": "0.5 V Vf x 2.16 A x (1 - 0.179). This is the hottest single part in the module and it has NO protection."
+      "note": "0.5 V Vf x 2.16 A x (1 - 0.139). This is the hottest single part in the module and it has NO protection."
     },
     "freeAirBudget": {
       "value": 1.0,
@@ -88,7 +88,7 @@
       "value": 0.9,
       "unit": "W",
       "tolerance": 0.1,
-      "note": "modelled: VCE 1.2 V x 2.16 A x duty 0.179 = 0.46 W conduction, plus switching and quiescent"
+      "note": "modelled at 36 V: VCE 1.2 V x 2.16 A x duty 0.139 (= 5/36) = 0.36 W conduction, plus switching and quiescent. CORRECTED: an earlier note used duty 0.179, which is 5/28 - a 28 V figure under a 36 V label."
     }
   },
   "failureModes": [
@@ -254,9 +254,9 @@
     },
     "problem": "Connecting a 36 V bus to several mF with no limiting draws hundreds of amps for microseconds, limited only by wiring resistance and ESR. The PD source trips and cuts VBUS; connector contacts pit and weld.",
     "slewRequired": {
-      "10 modules under 1 A": "62 ms ramp",
-      "10 modules under 2 A": "31 ms ramp",
-      "25 modules under 2 A": "77 ms ramp"
+      "10 modules under 1 A": "119 ms ramp",
+      "10 modules under 2 A": "59 ms ramp",
+      "25 modules under 2 A": "149 ms ramp"
     },
     "solution": "Each channel is switched by its own LM5069 hot-swap controller (C52940995) driving an NSS085N100S N-channel MOSFET. Ramp, current limit, power limit, fast turn-off and dV/dt immunity are integrated. See the design README's 'Channel switching and inrush' section.",
     "resolution": {
@@ -270,9 +270,12 @@
       "contractTension": "The ramp draws 2.03 A average per channel (C x V / t_start; an energy-based figure of 1.0 A was wrong by exactly 2x, because the FET burns as much as the capacitor stores) and holds a flat 5.5 A for its last 4.3 ms. Two channels released together peak at 11 A against a 5.0 A contract, so firmware must stagger them - and even one channel's plateau is over contract."
     },
     "storedEnergyAt36V": {
-      "10 modules": "0.86 J",
-      "25 modules": "2.16 J"
-    }
+      "10 modules": "2.14 J",
+      "25 modules": "5.35 J",
+      "_note": "CORRECTED: these were computed at 28 V with 220 uF/module while the key says 36 V. Recomputed as 0.5 * N * 330 uF * 36^2, the capacitance the design sizes the ramp for."
+    },
+    "slewRequired_note": "CORRECTED: these were computed at 28 V with 220 uF/module while labelled 36 V. Recomputed at 36 V with the 330 uF the design sizes for.",
+    "storedEnergyAt36V_note": "CORRECTED: these were computed at 28 V with 220 uF/module while labelled 36 V. Recomputed at 36 V with the 330 uF the design sizes for."
   },
   "connector": {
     "selected": "Wago picoMAX 3.5, 2091 series, 4-pole",
