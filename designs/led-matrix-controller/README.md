@@ -231,12 +231,34 @@ would be 32% of the supply; at 36 V it is 4.5%.
 
 ## Status indication
 
-Eight SK6812MINI-E in a chain on ONE GPIO, level-shifted through a 74AHCT541. Discrete LEDs are not an option: the GPIO budget is tight —
-see GPIO assignment.
+Eight SK6812MINI-E in a chain on ONE GPIO, level-shifted through a 74AHCT541.
+
+**Why all eight are RGB when only two need colour for their own job.** The
+obvious saving is two addressable LEDs for the fault indicators plus six plain
+ones for the bar, and it does not pay:
+
+| | power | GPIOs |
+|---|---|---|
+| **8 addressable, one colour, 25% (chosen)** | **0.120 W** | **1** |
+| 2 addressable + 6 plain, driven directly | 0.070 W | 7 — and none are spare |
+| 2 addressable + 6 plain on a shift register | 0.070 W | 2, plus another part |
+
+Splitting the chain saves **50 mW of 4.10 W, 1.2%**, for a pin the assignment
+table does not have and an extra IC. And it gives up the thing that makes the bar
+work: **colour on the bar is how the negotiated contract is shown.** Since the
+UVLO change made 12, 20, 28 and 36 V all normal operating points, the operator
+needs to see which one was negotiated — and with RGB that costs no extra LEDs and
+no extra pin, while with plain LEDs it is not possible at all.
+
+**A real simplification does exist and is not taken:** three addressable LEDs
+showing two colours each would encode the same six power levels, so five parts
+instead of eight at 0.075 W. It is rejected on readability — a bar is read at a
+glance and a colour-coded bar is read twice.
 
 - **6 as a power bar** - watts, not volts, at 30 W per LED across the 180 W budget.
-  Watts is what the limiter reasons about and it reads at a glance. Voltage can be
-  encoded in colour if wanted. (Actual PD PDOs are 5/9/12/15/20/28/36/48, but 48 V is
+  Watts is what the limiter reasons about and it reads at a glance. **Colour
+  carries the negotiated voltage** — a requirement rather than an option since the
+  UVLO change made 12/20/28/36 V all normal, and the reason the bar is RGB. (Actual PD PDOs are 5/9/12/15/20/28/36/48, but 48 V is
   never requested because it destroys modules, so a voltage bar would need 7.)
 - **1 for power limiting**, **1 for thermal limiting**. RGB encodes history on a single
   LED rather than one per time window: bright red = limiting now, orange = within
