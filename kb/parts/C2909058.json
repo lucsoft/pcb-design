@@ -61,7 +61,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "datasheet section 5 Pin Function Description (2x2 mm, 4-pad)"
+    "pins": "datasheet p.4 section 5 Pin Function Description (2x2 mm, 4-pad)"
   },
   "designVerdict": "SELECTED as LED1-8, the status chain. 2x2 mm top-view SK6812.",
   "notes": [

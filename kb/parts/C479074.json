@@ -62,7 +62,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "datasheet Pin Description table (SOT-23-5)"
+    "pins": "datasheet p.2 Pin Description table (SOT-23-5)"
   },
   "notes": [
     "the SY8089 is sized against the ESP32-C6's 382 mA worst-case TX peak (datasheet Table 13, 802.11b at 20.5 dBm), not the ~500 mA a module-level figure suggests - that figure is IVDD, the minimum current the external supply must be able to deliver, a different quantity. An LDO would burn ~0.6 W, not 0.8 W.",

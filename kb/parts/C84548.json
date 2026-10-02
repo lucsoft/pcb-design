@@ -139,7 +139,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "datasheet section 5.1 Pinning, D/SOT163-1 (SO20) diagram Supply range 4.5-5.5 V from p.2 Recommended Operating Conditions."
+    "pins": "datasheet p.3 section 5.1 Pinning, PW/SOT360-1 (TSSOP20) diagram - this part is the PW suffix per the p.1 ordering table, not the D/SO20 Supply range 4.5-5.5 V from p.2 Recommended Operating Conditions."
   },
   "notes": [
     "SCOPE CHANGED by the move to a differential pair. The two WS2812 data lines now leave the controller as differential pairs from MAX3485 transceivers driven straight off 3.3 V GPIOs, so the level shifting for them has moved to the converter boards. The only 5 V logic left on the controller is the single status-LED chain. An octal buffer for one channel is overkill - a single-gate HCT buffer would do, though none surfaced in the JLCPCB assembly catalogue, so the octal may simply stay as the available option.",

@@ -431,7 +431,12 @@ would stop the board ever powering up:
 > up, the rails never come up, and the MCU never boots to pull EN_N low.
 
 Feeding the rails pre-FET breaks it, and turns EN_N's internal pull-up from a
-trap into the correct safe default — nothing negotiates until firmware is alive:
+trap into the correct safe default — nothing negotiates until firmware is alive.
+**That default rests on one unverified thing**, and it is the only assumption on
+this board that could stop it booting at all: whether the chip still presents Rd
+while powered-but-disabled. See *Assumptions*; if it does not, the fix is a
+pull-down on `PD_EN_N` that enables the chip before the MCU, and the sequence
+below changes at step 3.
 
 1. Plug in. VBUS is at vSafe5V (5 V), both channel switches are off, no LED power.
 2. The TPS54360B runs straight off that 5 V — this is exactly why ~100% duty
@@ -732,8 +737,10 @@ Known electrical limits rather than claimed as solved.
 
 At the top end the swap helps as well: the pin lands at 24.85-27.75 V against the
 22.4 V threshold and the 29.4 V recommended maximum, with more room at both ends
-than the MOSFET gave, because V_BE is smaller than V_GS. V_CE is 9.7 V in normal
-operation and 31.8 V during a 58.1 V TVS clamp, against the part's **160 V**
+than the MOSFET gave, because V_BE is smaller than V_GS. Worked at the binding
+corner — a +5% bus against the lowest emitter the spread allows, 25.65 − 0.80 =
+24.85 V — V_CE is **12.95 V** in normal operation and **33.25 V** during a 58.1 V
+TVS clamp, against the part's **160 V**
 V_CEO — where the BSS138's 50 V was only 1.6× that event.
 
 **What is not datasheet-backed here is V_BE.** The MMBT5551 datasheet specifies
@@ -760,9 +767,12 @@ to take the binding end of a spread. At 3.24 kΩ the 12 V margin stays positive
 across that whole range; at 4.7 kΩ it is negative over half of it.
 
 The cost is real and worth stating plainly: **100 mW** of board heat against
-69 mW, and R44's own dissipation goes **up** from 17 mW to 25 mW — 28% of its
-62.5 mW rating to 40%. Lowering a resistor with a fixed 9 V across it necessarily
-heats it more. 3.24 kΩ is where the margin stops depending on an unpublished
+69 mW, and R44's own dissipation goes **up** from 17 mW to 25 mW at the nominal
+9 V — 28% of its 62.5 mW rating to 40%. At the corner this document works
+everywhere else, a +5% bus against the Zener's low bin, R44 sees 37.8 − 25.65 =
+12.15 V and **45.6 mW, 73%** of the rating. Inside it, and the 0402's 50 V limit
+is never approached, but 73% is the number that binds. Lowering a resistor with a
+fixed voltage across it necessarily heats it more. 3.24 kΩ is where the margin stops depending on an unpublished
 number without the resistor leaving comfortable derating; it is also a part
 already in the BOM. And V_EBO is 6.0 V: at power-down D14 holds the pin at 4.19 V
 while the bus collapses, so the junction sees up to 4.19 V reversed. Inside the
@@ -1457,7 +1467,7 @@ The largest items are where any further shrink comes from:
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
 | 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
-| 83 passives | ~196 | 67 × 0402 at ~1.5 mm² with pads, 8 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
+| 83 passives | ~196 | with pads: 67 × 0402 at 1.5 = 100, 8 × 0805 at 4 = 32, 3 × 1206 at 6 = 18, 2 × 1210 at 8 = 16, 2 × 0603 at 2.5 = 5, and the 2512 shunt at 25 |
 | SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
 
@@ -1675,7 +1685,7 @@ routing problem rather than a space one.
 Size and dissipation pull against each other: a TO-252 is cooled by the copper
 around it, and a small board has less of it.
 
-The TPS16630's integrated FET is **33 mΩ min / 45 mΩ max at T_J = 85 °C**, and 26 / 30.44 / 34.5 mΩ at 25 °C (p.7 — that row has no typ column; the 31 mΩ on the front page is the headline figure, taken at neither corner), so at
+The TPS16630's integrated FET is **33 mΩ min / 45 mΩ max at T_J = 85 °C** — p.7's 85 °C row is the one with **no typ column** — against 26 / 30.44 / 34.5 mΩ at 25 °C and 19 / 30.44 / 53 mΩ over −40…+125 °C. The 31 mΩ on the front page is the headline figure and matches no row. At
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
 the price of the part — thermal headroom goes from 1.29x to **1.16x**.
@@ -1928,9 +1938,9 @@ design is built around had no entry.
 | D14, 5V rail → VBUS pin | **RB751V-40** (C7502691) | lifts the VBUS pin at vSafe5V; reverse-biased once the follower takes over |
 | ADDR, DEBUG_N | 910 kΩ each | p.4-5 calls for 900 kΩ, which is not an E96 value; 910 kΩ is the nearest stocked one. Keeps standby current low |
 | INT_N pull-up | 10 kΩ | p.5, open-drain |
-| Q3 follower base pull-up (R44) | **3.24 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — those are Q1/Q2 with 10 kΩ pull-**downs** (R15/R16), because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
+| Q3 follower base pull-up (R44) | **3.24 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — that is Q1/Q2 sharing one 10 kΩ pull-**down** (R15) on `PD_FAULT`, because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
 | Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
-| EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest E96 value that is stocked. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
+| EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest stocked value — E24, since E96's neighbour is 909 kΩ. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
 | FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V) that cannot float. p.5 gives it **two** functions — disabling the GATE driver *and* raising an INT_N interrupt on a valid high voltage — and either can be configured alone. Neither is wanted here; p.5 Table 1 makes HIGH the assert level, so GND is the inactive state. **The vendor leaves this pin open in all three application figures**, so tying it low is a deliberate deviation, taken because an unterminated CMOS input is not a state |
 
 Pin 17 is the exposed pad and the **only** GND connection.
@@ -2103,7 +2113,7 @@ A workable assignment, which also shows how tight it is:
 | 23, 10 | HUSB238A INT_N, EN_N | |
 | 11 | INA226 ALERT | |
 | 4, 5 | MAX3485 ch1/ch2 DI | |
-| 0, 1 | channel enables | drive SHDN through 1 kΩ; a **10 kΩ pull-down** on the pin holds the channel OFF through MCU reset. High enables. Costs the 32.768 kHz crystal option |
+| 0, 1 | channel enables | drive SHDN through 1 kΩ. The **10 kΩ pull-down** (R13/R14) sits on SHDN, not on the GPIO — the far side of the series resistor — and holds the channel OFF through MCU reset. High enables. Costs the 32.768 kHz crystal option |
 | 15 | SK6812 chain | a pull-down gives the right idle state. With factory eFuses GPIO15 selects the JTAG source and is **ignored**, so no strap level is required — only "not high-Z" |
 | 3 | bus-voltage ADC | GPIO2/3 are the **only** ADC pins free of strap, JTAG or 32 kHz conflicts |
 | 12, 13 | USB D-/D+ | fixed |
@@ -2349,7 +2359,7 @@ undetectable. None of these is all three.
 | **Q3 V_BE = 0.6-0.8 V** at 800 µA | silicon junction over −20…+85 °C. The MMBT5551 datasheet publishes no V_BE(on) at any current; its only V_BE figure is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
 | **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.84 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.22 V at β 40, 0.15 V at β 20, zero near β 9 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
-| **Rd survives the powered-but-disabled window** | not stated. p.11 says that with EN_N high "the whole system is disabled"; p.14 guarantees Rd only "even in the un-powered state". Between those two the board sits powered with EN_N held high by its internal pull-up for the whole MCU boot — see Cold-start step 3 — and no line covers it | the source detaches after tCCDebounce, VBUS drops, the rails collapse and the board power-cycles in a loop. This is the one assumption here that could stop it booting at all | **bench, and cheap**: plug into a PD source and watch CC with firmware never pulling EN_N low. If it fails, the fix is a pull-down on `PD_EN_N` so the chip enables before the MCU does — a part this board has room for |
+| **Rd survives the powered-but-disabled window** (see Cold-start sequence, which depends on it) | not stated. p.11 says that with EN_N high "the whole system is disabled"; p.14 guarantees Rd only "even in the un-powered state". Between those two the board sits powered with EN_N held high by its internal pull-up for the whole MCU boot — see Cold-start step 3 — and no line covers it | the source detaches after tCCDebounce, VBUS drops, the rails collapse and the board power-cycles in a loop. This is the one assumption here that could stop it booting at all | **bench, and cheap**: plug into a PD source and watch CC with firmware never pulling EN_N low. If it fails, the fix is a pull-down on `PD_EN_N` so the chip enables before the MCU does — a part this board has room for |
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
 | **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 6.5-7.7 J available against 2.14 J needed at the design point is 3-3.6×, which a package change does not eat. The spread is the reading uncertainty on a light-grey trace over a log grid. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |

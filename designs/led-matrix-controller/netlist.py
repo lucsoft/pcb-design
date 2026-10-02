@@ -197,7 +197,7 @@ COMPONENTS = [
         "1": "LED_DATA_5V", "2": "LED_D1"}),
 
     # ---- Channel 1 eFuse -------------------------------------------------
-    # P_IN (6) connects to IN directly, per p.4. GND (9) is wired IN ADDITION
+    # P_IN (6) connects to IN directly, per p.5. GND (9) is wired IN ADDITION
     # to the PowerPAD (21), which p.5 states outright. UVLO is the UPPER tap of
     # the divider -- swapping it with OVP gives a part that never turns on.
     # MODE open = latch off; firmware owns the retry policy.

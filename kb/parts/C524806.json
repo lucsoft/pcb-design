@@ -84,7 +84,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "datasheet Pin Functions table (DDA/SO PowerPAD-8)"
+    "pins": "datasheet p.3 Pin Functions table (DDA/SO PowerPAD-8)"
   },
   "notes": [
     "Chosen specifically for 5 V bus operation. Its automatic BOOT recharge circuit allows 'duty cycles approaching 100%', so 'the maximum output voltage is near the minimum input supply voltage' (datasheet p.10). An ordinary buck cannot produce 5 V from a 5 V input; this one passes through.",
