@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C45783",
+  "@type": "Component",
+  "lcscId": "C45783",
+  "mpn": "CL21A226MAQNNNE",
+  "manufacturer": "Samsung Electro-Mechanics",
+  "description": "22uF ±20% 25V Ceramic Capacitor X5R 0805",
+  "category": "capacitor",
+  "package": "0805",
+  "stock": 1369680,
+  "priceUsd": 0.2222,
+  "parameters": {
+    "Capacitance": "22uF",
+    "Temperature Coefficient": "X5R",
+    "Tolerance": "±20%",
+    "Voltage Rating": "25V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "basic",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+  },
+  "designVerdict": "SELECTED. 22 uF 25 V X5R 0805. local bulk at the ESP32-C6 and at each regulator output"
+}

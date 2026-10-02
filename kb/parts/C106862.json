@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C106862",
+  "@type": "Component",
+  "lcscId": "C106862",
+  "mpn": "CC0402KRX7R9BB333",
+  "manufacturer": "YAGEO",
+  "description": "33nF ±10% 50V Ceramic Capacitor X7R 0402",
+  "category": "capacitor",
+  "package": "0402",
+  "stock": 519400,
+  "priceUsd": 0.0048,
+  "parameters": {
+    "Capacitance": "33nF",
+    "Temperature Coefficient": "X7R",
+    "Tolerance": "±10%",
+    "Voltage Rating": "50V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+  },
+  "designVerdict": "SELECTED. 33 nF 50 V X7R 0402. TPS54360B COMP, the series leg"
+}

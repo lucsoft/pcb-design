@@ -1,23 +1,24 @@
 {
   "@context": "../context.jsonld",
-  "@id": "lcsc:C1525",
+  "@id": "lcsc:C52923",
   "@type": "Component",
-  "lcscId": "C1525",
-  "mpn": "CL05B104KO5NNNC",
+  "lcscId": "C52923",
+  "mpn": "CL05A105KA5NQNC",
   "manufacturer": "Samsung Electro-Mechanics",
-  "description": "100nF ±10% 16V Ceramic Capacitor X7R 0402",
+  "description": "1uF ±10% 25V Ceramic Capacitor X5R 0402",
   "category": "capacitor",
   "package": "0402",
-  "stock": 410700,
-  "priceUsd": 0.0045,
+  "stock": 0,
+  "priceUsd": 0.01,
   "parameters": {
-    "Capacitance": "100nF",
-    "Temperature Coefficient": "X7R",
+    "Capacitance": "1uF",
+    "Temperature Coefficient": "X5R",
     "Tolerance": "±10%",
-    "Voltage Rating": "16V"
+    "Voltage Rating": "25V"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
+  "tier": "basic",
   "pins": [
     {
       "number": "1",
@@ -37,7 +38,8 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal passive - pads 1 and 2, no polarity"
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "tier": null
+  "designVerdict": "SELECTED. 1 uF 25 V X5R 0402. HUSB238A VDD, and the ESP32-C6 EN delay cap"
 }

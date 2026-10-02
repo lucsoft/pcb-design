@@ -1,23 +1,24 @@
 {
   "@context": "../context.jsonld",
-  "@id": "lcsc:C1525",
+  "@id": "lcsc:C13585",
   "@type": "Component",
-  "lcscId": "C1525",
-  "mpn": "CL05B104KO5NNNC",
+  "lcscId": "C13585",
+  "mpn": "CL31A106KBHNNNE",
   "manufacturer": "Samsung Electro-Mechanics",
-  "description": "100nF ±10% 16V Ceramic Capacitor X7R 0402",
+  "description": "10uF ±10% 50V Ceramic Capacitor X5R 1206",
   "category": "capacitor",
-  "package": "0402",
-  "stock": 410700,
-  "priceUsd": 0.0045,
+  "package": "1206",
+  "stock": 0,
+  "priceUsd": 0.2687,
   "parameters": {
-    "Capacitance": "100nF",
-    "Temperature Coefficient": "X7R",
+    "Capacitance": "10uF",
+    "Temperature Coefficient": "X5R",
     "Tolerance": "±10%",
-    "Voltage Rating": "16V"
+    "Voltage Rating": "50V"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
+  "tier": "basic",
   "pins": [
     {
       "number": "1",
@@ -37,7 +38,8 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal passive - pads 1 and 2, no polarity"
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "tier": null
+  "designVerdict": "SELECTED. 10 uF 50 V X5R 1206. 5 V rail bulk, and TPS54360B output"
 }

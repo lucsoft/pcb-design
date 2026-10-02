@@ -1,0 +1,48 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C25744",
+  "@type": "Component",
+  "lcscId": "C25744",
+  "mpn": "0402WGF1002TCE",
+  "manufacturer": "UNI-ROYAL",
+  "description": "10kΩ ±1% 62.5mW 0402 Thick Film Resistor",
+  "category": "resistor",
+  "package": "0402",
+  "stock": 7400900,
+  "priceUsd": 0.0034,
+  "parameters": {
+    "Resistance": "10kΩ",
+    "Power(Watts)": "62.5mW",
+    "Voltage Rating": "50V",
+    "Operating Temperature": "-55℃~+155℃",
+    "Type": "Thick Film Resistor",
+    "Temperature Coefficient": "±100ppm/℃",
+    "Tolerance": "±1%"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "basic",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+  },
+  "designVerdict": "SELECTED. 10 kΩ 1% 0402. the board's general-purpose pull-up/pull-down: SHDN pull-down x2, FAULT gate pull-down x2, INT_N, shared PGOOD, ESP32 EN and GPIO8"
+}

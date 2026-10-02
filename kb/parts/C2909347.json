@@ -1,0 +1,48 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C2909347",
+  "@type": "Component",
+  "lcscId": "C2909347",
+  "mpn": "FRC0402F3002TS",
+  "manufacturer": "FOJAN",
+  "description": "30kΩ ±1% 62.5mW 0402 Thick Film Resistor",
+  "category": "resistor",
+  "package": "0402",
+  "stock": 1939200,
+  "priceUsd": 0.0019,
+  "parameters": {
+    "Power(Watts)": "62.5mW",
+    "Resistance": "30kΩ",
+    "Voltage Rating": "50V",
+    "Operating Temperature": "-55℃~+155℃",
+    "Type": "Thick Film Resistor",
+    "Temperature Coefficient": "±100ppm/℃",
+    "Tolerance": "±1%"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/106fb934f95f063b695dad1b31b1eab8.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+  },
+  "designVerdict": "SELECTED. 30.0 kΩ 1% 0402. R3 of each TPS16630 UVLO/OVP string, 2 off - the bottom leg, sets OVP"
+}

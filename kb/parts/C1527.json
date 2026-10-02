@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C1527",
+  "@type": "Component",
+  "lcscId": "C1527",
+  "mpn": "0402B151K500NT",
+  "manufacturer": "FH",
+  "description": "150pF ±10% 50V Ceramic Capacitor X7R 0402",
+  "category": "capacitor",
+  "package": "0402",
+  "stock": 53200,
+  "priceUsd": 0.0043,
+  "parameters": {
+    "Capacitance": "150pF",
+    "Temperature Coefficient": "X7R",
+    "Tolerance": "±10%",
+    "Voltage Rating": "50V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/09fe2daf22580a99fa7fea93ccb20fb7.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+  },
+  "designVerdict": "SELECTED. 150 pF 50 V C0G 0402. TPS54360B COMP, the parallel leg"
+}

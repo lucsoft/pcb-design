@@ -1,0 +1,48 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C17902",
+  "@type": "Component",
+  "lcscId": "C17902",
+  "mpn": "1206W4F1002T5E",
+  "manufacturer": "UNI-ROYAL",
+  "description": "10kΩ ±1% 250mW 1206 Thick Film Resistor",
+  "category": "resistor",
+  "package": "1206",
+  "stock": 2120600,
+  "priceUsd": 0.0084,
+  "parameters": {
+    "Resistance": "10kΩ",
+    "Power(Watts)": "250mW",
+    "Voltage Rating": "200V",
+    "Operating Temperature": "-55℃~+155℃",
+    "Type": "Thick Film Resistor",
+    "Temperature Coefficient": "±100ppm/℃",
+    "Tolerance": "±1%"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0a975aaa49b7c97f38a963127be4a823.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "basic",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
+  },
+  "designVerdict": "SELECTED. 10 kΩ 1% 1206 250 mW. R2, the 36 V bus bleeder - 1206 because 36^2/10k = 130 mW, which an 0402 at 62.5 mW cannot take"
+}

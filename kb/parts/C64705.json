@@ -1,23 +1,24 @@
 {
   "@context": "../context.jsonld",
-  "@id": "lcsc:C1525",
+  "@id": "lcsc:C64705",
   "@type": "Component",
-  "lcscId": "C1525",
-  "mpn": "CL05B104KO5NNNC",
+  "lcscId": "C64705",
+  "mpn": "CL10B224KB8NNNC",
   "manufacturer": "Samsung Electro-Mechanics",
-  "description": "100nF ±10% 16V Ceramic Capacitor X7R 0402",
+  "description": "220nF ±10% 50V Ceramic Capacitor X7R 0603",
   "category": "capacitor",
-  "package": "0402",
-  "stock": 410700,
-  "priceUsd": 0.0045,
+  "package": "0603",
+  "stock": 313050,
+  "priceUsd": 0.0183,
   "parameters": {
-    "Capacitance": "100nF",
+    "Capacitance": "220nF",
     "Temperature Coefficient": "X7R",
     "Tolerance": "±10%",
-    "Voltage Rating": "16V"
+    "Voltage Rating": "50V"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
   "pins": [
     {
       "number": "1",
@@ -37,7 +38,8 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal passive - pads 1 and 2, no polarity"
+    "pins": "two-terminal passive - pads 1 and 2, no polarity",
+    "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "tier": null
+  "designVerdict": "SELECTED. 220 nF 50 V X7R 0603. C_dVdT on each TPS16630, 2 off - sets the inrush ramp, see Channel switching and inrush"
 }
