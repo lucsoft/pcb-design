@@ -1,22 +1,63 @@
 {
   "gge1": {
-    "props": { "Designator": "U1", "device_name": "XC6206P332MR", "value": "3.3V", "Supplier Part": "C5446" },
-    "pins": { "1": "GND", "2": "VCC_3V3", "3": "VBUS" }
+    "props": {
+      "Designator": "U1",
+      "device_name": "XC6206P332MR",
+      "value": "3.3V",
+      "Supplier Part": "C5446"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "VCC_3V3",
+      "3": "VBUS"
+    }
   },
   "gge2": {
-    "props": { "Designator": "C1", "device_name": "100nF", "value": "100nF", "Supplier Part": "C1525" },
-    "pins": { "1": "VBUS", "2": "GND" }
+    "props": {
+      "Designator": "C1",
+      "device_name": "100nF",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
   },
   "gge3": {
-    "props": { "Designator": "R1", "device_name": "10k", "value": "10k", "Supplier Part": "C25804" },
-    "pins": { "1": "VCC_3V3", "2": "LED_A" }
+    "props": {
+      "Designator": "R1",
+      "device_name": "10k",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "VCC_3V3",
+      "2": "LED_A"
+    }
   },
   "gge4": {
-    "props": { "Designator": "D1", "device_name": "LED red", "value": "red", "Supplier Part": "C2286" },
-    "pins": { "1": "GND", "2": "LED_A" }
+    "props": {
+      "Designator": "D1",
+      "device_name": "LED red",
+      "value": "red",
+      "Supplier Part": "C2286"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "LED_A"
+    }
   },
   "gge5": {
-    "props": { "Designator": "C2", "device_name": "100nF", "value": "100nF", "Supplier Part": "C1525" },
-    "pins": { "1": "VCC_3V3", "2": "GND" }
+    "props": {
+      "Designator": "C2",
+      "device_name": "100nF",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "VCC_3V3",
+      "2": "GND"
+    }
   }
 }

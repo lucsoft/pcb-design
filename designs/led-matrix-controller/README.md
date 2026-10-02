@@ -496,7 +496,7 @@ electrical table gives 92 mΩ typ / **190 mΩ max**, and the datasheet adds that
 values *"must include tolerance … at their maximum operating temperature"*. At
 190 mΩ the rail is **4.52 V** on a 4.75 V bus — still over the 74AHCT541's 4.5 V
 minimum, which the lower-DCR inductor bought — and D14 then holds the VBUS pin at
-**4.15 V**, which takes `VBUS_OK` to **+0.15 V** and the under-voltage bound to **0.15 V short**. The corner is flagged for the thresholds; the 4.56 V row
+**4.15 V**, which takes `VBUS_OK` to **+0.15 V** and leaves the under-voltage detector at **+0.15 V on the adjacent F1 band, 0.15 V short on the pessimistic F0 reading** — see the residual table. The corner is flagged for the thresholds; the 4.56 V row
 itself should be read as typical, not as the floor.
 
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
@@ -633,8 +633,9 @@ publishes it with values at [hynetek.com/2730.html](https://www.hynetek.com/2730
 — it is not in the datasheet. Gate pulled up through 10 kΩ and clamped by a Zener, source feeding the VBUS pin; a 0 Ω link bypasses it for
 builds at 28 V or below.
 
-**We use Hynetek's 27 V after all (BZT52C27), and the 20 V part this design
-carried for four revisions would have broken it.** The argument for 20 V was that
+**We use 27 V (BZT52C27), one bin below Hynetek's published 28 V, and the 20 V
+part this design carried for four revisions would have broken it.** The argument
+for 20 V was that
 it puts the VBUS pin at ~18.5 V, "comfortably inside its 3.15-29.4 V window",
 where a 28-30 V part would sit at ~28.5 V against a 29.4 V recommended maximum.
 
@@ -764,7 +765,7 @@ Both are 4.0 V thresholds against the 4.19 V the Schottky delivers:
 | Threshold | Value | Margin at 4.19 V |
 |---|---|---|
 | `VBUS_OK` rising, vVBPRS_R | **3.67 / 4.0 / 4.4 V** min/typ/max (p.7) | +0.19 V on typ, **−0.21 V on max** |
-| VBUS UV falling | **not specified at a 5 V RDO.** p.7 bands it 86% for 26 V > RDO > 10 V (F0) and 80% for 10 V ≥ RDO > 5 V (F1) — 5 V itself falls in no band. The **adjacent** band is F1 at 80%, which ends exactly at 5 V; F0 is two bands away. At 80% the bound is **4.00 V** and the pin clears by **+0.19 V**. At F0's 86% it would be 4.30 V and 0.11 V short | **+0.19 V on the adjacent band, −0.11 V on the pessimistic one** |
+| VBUS UV falling | **not specified at a 5 V RDO.** p.7 bands it 86% for 26 V > RDO > 10 V (F0) and 80% for 10 V ≥ RDO > 5 V (F1) — 5 V itself falls in no band. The **adjacent** band is F1 at 80%, which ends exactly at 5 V; F0 starts at 10 V, one band further up. At 80% the bound is **4.00 V** and the pin clears by **+0.19 V**. At F0's 86% it would be 4.30 V and 0.11 V short | **+0.19 V on the adjacent band, −0.11 V on the pessimistic one** |
 
 The first decides whether VBUS-present is seen; the second is the under-voltage
 detector that, per the same datasheet's UVP section, *"moves out the Attached.SNK
@@ -857,7 +858,7 @@ That is what the integrated part exists for.
 
 ### The replacement
 
-One **TPS16630** per channel: a 60 V, 6 A eFuse with an integrated 31 mΩ hot-swap
+One **TPS16630** per channel: a 60 V, 6 A eFuse with an integrated 31 mΩ (headline) hot-swap
 FET, adjustable current limit, adjustable overvoltage cut-off and a dV/dt pin
 that sets the output slew rate directly.
 
@@ -1311,8 +1312,11 @@ parts:
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
 standard these drivers follow defines a
 common-mode range of −7 V to +12 V, so a 5 V clamp would conduct during normal
-operation and corrupt the bus. 15 V clears the +12 V limit with margin, and
-bidirectional is required because the lines swing both polarities.
+operation and corrupt the bus. The fitted **SMAJ7.0CA** has a 7 V standoff, which
+clears the 0.84-1.38 V of return IR drop this cable actually imposes — that
+−7/+12 V figure is the transceiver's *capability*, not the excursion seen here,
+because both ends share GND inside one shell. See Resolved. Bidirectional is
+required because the lines swing both polarities.
 
 **Ethernet needs nothing extra.** The module's RJ45 has integrated magnetics, so
 the cable side is galvanically isolated, and Bob Smith termination is inside the
@@ -1399,7 +1403,16 @@ crossing between 70 and 100 mA instead of at 58.
 
 So **fit a fan of 50 mA or less**, which is a 25 mm part. Note that even 50 mA
 clears by 2 mV, which is inside this model's own noise: treat it as "25 mm class,
-and confirm the rail on the first board", not as a margin. At 36 V none of this
+and confirm the rail on the first board", not as a margin.
+
+**This bound is deliberately conservative, and it is worth knowing why.** Rail
+architecture grades the same 4.5 V floor as non-fatal — the 74AHCT541 drives only
+the status chain, so a marginal rail in the pre-negotiation window means the
+indicators misbehave, not that the board fails to start. The floor is treated as
+hard here because a fan is a part someone fits once and forgets, while the
+vSafe5V case recurs on every plug-in; a 30 mm fan is not *forbidden*, it just
+moves a documented-cosmetic failure from "never" to "every cold start on a laptop
+port". At 36 V none of this
 applies: the rail is a real buck off a 3.5 A converter and the fan is free. The
 constraint exists only at the bottom of vSafe5V, where there is no heat to move
 anyway — the board makes 2.3 W there.
@@ -1446,10 +1459,12 @@ design it has specific gaps:
   that it must not.
 - **No logic-level-domain rule**, which is the exact failure the 74AHCT541
   exists to prevent.
-- **Half the rules have no regression test.** S2, S4-malformed-lcsc, S5, K2,
-  K5, E1, E2, E3, P1-undervoltage, P2-thin, B1, Q1 and Q2 are untested —
-  thirteen, including all three electrical rules, which are the ones that would
-  fire on a voltage mistake.
+- **Nine rules have no regression test**: S2, S4-malformed-lcsc, S5, K2, K5,
+  P2-thin, B1, Q1 and Q2. The four that would fire on a voltage mistake on *this*
+  board — E1, E2, E3 and P1-undervoltage — now do have cases, which required
+  giving the 74AHCT541's VCC pin the `vMin` it had been missing: at 4.5-5.5 V it
+  is the part the whole dropout analysis is about, and until now the checker
+  could not see that floor at all.
 
 One documentation gap feeding this: only the **module** datasheet for the
 ESP32-C6 is cached. Every GPIO, strapping, ADC and peripheral claim beyond the
@@ -1546,7 +1561,7 @@ routing problem rather than a space one.
 Size and dissipation pull against each other: a TO-252 is cooled by the copper
 around it, and a small board has less of it.
 
-The TPS16630's integrated FET is **31 mΩ typ / 45 mΩ max at 85 °C**, so at
+The TPS16630's integrated FET is **33 mΩ typ / 45 mΩ max at T_J = 85 °C** (p.7; the 31 mΩ on the front page is the headline figure, taken at neither corner), so at
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
 the price of the part — thermal headroom goes from 1.29x to **1.17x**.

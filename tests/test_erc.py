@@ -243,6 +243,58 @@ def _():
     assert check.unverified(comp, "pins") is False
 
 
+@case("E1 catches two push-pull outputs on one net")
+def _():
+    # Two 74AHCT541 outputs tied together. Not a theoretical worry on this
+    # board: the status chain and the differential drivers are both push-pull,
+    # and a mis-typed net joins them silently.
+    n = {
+        **comp("gge1", "U1", "C84548", {"20": "VBUS", "10": "GND", "11": "SIG"}),
+        **comp("gge2", "U2", "C84548", {"20": "VBUS", "10": "GND", "12": "SIG"}),
+    }
+    assert "E1-driver-contention" in rules(run(n))
+
+
+@case("E2 catches a net of inputs with nothing driving it")
+def _():
+    n = {
+        **comp("gge1", "U1", "C84548", {"20": "VBUS", "10": "GND", "2": "FLOATING"}),
+        **comp("gge2", "U2", "C84548", {"20": "VBUS", "10": "GND", "3": "FLOATING"}),
+    }
+    assert "E2-no-driver" in rules(run(n))
+
+
+@case("E3 catches an open-drain pin with no pull-up")
+def _():
+    # The INA226's ALERT. This fired for real on the LED matrix controller,
+    # where the pull-up was specified in prose and absent from the BOM.
+    n = comp("gge1", "U1", "C49851", {"3": "ALERT_N"})
+    assert "E3-missing-pullup" in rules(run(n))
+
+
+@case("E3 is satisfied by a resistor on the net")
+def _():
+    n = {
+        **comp("gge1", "U1", "C49851", {"3": "ALERT_N"}),
+        **comp("gge2", "R1", "C25744", {"1": "ALERT_N", "2": "VCC_3V3"}),
+    }
+    assert "E3-missing-pullup" not in rules(run(n))
+
+
+@case("P1-undervoltage catches a rail below a pin's minimum")
+def _():
+    # The 74AHCT541 wants 4.5-5.5 V. Putting it on 3V3 is the mistake the
+    # whole dropout analysis exists to keep the design away from.
+    n = comp("gge1", "U1", "C84548", {"20": "VCC_3V3", "10": "GND"})
+    assert "P1-undervoltage" in rules(run(n))
+
+
+@case("P1-undervoltage stays quiet on a rail inside the window")
+def _():
+    n = comp("gge1", "U1", "C84548", {"20": "VBUS", "10": "GND"})
+    assert "P1-undervoltage" not in rules(run(n))
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:

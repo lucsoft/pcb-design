@@ -38,7 +38,7 @@
   "designVerdict": "SUPERSEDED by SMAJ36CA (C19077551)",
   "notes": [
     "SMAJ40CA, 40 V bidirectional TVS. Evaluated for the 36 V bus and not fitted.",
-    "REJECTED because its clamping voltage is 64.5 V, above the TPS16630's 67 V absolute only by a hair and above the 60 V TPS54360B and SS36 that share the unswitched bus. The SMAJ36CA (C19077551) clamps at 58.1 V and is fitted instead.",
+    "REJECTED because its clamping voltage is 64.5 V. That is below the TPS16630's 67 V absolute, but only by 1.04x, and it is ABOVE the 60 V TPS54360B and SS36 that share the unswitched bus - which is the reason it fails. The SMAJ36CA (C19077551) clamps at 58.1 V and is fitted instead.",
     "Worth knowing when reading any older analysis of this part: the conclusion that 'no part both stays off at 36 V and clamps below 60 V' is false - the SMAJ36CA does exactly that. So is any argument that leans on a P-channel body diode to excuse a 64 V clamp; the discrete switch that argument assumed was replaced by the TPS16630 eFuse."
   ]
 }
