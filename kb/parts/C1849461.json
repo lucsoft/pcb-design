@@ -194,7 +194,7 @@
       ],
       "requires": "decoupling",
       "severity": "error",
-      "note": "datasheet §10.2.2: a minimum of 0.1 uF at IN. Fitted as C3/C4, 100 nF 100 V."
+      "note": "datasheet p.6 Recommended Operating Conditions: 0.1 uF MINIMUM external capacitance at IN, P_IN and OUT. Fitted as C3/C4 at 220 nF 100 V - oversized on purpose, because a nominal 100 nF +/-10% part meets a minimum with zero margin."
     },
     {
       "id": "gnd-not-only-pad",
