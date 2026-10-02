@@ -8,7 +8,7 @@
   "description": "SMD LED Addressable, Specialty RoHS",
   "category": "led",
   "package": "SMD",
-  "stock": 186945,
+  "stock": 187475,
   "priceUsd": 0.0809,
   "parameters": {
     "Luminous Intensity - R": "160mcd~320mcd",
@@ -35,7 +35,7 @@
     "Peak Wavelength - B": "-"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0907a34a701b4aef568078003f6e9eae.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {

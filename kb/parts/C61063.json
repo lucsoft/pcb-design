@@ -8,7 +8,7 @@
   "description": "150kHz Step-down type Fixed 5V 2A SOIC-8 Voltage Regulators - DC DC Switching Regulators ",
   "category": "regulator",
   "package": "SOIC-8",
-  "stock": 381535,
+  "stock": 381235,
   "priceUsd": 0.2467,
   "parameters": {
     "Operating Temperature": "-40℃~+85℃",
@@ -25,7 +25,7 @@
     "Quiescent Current": "2mA"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/6764d4cba2504b189b593202c77b9bd6.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": "basic",
   "pins": [],
   "provenance": {

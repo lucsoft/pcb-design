@@ -8,7 +8,7 @@
   "description": "Polymeric PTC Resettable Fuse 60V 3A Through Hole P=10.2mm",
   "category": "fuse",
   "package": "Through Hole,P=10.2mm",
-  "stock": 48710,
+  "stock": 48715,
   "priceUsd": 0.1555,
   "parameters": {
     "Operating Temperature": "-40℃~+85℃",
@@ -26,7 +26,7 @@
     "Resistance - Post Trip (R1) (Max)": "80mΩ"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/f9f45971639a6761eacc52533b303f25.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

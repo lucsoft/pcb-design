@@ -8,7 +8,7 @@
   "description": "Red 645nm LED Indication - Discrete 2.4V 0603",
   "category": "led",
   "package": "0603",
-  "stock": 3064300,
+  "stock": 2995300,
   "priceUsd": 0.0076,
   "parameters": {
     "Installation method": "-",
@@ -26,7 +26,7 @@
     "Diode Configuration": "Discrete Diode"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/011ec3e8cb1e825f6961d29bc4db4c7a.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "pins": [
     {
       "number": "1",

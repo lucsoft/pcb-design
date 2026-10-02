@@ -8,7 +8,7 @@
   "description": "Jack Modular Connector RJ45 Through Hole",
   "category": "connector",
   "package": "Through Hole",
-  "stock": 26861,
+  "stock": 26833,
   "priceUsd": 1.734,
   "parameters": {
     "Shielding": "Shielded",
@@ -20,7 +20,7 @@
     "Connector Type": "RJ45 Jack"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/0ad5e0c00dfc47fb8e582f15f877f290.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

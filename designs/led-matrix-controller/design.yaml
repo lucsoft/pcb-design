@@ -33,6 +33,11 @@ rails:
   # limit rather than something the ERC can model.
   BUS_5V:
     voltage: 5.0
+    # The worst case, not the nominal, and the difference decides a real check:
+    # in pass-through at the bottom of vSafe5V this rail is 4.56 V typical and
+    # 4.50 V with a 190 mOhm part - exactly the 74AHCT541's supply floor.
+    # Declaring only the nominal would hide that from P1-undervoltage.
+    voltageMin: 4.50
   BUS_3V3:
     voltage: 3.3
 

@@ -8,7 +8,7 @@
   "description": "Bipolar (BJT) Transistor NPN 160V 600mA 100MHz 300mW Surface Mount SOT-23",
   "category": "transistor",
   "package": "SOT-23",
-  "stock": 8170250,
+  "stock": 8170200,
   "priceUsd": 0.0122,
   "parameters": {
     "Operating Temperature": "-55℃~+150℃",

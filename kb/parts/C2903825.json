@@ -8,7 +8,7 @@
   "description": "Diode Independent 60V 3A Surface Mount DO-214AC(SMA)",
   "category": "diode",
   "package": "DO-214AC(SMA)",
-  "stock": 15080,
+  "stock": 15060,
   "priceUsd": 0.0629,
   "parameters": {
     "Operating Junction Temperature Range": "-55℃~+150℃",
@@ -20,7 +20,7 @@
     "Current - Rectified": "3A"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/e8a285a15b5ef18869dfc48bcc8570f5.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {

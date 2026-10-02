@@ -8,7 +8,7 @@
   "description": "2.5MHz Step-down type Adjustable 800mV~58.8V 3.5A SOIC-8-EP Voltage Regulators - DC DC Switching Regulators RoHS",
   "category": "regulator",
   "package": "SOIC-8-EP",
-  "stock": 60000,
+  "stock": 59415,
   "priceUsd": 0.7605,
   "parameters": {
     "Operating Temperature": "-40℃~+150℃@(TJ)",
@@ -25,7 +25,7 @@
     "Quiescent Current": "146uA"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/ae818327cbcf892222f6d1e99cbd6f65.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {

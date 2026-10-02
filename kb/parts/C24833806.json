@@ -8,7 +8,7 @@
   "description": "Power Receiver Controller 1C QFN-16L-EP(3x3) Power Management - Specialized ",
   "category": "ic",
   "package": "QFN-16L-EP(3x3)",
-  "stock": 3069,
+  "stock": 3003,
   "priceUsd": 0.6572,
   "parameters": {
     "Type": "Power Receiver Controller",
@@ -21,7 +21,7 @@
     "Output Voltage": "5V;9V;12V;15V;20V;28V;48V"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/4ea6514a52a5c41dd654270022eda65d.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": "extended",
   "pins": [
     {
@@ -118,7 +118,8 @@
       "number": "16",
       "name": "VBUS",
       "type": "power_in",
-      "vMax": 33.0
+      "vMax": 33.0,
+      "vMin": 3.15
     },
     {
       "number": "17",
@@ -133,7 +134,8 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "datasheet p.4-5 Table 1 Pin Function Descriptions; limits p.9 Table 4 ABSOLUTE MAXIMUM RATINGS"
+    "pins": "datasheet p.4-5 Table 1 Pin Function Descriptions; limits p.9 Table 4 ABSOLUTE MAXIMUM RATINGS",
+    "vMin": "p.6 Table 2: VBUS pin 3.15 V minimum with VDD supplied"
   },
   "notes": [
     "FIGURE 6 RESOLVED (source: https://www.hynetek.com/2730.html, found by research, NOT in the datasheet). The unlabelled 'Voltage Regulator' is a BSS138 source follower: gate via 10 kOhm pull-up clamped by a 28 V Zener, source to the VBUS pin. A 0 Ohm link bypasses it at 28 V and below.",

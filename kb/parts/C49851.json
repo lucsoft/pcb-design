@@ -8,7 +8,7 @@
   "description": "0V~36V 2.5uV 100pA VSSOP-10 Current Regulation/Management RoHS",
   "category": "ic",
   "package": "VSSOP-10",
-  "stock": 43127,
+  "stock": 41398,
   "priceUsd": 0.7621,
   "parameters": {
     "Features": "High-side detection;Low-side detection;Bidirectional detection;Power monitoring;Digital output interface;Programmable threshold alarm;Enable/shutdown function",
@@ -27,7 +27,7 @@
     "Input Offset Voltage Drift(Vos TC)": "0.1uV/℃"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/c67b965eb2a01e8d671b6f15d639e314.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {

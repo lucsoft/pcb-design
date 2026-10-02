@@ -8,7 +8,7 @@
   "description": "58.1VC Clamp 6.9A@10/1000us Ipp TVS DIODE DO-214AC(SMA)",
   "category": "diode",
   "package": "DO-214AC(SMA)",
-  "stock": 6240,
+  "stock": 6280,
   "priceUsd": 0.0368,
   "parameters": {
     "Clamping Voltage": "58.1V",
@@ -23,7 +23,7 @@
     "Reverse Stand-Off Voltage (Vrwm)": "36V"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/f3d2c9df3269749880b305befd579c39.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {

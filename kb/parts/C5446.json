@@ -8,7 +8,7 @@
   "description": "3.3V Positive Fixed SOT-23-3L Voltage Regulators - Linear, Low Drop Out (LDO) Regulators RoHS",
   "category": "regulator",
   "package": "SOT-23-3L",
-  "stock": 312325,
+  "stock": 310155,
   "priceUsd": 0.1441,
   "parameters": {
     "Output Voltage": "3.3V",
@@ -22,7 +22,7 @@
     "Output Type": "Fixed"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/221c990eb3a74b8a8233f22168ce0d59.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": "basic",
   "pins": [
     {

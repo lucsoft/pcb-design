@@ -8,7 +8,7 @@
   "description": "Red 645nm LED Indication - Discrete 1.8V~2.4V 0805",
   "category": "led",
   "package": "0805",
-  "stock": 126900,
+  "stock": 126800,
   "priceUsd": 0.0082,
   "parameters": {
     "Installation method": "-",

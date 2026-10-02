@@ -92,8 +92,8 @@ flowchart LR
     USBC -->|"VBUS 5-36 V"| RZ --> PD
     USBC --> RAILS
     USBC ==> BUS
-    BUS ==> SW1
-    BUS ==> SW2
+    BUS ==> EF1
+    BUS ==> EF2
     M1 -->|return| SHUNT
     M2 -->|return| SHUNT
     SHUNT --> GND
@@ -208,6 +208,15 @@ Cross-sections per **IEC 60228**, loop resistance 2ρ/A with ρ(Cu) = 0.0172
 | **0.50** | **0.84 V** | **1.67 V** | 2.51 V | **10.8 m** |
 | 0.75 | 0.56 V | 1.11 V | 1.67 V | 16.1 m |
 | 1.00 | 0.42 V | 0.84 V | 1.25 V | 21.5 m |
+
+**That table is the balanced case.** It is worked at 2.43 A, which is both
+channels sharing the contract evenly. "Why two channels" sets the real
+per-channel worst case at **2.80 A** — one channel at the 70% thermal cap while
+the other is dark, since PD caps the total and not the split. At 2.80 A the
+0.5 mm² / 10 m drop is **1.93 V = 5.4%**, just past the 5% line, and the maximum
+length falls from 10.8 m to **9.3 m**. The 5% is an efficiency choice rather than
+a functional limit — the converter needs only 6.5 V in — so this changes the
+recommendation and not the feasibility: **0.5 mm² up to 9 m, 0.75 mm² beyond**.
 
 **Power is not the constraint.** The converter needs only 6.5 V in (5 V out plus
 1.5 V dropout), so from 36 V there is 29.5 V of headroom — the cable would have
@@ -462,7 +471,7 @@ own 5 V with an **XL1509**, whose datasheet p.1 states a **minimum dropout of
 module therefore needs about **6.5 V in** to hold 5 V out at load — which no 5 V
 bus can give it. Below that the XL1509 sits at 100% duty as a pass-through and
 the module rail follows the bus down, minus whatever the switch drops at the
-current drawn. See Recovery and graceful degradation for what that leaves.
+current drawn. See Recovery and debug for what that leaves.
 
 ```mermaid
 flowchart LR
@@ -891,7 +900,7 @@ port. The TPS16630 works from **4.5 V**.
 | ramp vs module count | capacitance-limited at 12.7/channel | **bounded by the eFuse's 1.25 s thermal timeout, not by a fault timer** |
 | dissipation | 0.35 W | 0.66 W |
 
-The last row is the cost and it is real: 31 mΩ integrated against 9.5 mΩ discrete
+The last row is the cost and it is real: **45 mΩ max** integrated against 9.5 mΩ discrete
 plus a 10 mΩ shunt. Thermal headroom falls from 1.29x to **1.17x**, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
@@ -1074,9 +1083,11 @@ transistors left on this net are the two FAULT interlocks.
   maximum. So the -30 is the right one here. Read the **minimum** of that spread,
   not the 39 V maximum: the maximum is the forgiving end and 3.3 V away from the
   number that decides it.
-- **The OVP release threshold straddles the maximum bus.** See Known electrical
-  limits: the trip point is sound, the recovery point is not, and the lever is
-  firmware cycling SHDN rather than a divider change.
+- **The OVP release threshold straddles the maximum bus.** The trip point is
+  sound, the recovery point is not, and the lever is a firmware **PD
+  renegotiation** down to 20 V or 28 V — *not* cycling SHDN, which cannot clear a
+  hysteretic comparator, and not a divider change. See Channel switching and
+  inrush.
 
 ## Why two channels
 
@@ -1149,6 +1160,7 @@ Active parts. Passives are listed below the table.
 | D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the eFuse is 67 V absolute (1.15x), but the 60 V bus parts are only **1.03x** | 0.037 |
 | D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.043 |
 | D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
+| D15,D16 | SS36 | C2903825 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. Same part as D2 | 0.126 |
 | L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.228 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
 | R1,R2 | see Passives | — | — | the shunt and the bleeder are listed with the other passives below | — |
@@ -1219,7 +1231,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | R47 | **10 kΩ 1% 0402** | C25744 | W5500 module INTn pull-up — open-drain, same reasoning as the HUSB238A's INT_N |
 | R48 | **0 Ω 0402, do not fit** | C17168 | follower bypass link. Fitted only on a build that never exceeds 28 V, where Q3 and D1 come out and VBUS connects straight through. **DNF** on this board |
 
-**Capacitors** — 33 parts.
+**Capacitors** — 35 parts.
 
 | Ref | Value | LCSC | Role |
 |---|---|---|---|
@@ -1229,6 +1241,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | C6 | **33 nF 50 V X7R 0402** | C106862 | TPS54360B COMP series |
 | C7 | **150 pF 50 V C0G 0402** | C1527 | TPS54360B COMP parallel |
 | C8,C33 | **4.7 µF 100 V X7R 1210** | C2840282 | 36 V bus bulk, one at the converter and one at the USB-C inlet |
+| C34,C35 | **100 nF 100 V X7R 0805** | C28233 | at each eFuse **OUT** pin. p.6 Recommended Operating Conditions gives 0.1 µF as the minimum external capacitance at IN, P_IN *and* OUT; only the input half had been fitted |
 | C9 | **100 nF 100 V X7R 0805** | C28233 | TPS54360B input decoupling — this one sits on the **36 V bus**, so it takes the same 100 V part as the eFuse inputs, not the 0402 |
 | C14 | **100 nF 50 V X7R 0402** | C131394 | SY8089 input decoupling, on the 5 V rail |
 | C10,C11 | **10 µF 50 V X5R 1206** | C7432781 | TPS54360B output |
@@ -1241,7 +1254,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | C23,C32 | **100 nF 50 V X7R 0402** | C131394 | 74AHCT541 and the Ethernet module's 3V3 feed |
 | C24-C31 | **100 nF 50 V X7R 0402** | C131394 | one per SK6812 — the datasheet calls the inter-LED decoupling essential |
 
-Not on this board: the **120 Ω** differential termination belongs at the far end of each chain, on the first converter board — see Differential link.
+Not on this board: the **120 Ω** differential termination belongs at the far end of each chain, on the first converter board — see Cabling.
 
 ## Network protocol
 
@@ -1356,7 +1369,7 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7045 mm2.**
 
-Component area estimates at **~2360 mm2**, counting the passives individually
+Component area estimates at **~2370 mm2**, counting the passives individually
 rather than as an allowance — the itemised list is in the BOM. The Ethernet
 module made the board slightly *bigger*, 575 mm2 against the ~496 it replaced.
 At 45% utilisation (2-layer, relaxed) that is roughly
@@ -1371,7 +1384,7 @@ The largest items are where any further shrink comes from:
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
 | 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
-| 81 passives | ~188 | 67 × 0402 at ~1.5 mm² with pads, 6 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
+| 83 passives | ~196 | 67 × 0402 at ~1.5 mm² with pads, 8 × 0805, 3 × 1206, 2 × 1210, 2 × 0603 and the 2512 shunt at 25 |
 | SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
 
@@ -1461,10 +1474,14 @@ design it has specific gaps:
   exists to prevent.
 - **Nine rules have no regression test**: S2, S4-malformed-lcsc, S5, K2, K5,
   P2-thin, B1, Q1 and Q2. The four that would fire on a voltage mistake on *this*
-  board — E1, E2, E3 and P1-undervoltage — now do have cases, which required
-  giving the 74AHCT541's VCC pin the `vMin` it had been missing: at 4.5-5.5 V it
-  is the part the whole dropout analysis is about, and until now the checker
-  could not see that floor at all.
+  board now have cases. `P1-undervoltage` needed a part with a `vMin` to fire at
+  all, and no record carried one: the 74AHCT541's VCC pin now does, at 4.5-5.5 V,
+  which is the floor the whole dropout analysis is about. **It still cannot fire
+  on this design**, because `design.yaml` declares `BUS_5V` at its nominal 5.0 V
+  while the sag that matters is 4.56 V typ and 4.50 V at the 190 mΩ corner — the
+  rails file now takes a `voltageMin` alongside `voltage`, and `BUS_5V` declares
+  **4.50 V** there, so the rule does fire on the real sag rather than on the
+  nominal. E1, E2 and E3 needed only the pin *types* those records already had.
 
 One documentation gap feeding this: only the **module** datasheet for the
 ESP32-C6 is cached. Every GPIO, strapping, ADC and peripheral claim beyond the
@@ -1561,7 +1578,7 @@ routing problem rather than a space one.
 Size and dissipation pull against each other: a TO-252 is cooled by the copper
 around it, and a small board has less of it.
 
-The TPS16630's integrated FET is **33 mΩ typ / 45 mΩ max at T_J = 85 °C** (p.7; the 31 mΩ on the front page is the headline figure, taken at neither corner), so at
+The TPS16630's integrated FET is **33 mΩ min / 45 mΩ max at T_J = 85 °C**, and 26 / 30.44 / 34.5 mΩ at 25 °C (p.7 — that row has no typ column; the 31 mΩ on the front page is the headline figure, taken at neither corner), so at
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
 the price of the part — thermal headroom goes from 1.29x to **1.17x**.
@@ -2141,12 +2158,12 @@ At the 72 x 74 mm envelope the board is 53.3 cm2.
 
 The rows sum to 4.11 W against **4.80 W** of capacity at 0.09 W/cm² over
 53.3 cm², so **1.17x headroom** — down from 1.29x. The eFuse is most of that
-change but not all of it: of the 0.40 W added, **0.31 W** is the eFuse's 31 mΩ
-against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
+change but not all of it: of the 0.40 W added, **0.31 W** is the eFuse's 45 mΩ
+max against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
 lower-DCR inductor, **+0.01 W** is the PD follower (the 27 V clamp draws less than
 the 20 V one did, but the NPN's 4.7 kΩ base pull-up draws more than the 10 kΩ it
 replaced), and **0.12 W** is the status-LED row, which the 3.71 W figure simply
-did not count. On the eFuse alone the headroom would be 1.21x. And that is
+did not count. On the eFuse alone the headroom would be 1.19x. And that is
 at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:

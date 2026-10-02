@@ -8,7 +8,7 @@
   "description": "LQFP-48(7x7) Controllers RoHS",
   "category": "ic",
   "package": "LQFP-48(7x7)",
-  "stock": 13131,
+  "stock": 16873,
   "priceUsd": 2.8546,
   "parameters": {
     "Features": "Low-power mode;Wake-up function;Programmable LED indication",
@@ -21,7 +21,7 @@
     "Ethernet Speed Standards": "10BASE-T;100BASE-TX"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/30476b02c653bde72f85075618aea7c4.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

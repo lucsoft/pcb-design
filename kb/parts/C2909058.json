@@ -8,7 +8,7 @@
   "description": "SMD,2x2mm LED Addressable, Specialty RoHS",
   "category": "led",
   "package": "SMD,2x2mm",
-  "stock": 35510,
+  "stock": 35000,
   "priceUsd": 0.1112,
   "parameters": {
     "Luminous Intensity - R": "100mcd~200mcd",

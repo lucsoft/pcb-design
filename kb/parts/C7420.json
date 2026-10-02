@@ -8,7 +8,7 @@
   "description": "1.65V~5.5V 1 1 2.6ns@5V,50pF SOT-23-5 Buffers, Drivers, Receivers, Transceivers RoHS",
   "category": "ic",
   "package": "SOT-23-5",
-  "stock": 57640,
+  "stock": 57440,
   "priceUsd": 0.0788,
   "parameters": {
     "Input type": "-",
@@ -26,7 +26,7 @@
     "Propagation Delay": "2.6ns@5V,50pF"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/1c545a4dd81c439d8f98250474a8b0eb.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

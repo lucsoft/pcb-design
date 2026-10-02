@@ -8,7 +8,7 @@
   "description": "SMD-4P,3.2x1.1mm LED Addressable, Specialty RoHS",
   "category": "led",
   "package": "SMD-4P,3.2x1.1mm",
-  "stock": 52310,
+  "stock": 52305,
   "priceUsd": 0.1129,
   "parameters": {
     "Features": "Built-in power-on reset circuit;Built-in power-on reset circuit",

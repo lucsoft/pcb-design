@@ -8,7 +8,7 @@
   "description": "100kΩ ±1% 62.5mW 0402 Thick Film Resistor",
   "category": "resistor",
   "package": "0402",
-  "stock": 3937800,
+  "stock": 3936700,
   "priceUsd": 0.0025,
   "parameters": {
     "Resistance": "100kΩ",

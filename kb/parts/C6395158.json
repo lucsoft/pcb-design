@@ -24,7 +24,7 @@
     "Quiescent Supply Current": "500uA"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/10d2e02526bd4d057ac080b6dfcdb81f.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {

@@ -8,7 +8,7 @@
   "description": "Through Hole,D=8mm LED Addressable, Specialty ",
   "category": "led",
   "package": "Through Hole,D=8mm",
-  "stock": 4395,
+  "stock": 4365,
   "priceUsd": 0.2468,
   "parameters": {
     "Luminous Intensity - R": "3000mcd",
@@ -35,7 +35,7 @@
     "Peak Wavelength - B": "467.5nm"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/2a784b9b99f69781502e473598706390.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

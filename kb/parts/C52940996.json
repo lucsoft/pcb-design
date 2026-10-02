@@ -8,7 +8,7 @@
   "description": "QFN-24(4x4) Power Distribution Switches, Load Drivers ",
   "category": "ic",
   "package": "QFN-24(4x4)",
-  "stock": 1524,
+  "stock": 1511,
   "priceUsd": 1.1637,
   "parameters": {
     "Operating Temperature": "-40℃~+85℃",
@@ -23,7 +23,7 @@
     "Operating Voltage": "4.5V~40V"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/e65e653cac18a8b249776050e864da54.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": "extended",
   "pins": [],
   "provenance": {

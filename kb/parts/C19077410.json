@@ -8,7 +8,7 @@
   "description": "Zener Diode Independent 12V 350mW Surface Mount SOD-123",
   "category": "diode",
   "package": "SOD-123",
-  "stock": 499815,
+  "stock": 499790,
   "priceUsd": 0.017,
   "parameters": {
     "Diode Configuration": "1 Independent",
@@ -22,7 +22,7 @@
     "Impedance(Zzk)": "150Ω"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02a7f2c734d5d8407bcaa05ee2a504ab.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

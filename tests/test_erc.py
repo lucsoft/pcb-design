@@ -295,6 +295,18 @@ def _():
     assert "P1-undervoltage" not in rules(run(n))
 
 
+@case("P1-undervoltage reads a rail's declared worst case, not its nominal")
+def _():
+    # The failure this exists for: a rail declared at its nominal hides the sag
+    # that actually crosses a pin's floor. 5.0 V nominal passes, 4.4 V worst
+    # case does not, and the 74AHCT541 is the part the distinction is about.
+    design = DESIGN.replace("VBUS: {voltage: 5.0}",
+                            "VBUS: {voltage: 5.0, voltageMin: 4.4}")
+    n = comp("gge1", "U1", "C84548", {"20": "VBUS", "10": "GND"})
+    assert "P1-undervoltage" not in rules(run(n))
+    assert "P1-undervoltage" in rules(run(n, design))
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:

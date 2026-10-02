@@ -8,7 +8,7 @@
   "description": "Tactile Switch SPST 160gf 2mm SMD (SMT) Tab 4mm x 3mm Surface Mount",
   "category": "switch",
   "package": "SMD,4x3mm",
-  "stock": 622830,
+  "stock": 622790,
   "priceUsd": 0.0528,
   "parameters": {
     "with Bracket": "Without Bracket",

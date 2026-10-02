@@ -8,7 +8,7 @@
   "description": "100nF ±10% 16V Ceramic Capacitor X7R 0402",
   "category": "capacitor",
   "package": "0402",
-  "stock": 410700,
+  "stock": 0,
   "priceUsd": 0.0045,
   "parameters": {
     "Capacitance": "100nF",
@@ -17,7 +17,7 @@
     "Voltage Rating": "16V"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/02336ea48ea44ca18c72517dd3cb7b47.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "pins": [
     {
       "number": "1",

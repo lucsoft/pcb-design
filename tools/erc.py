@@ -134,6 +134,21 @@ class Design:
             return float(rec)
         return None
 
+    def rail_voltage_min(self, net: str) -> float | None:
+        """The worst case a rail actually reaches, for undervoltage checks.
+
+        A rail declared at its nominal hides the case that matters. This
+        project's 5 V rail is nominal 5.0 V and sags to 4.50 V in pass-through
+        at the bottom of vSafe5V — right on the 74AHCT541's supply floor — so
+        comparing a pin's vMin against the nominal says nothing. Declare
+        `voltageMin` alongside `voltage` and the check uses it; without one it
+        falls back to the nominal, which is the old behaviour.
+        """
+        rec = self.rails.get(net)
+        if isinstance(rec, dict) and rec.get("voltageMin") is not None:
+            return float(rec["voltageMin"])
+        return self.rail_voltage(net)
+
     def is_ground(self, net: str) -> bool:
         rec = self.rails.get(net)
         if isinstance(rec, dict) and rec.get("type") == "ground":
@@ -445,11 +460,15 @@ class Check:
                                   + (" (pin data is unverified, confirm against "
                                      "the datasheet)" if sev == "warning" else ""))
                 vmin = rec.get("vMin")
-                if vmin is not None and v < float(vmin) - 1e-9:
+                vlow = self.design.rail_voltage_min(net)
+                if vmin is not None and vlow is not None and vlow < float(vmin) - 1e-9:
+                    worst = "" if vlow == v else f" (nominal {v} V)"
                     self.add("P1-undervoltage", "warning",
                              f"{comp.designator}.{pin} needs at least {vmin} V but "
-                             f"'{net}' is {v} V",
-                             where=f"{comp.designator}.{pin}")
+                             f"'{net}' reaches {vlow} V{worst}",
+                             where=f"{comp.designator}.{pin}",
+                             hint="declare the rail's worst case with 'voltageMin' "
+                                  "if this is the nominal")
 
     def check_decoupling(self):
         caps_on: dict[str, int] = defaultdict(int)

@@ -8,7 +8,7 @@
   "description": "2.4GHz ESP32-C6 On-board PCB Antenna -99.2dBm SMD,25.5x18mm RF Transceiver Modules and Modems RoHS",
   "category": "ic",
   "package": "SMD,25.5x18mm",
-  "stock": 1374,
+  "stock": 1421,
   "priceUsd": 4.2495,
   "parameters": {
     "Frequency Range": "2.4GHz",
@@ -23,7 +23,7 @@
     "Current Of Transmitting": "382mA"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/914ba3f9643762e2fb21b3ff300ff859.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {

@@ -8,7 +8,7 @@
   "description": "USB-C (USB TYPE-C) Receptacle Connector 16 Position Surface Mount, Right Angle",
   "category": "connector",
   "package": "SMD",
-  "stock": 7830,
+  "stock": 7820,
   "priceUsd": 0.0697,
   "parameters": {
     "Protocol Standard": "-",
@@ -24,7 +24,7 @@
     "Mounting Type": "Surface Mount, Right Angle"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/96ebd0877c813c08e0b72d78ddb0cf2a.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

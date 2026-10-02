@@ -8,7 +8,7 @@
   "description": "1/1 Transceiver Half RS422, RS485 SOIC-8",
   "category": "ic",
   "package": "SOIC-8",
-  "stock": 35270,
+  "stock": 35242,
   "priceUsd": 0.5864,
   "parameters": {
     "Voltage - Supply": "3V~3.6V",
@@ -24,7 +24,7 @@
     "Quiescent Supply Current": "950uA"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/819838ee06654d4b8c9e76b0a4745f2b.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [],
   "provenance": {

@@ -26,7 +26,7 @@
     "Propagation Delay": "8.5ns@5V,50pF"
   },
   "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/cb5438984a167863cfd311a38ed58432.pdf",
-  "retrieved": "2026-10-01",
+  "retrieved": "2026-10-02",
   "tier": null,
   "pins": [
     {
