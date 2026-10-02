@@ -42,14 +42,14 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "SMB/DO-214AB rectifier: pin 1 cathode (banded), pin 2 anode"
+    "pins": "SMC (DO-214AB) rectifier: pin 1 cathode (banded), pin 2 anode"
   },
   "designVerdict": "SELECTED as D15/D16 - the transient Schottky across each TPS16630 output, cathode on the channel output, anode to GND.",
   "notes": [
     "Required by the eFuse datasheet, not chosen for taste. §11.1 Transient Protection (p.28): when the device interrupts current flow, OUTPUT inductance generates a NEGATIVE voltage spike on the output, these transients can exceed the absolute maximum, and the prescribed remedy is 'a Schottky diode across the output and GND to absorb negative spikes'. OUT is rated -0.3 V (p.6). This board has up to 11 m of cable on that pin with no local capacitance - the 3.3 mF sits at the far end - so it is the worst case the section describes.",
-    "100 V rather than the 60 V SS36 already in the BOM, and the reason is LEAKAGE, not breakdown. These two sit at 36 V reverse continuously. SS36: 0.5 mA at 25 C and 10 mA at 125 C, both at its rated 60 V, so it would run at 60% of rating. MBRS3100: 50 uA at 25 C and 5 mA at 125 C at its rated 100 V, running at 36%. Two SS36 would be 36 mW of standby draw at 25 C against 3.6 mW here, in a budget at 1.17x.",
-    "The 125 C column does not apply. A reverse-biased diode drawing microamps dissipates microwatts, so it self-heats by nothing and sits at ambient; the high-temperature figure is for a part that has been conducting. At the design's 45 C hot case the leakage is a small multiple of the 25 C figure, not of the 125 C one.",
+    "100 V rather than the 60 V SS36 already in the BOM, and the reason is LEAKAGE, not breakdown. These two sit at 36 V reverse continuously. SS36: 0.5 mA at 25 C and 10 mA at 125 C, both at its rated 60 V, so it would run at 60% of rating. MBRS3100: 50 uA at TJ 25 C and 5 mA at TJ 125 C, both at its RATED 100 V (p.2), and it runs at 36% of that - Figure 3 puts the 36 V leakage far lower, so these are upper bounds. Two SS36 would be 36 mW of standby draw at 25 C against 3.6 mW here, in a budget at 1.17x.",
+    "The 125 C column is a JUNCTION temperature and is reachable by ambient alone - but not here: a reverse-biased diode drawing microamps dissipates microwatts, so TJ tracks ambient, and the design's hot case is 45 C. The leakage is a small multiple of the 25 C figure, not of the 125 C one. At the design's 45 C hot case the leakage is a small multiple of the 25 C figure, not of the 125 C one.",
     "WHAT IT DOES NOT DO: clamp to the rating. V_F is 0.79 V at 3 A, so OUT is held at about -0.8 V against a -0.3 V DC absolute maximum. The diode converts an unbounded inductive spike into a bounded one; the residual is outside the DC rating and is accepted as a sub-microsecond transient, which is the normal reading of an absolute maximum. Placement is what decides whether it works at all - see Layout constraints.",
-    "DO-214AB (SMB), larger than the SMA the SS36 would have used. The board has area to spare."
+    "SMC (DO-214AB), larger than the SMA (DO-214AC) the SS36 would have used - 6.6 x 5.9 mm against 5.6 x 3.0. Not SMB, which is DO-214AA. The board has area to spare."
   ]
 }

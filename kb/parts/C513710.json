@@ -1,0 +1,49 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C513710",
+  "@type": "Component",
+  "lcscId": "C513710",
+  "mpn": "CC0805KKX7R0BB224",
+  "manufacturer": "YAGEO",
+  "description": "220nF ±10% 100V Ceramic Capacitor X7R 0805",
+  "category": "capacitor",
+  "package": "0805",
+  "stock": 150060,
+  "priceUsd": 0.0227,
+  "parameters": {
+    "Capacitance": "220nF",
+    "Temperature Coefficient": "X7R",
+    "Tolerance": "±10%",
+    "Voltage Rating": "100V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/23ccee80ee542e7cf156a772bb589942.pdf",
+  "retrieved": "2026-10-02",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2"
+  },
+  "designVerdict": "SELECTED as C3/C4 and C34/C35 - the TPS16630 IN and OUT capacitors, one of each per channel. 220 nF 100 V X7R 0805.",
+  "notes": [
+    "220 nF against a datasheet MINIMUM of 0.1 uF, and the margin is the point. p.6 Recommended Operating Conditions gives 0.1 uF min at IN, P_IN and OUT. A nominal 100 nF +/-10% part meets that with ZERO margin: tolerance alone puts a bad unit at 90 nF, before X7R's temperature coefficient and before DC-bias loss at 36 V. 220 nF lands around 150-170 nF effective, which clears the minimum in every unit.",
+    "This design already applies that reasoning one section away - the TPS54360B's C_IN is specified as >= 3 uF EFFECTIVE after DC-bias derating - and had not carried it to the eFuse's three 0.1 uF minimums.",
+    "100 V because C3/C4 sit on the 36 V bus and C34/C35 on the channel outputs."
+  ]
+}

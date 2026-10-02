@@ -241,7 +241,7 @@
         "inherentFlicker": "WS2812 internal PWM is ~400 Hz (datasheet C139126 p.1). Independent of frame rate, not changeable from the controller, and the reason these flicker on phone video."
       },
       "levelShifting": "NOT on the controller. The link is a differential pair, so the 3.3 V to 5 V shift for the WS2812s lives on the converter boards, after the receiver.",
-      "connectorCurrent": "2.43 A per channel balanced, 28% of the picoMAX's 10 A. The connector is not a binding constraint at 2 channels."
+      "connectorCurrent": "2.43 A per channel balanced, 24% of the picoMAX's 10 A; 28% at the 2.80 A worst case. The connector is not a binding constraint at 2 channels."
     }
   },
   "inrush": {

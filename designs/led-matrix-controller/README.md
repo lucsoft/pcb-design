@@ -130,8 +130,8 @@ flowchart LR
     MCU <-->|"D+/D-"| USBD
     MCU -->|"PARLIO, 2 lanes"| RS485
     MCU --> BUF
-    MCU -->|enable| SW1
-    MCU -->|enable| SW2
+    MCU -->|enable| EF1
+    MCU -->|enable| EF2
 ```
 
 Both I2C devices share one bus. The buffer drives only the status chain — the
@@ -222,7 +222,7 @@ does not: **0.5 mm² up to 9 m, 0.75 mm² beyond**.
 1.5 V dropout), so from 36 V there is 29.5 V of headroom — the cable would have
 to be absurd before the converter stopped regulating. The 5% line above is an
 efficiency choice, not a functional limit. At 0.5 mm² and 10 m the cable burns
-**4.06 W** per channel, which is the real cost.
+**4.06 W** per channel at the balanced 2.43 A, and **5.39 W** at the 2.80 A worst case. That is the real cost.
 
 **Data is no longer the limit.** Going differential removed it. A differential
 pair is good for tens of metres at 800 kbps, well past anything power
@@ -232,8 +232,10 @@ a single-ended line would have been.
 So **power is now the only constraint: 0.5 mm², up to about 9 m** at 5% drop — 10.8 m on the balanced 2.43 A, 9.3 m at the 2.80 A one channel actually draws with the other dark.
 That is a real gain over the ~5 m the single-ended link would have been held to.
 
-**The design's reference run is 10 m on 0.5 mm².** Where this document works
-EMC or ESD at 11 m, that is the maximum on 0.75 mm², not a second assumption.
+**The design's reference run is 10 m on 0.5 mm².** The 11 m that the ESD and
+edge-rate sections work at is the retired AWG-era figure — 1.8 V across 20 AWG at
+the balanced 2.43 A — kept because it is the *longer* case and therefore the
+conservative one for EMC. It is not a limit: 0.75 mm² reaches 14.0 m.
 
 Practice for the pair:
 
@@ -400,14 +402,14 @@ fraction. The channel's 3.3 mF bank is **0.121 Ω** at
 The two shares do not sum to one with the capacitor's — they are orthogonal
 components, which is exactly what the scalar version got wrong. **The document's
 own worked case is 10 m**, so +0.27 A is the figure that matches the rest of the
-design; ±0.5 A applies to a short cable and is the conservative end.
+design; −0.79 A applies to a short cable and is the conservative end.
 
 Every current figure in this document is a frame average, which is the right
 basis for the thermal and contract budgets and the wrong one for the INA226's
 alert threshold and for anything about PD source behaviour. **Whether the ripple
 adds or averages across a chain depends on whether the modules' PWM phases stay
 correlated** — they re-latch every frame, so they plausibly do — and nothing here
-establishes which. Treat ±0.5 A as the working figure and the correlation as
+establishes which. Treat +0.5 / −0.8 A as the working figure and the correlation as
 unverified.
 
 **The INA226 is the slow loop**: calibrating the model, noticing the module
@@ -506,7 +508,7 @@ RDS(on) = 0.12 Ω because the device operates with low drop out"*).
 **That 0.12 Ω is a typical, and the table below is therefore a typical.** The p.5
 electrical table gives 92 mΩ typ / **190 mΩ max**, and the datasheet adds that
 values *"must include tolerance … at their maximum operating temperature"*. At
-190 mΩ the rail is **4.52 V** on a 4.75 V bus — still over the 74AHCT541's 4.5 V
+190 mΩ the rail is **4.515 V** on a 4.75 V bus — still over the 74AHCT541's 4.5 V
 minimum, which the lower-DCR inductor bought — and D14 then holds the VBUS pin at
 **4.15 V**, which takes `VBUS_OK` to **+0.15 V** and leaves the under-voltage detector at **+0.15 V on the adjacent F1 band, 0.15 V short on the pessimistic F0 reading** — see the residual table. The corner is flagged for the thresholds; the 4.56 V row
 itself should be read as typical, not as the floor.
@@ -929,7 +931,7 @@ independently as `1/(20.8e3 × 2 µA) = 24.0`.
 | R_ILIM | **3.24 kΩ** 1% | the datasheet tabulates 3 kΩ → 6 A and 4.02 kΩ → 4.5 A, i.e. I·R ≈ 18 kΩ·A, so 3.24 kΩ gives **5.56 A**. Clears the 4.0 A white-flash peak by 1.29x at the low end of its ±7% spread |
 | C_dVdT | **220 nF** | Eq. 2 gives t = 20.8e3 × 36 × 220 nF = **165 ms**; Eq. 1 gives inrush = 3.3 mF × 36 / 165 ms = **0.72 A**. Carrying I(dVdT) 1.775-2.225 µA and GAIN 23.5-26 V/V, the spread is **137-190 ms** and **0.63-0.87 A** before C_dVdT's own ±10% |
 | UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.28 V**, **OVP 40.68 V**, and draws 35.4 µA. The E192 values this string first carried (723 k / 249 k / 29.4 k) are not stocked in 0402 — see Bill of materials |
-| C_IN | **100 nF** | §10.2.2 "a minimum of 0.1 µF is recommended" |
+| C_IN | **220 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as a **minimum**. A nominal 100 nF ±10% part meets it with zero margin — 90 nF at tolerance alone, less after X7R's tempco and DC-bias loss at 36 V. 220 nF lands near 150-170 nF effective. Same reasoning the TPS54360B row applies with its "≥3 µF effective after DC-bias derating" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain; both channels wire-ORed onto one GPIO |
 | C_OUT, **OUT → GND** | **100 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as the minimum at IN, P_IN **and** OUT. C34/C35 |
 | Transient Schottky, **OUT → GND** | **MBRS3100T3G**, cathode to OUT | §11.1 p.28: interrupting current makes the output inductance drive OUT negative, against a −0.3 V absolute maximum. D15/D16. Note it **bounds** the spike rather than meeting the rating: V_F is 0.79 V at 3 A, so OUT still goes to about −0.8 V — an unbounded inductive excursion becomes a bounded sub-µs one, which is the normal reading of an absolute maximum |
@@ -1040,7 +1042,8 @@ corner of 39.1 V, so the channel stays up. This costs no parts: the HUSB238A and
 the I2C link it needs are already on the board for the initial negotiation.
 
 Retuning the divider instead was worked and rejected. Clearing 37.8 V on the
-release corner needs a divider ratio of at least 34.68, which pushes the trip's
+release corner needs a divider ratio of at least 35.36 once the 1% resistors are
+carried on both sides, which pushes the trip's
 high corner to about 44.1 V — above the modules' XL1509 **40 V operating** rating,
 though still inside its 45 V absolute. Trading a recoverable stall for an
 overvoltage the modules are not rated to see is the wrong direction.
@@ -1241,13 +1244,12 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | Ref | Value | LCSC | Role |
 |---|---|---|---|
 | C1,C2 | **220 nF 50 V X7R 0603** | C64705 | C_dVdT, one per eFuse — sets the ramp |
-| C3,C4 | **100 nF 100 V X7R 0805** | C28233 | C_IN at each eFuse — §10.2.2 minimum, at a rating the 36 V bus needs |
 | C5 | **100 nF 50 V X7R 0402** | C131394 | TPS54360B BOOT — required for operation |
 | C6 | **33 nF 50 V X7R 0402** | C106862 | TPS54360B COMP series |
 | C7 | **150 pF 50 V C0G 0402** | C1527 | TPS54360B COMP parallel |
 | C8,C33 | **4.7 µF 100 V X7R 1210** | C2840282 | 36 V bus bulk, one at the converter and one at the USB-C inlet |
-| C34,C35 | **100 nF 100 V X7R 0805** | C28233 | at each eFuse **OUT** pin. p.6 Recommended Operating Conditions gives 0.1 µF as the minimum external capacitance at IN, P_IN *and* OUT; only the input half had been fitted |
-| C9 | **100 nF 100 V X7R 0805** | C28233 | TPS54360B input decoupling — this one sits on the **36 V bus**, so it takes the same 100 V part as the eFuse inputs, not the 0402 |
+| C3,C4,C34,C35 | **220 nF 100 V X7R 0805** | C513710 | C_IN and C_OUT at each eFuse, one of each per channel. p.6 gives 0.1 µF as a **minimum** at IN, P_IN *and* OUT; a nominal 100 nF ±10% part meets that with zero margin, so this is oversized deliberately |
+| C9 | **220 nF 100 V X7R 0805** | C513710 | TPS54360B input decoupling — this one sits on the **36 V bus**, so it takes the same 100 V part as the eFuse inputs, not the 0402 |
 | C14 | **100 nF 50 V X7R 0402** | C131394 | SY8089 input decoupling, on the 5 V rail |
 | C10,C11 | **10 µF 50 V X5R 1206** | C7432781 | TPS54360B output |
 | C12 | **10 µF 25 V X5R 0805** | C15850 | SY8089 input |
@@ -1875,6 +1877,8 @@ table is the schematic checklist.
 | **P_IN (pin 6) to IN** | direct, no element | p.4 Pin Functions: "Always connect P_IN to IN directly" |
 | **GND (pin 9)** | wired, **in addition to** the PowerPAD | p.5: "Do not use PowerPad as the only electrical connection to GND" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain |
+| C_OUT, **OUT → GND** | **220 nF** ≥100 V | p.6 Recommended Operating Conditions: 0.1 µF **minimum** at IN, P_IN *and* OUT. C34/C35, oversized so the minimum survives tolerance and DC bias |
+| Transient Schottky, **OUT → GND** | **MBRS3100T3G**, cathode to OUT | §11.1 p.28: interrupting current drives OUT negative against a −0.3 V absolute maximum. D15/D16. Place within a few mm of the pin — lead inductance is what the section is about |
 | MODE | **leave open** = latch off | p.24 Table 1: open latches off after `tCL_PLIM(dly)`, GND auto-retries after `t(TSD_retry)`. Latch is chosen because firmware already owns SHDN and reads PGOOD, so it can implement a retry policy with back-off and reporting — where auto-retry would re-pulse 13 W per channel blindly into a board that is already hot. Reset by toggling SHDN |
 
 **IMON is unused.** The part outputs a current-proportional voltage per channel,

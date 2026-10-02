@@ -62,7 +62,7 @@ def fig_fps(ax, pal):
     # ramps under dV/dt control, so ramp time is independent of load capacitance.
     # The binding constraint is power, which this figure does not show.
     ax.plot([10], [fps(10)], "o", color=pal[1], zorder=5)
-    annotate(ax, 10, fps(10), "  10/channel = 90 fps", color=pal[1])
+    annotate(ax, 10, fps(10), "10/channel\n= 90 fps", color=pal[1], dx=-78, dy=-56)
 
 
 def fig_current(ax, pal):
@@ -76,7 +76,7 @@ def fig_current(ax, pal):
     ax.set_ylim(0, 11)
     ax.set_xlim(4, 24)
     limit_line(ax, CONN_A, "picoMAX 3.5 contact rating 10 A", side="right")
-    annotate(ax, 20, 2.43, "  20 modules: 2.43 A\n  = 24% of rating", color=pal[0])
+    annotate(ax, 12, 3.2, "20 modules:\n2.43 A balanced = 24%\n2.80 A worst case = 28%", color=pal[0])
     ax.legend(loc="upper left")
 
 
