@@ -80,7 +80,8 @@
     {
       "number": "J2-6",
       "name": "MISO",
-      "type": "output"
+      "type": "output",
+      "source": "inferred - by elimination. The WIZ850io datasheet names every other J1/J2 contact; MISO is the only SPI signal left and J2-6 the only unaccounted pin. Not stated anywhere. Verify with a continuity check on the physical module before trusting it."
     }
   ],
   "provenance": {
@@ -90,7 +91,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "datasheet p.2 Pin Description, J1 and J2 tables (WIZ850io)"
+    "pins": "datasheet p.2 Pin Description, J1 and J2 tables (WIZ850io) - EXCEPT J2-6 MISO, which is by elimination and carries its own source field. These are the module silkscreen designations, NOT EasyEDA pad numbers; reconcile at netlist time."
   },
   "designVerdict": "SELECTED as the footprint reference for U3. The board is drawn to this pin map; the intended purchase is a cheaper W5500 Lite clone whose silkscreen has been read and matches.",
   "notes": [
@@ -103,6 +104,9 @@
     "INTn (J1-6) is typed 'I' in the datasheet's own pin table, which is wrong - it is the W5500's open-drain interrupt OUTPUT. Recorded here as open_collector.",
     "RSTn needs LOW for at least 500 us, and firmware must wait 50 ms after it returns HIGH before talking to the module (p.2). The controller keeps the pull-down that holds the PHY in reset while the MCU boots.",
     "AREA IS NOT A WIN: 25 x 23 mm = 575 mm2 against roughly 496 mm2 for the parts it replaces, so the board gets slightly bigger. The win is the retired open questions, six retired exact values and the differential routing.",
-    "Not a JLCPCB assembly part - fitted by hand like the picoMAX connectors. Soldered down rather than socketed, because this is a soundwall and a stacked daughterboard on a receptacle is the connection that works loose."
+    "Not a JLCPCB assembly part - fitted by hand like the picoMAX connectors. Soldered down rather than socketed, because this is a soundwall and a stacked daughterboard on a receptacle is the connection that works loose.",
+    "PIN KEYS ARE NOT PAD NUMBERS. The map is keyed J1-1..J2-6 after the module's own silkscreen. A netlist keys \"pins\" by pad number, so these keys cannot be used directly and K3-unknown-pin would fire on all twelve. The EasyEDA symbol's pad numbering has to be read off the library part before the netlist is written - and is not knowable from the datasheet.",
+    "The J1/J2 naming also collides with this board's own J1 (USB-C) and J2/J3 (picoMAX). Keep the module's designations inside this record and never in design prose.",
+    "erc.py has no per-pin provenance: unverified() matches provenance.pins against the whole string, so the MISO caveat above does NOT downgrade severity. Treated at full confidence by the checker today."
   ]
 }

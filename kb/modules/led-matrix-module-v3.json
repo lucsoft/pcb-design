@@ -267,7 +267,7 @@
       "sideEffects": "The integrated FET removed the discrete switch and the sense resistor, and takes the channel path from 60 V (1.03x the TVS clamp) to 67 V absolute (1.15x). Its OVP reference is +/-2% against the LM5069 comparator's +/-10%, which is what lets a 40.9 V trip fit between the 37.8 V maximum bus and the modules' 45 V absolute - a window the previous part could not fit into.",
       "soa": "Not a calculation any more. The TPS16630 regulates its own junction temperature through start-up and TI publishes it powering into 15 mF against 3.3 mF per channel here. The discrete P-FET SOA question that cost four review rounds does not arise.",
       "contractHeadroom": "Both channels can be released together: 0.72 A each, 1.44 A against a 5.0 A contract.",
-      "cost": "Dissipation: 31 mOhm integrated against 9.5 mOhm discrete plus a 10 mOhm shunt, so 0.53 W for the pair against 0.28 W. Thermal headroom 1.29x -> 1.20x. Turn-on delay is 11.6 ms, replacing the LM5069's multi-second insertion timer."
+      "cost": "Dissipation: 31 mOhm integrated against 9.5 mOhm discrete plus a 10 mOhm shunt, so 0.53 W for the pair against 0.28 W. Thermal headroom 1.29x -> 1.17x. Turn-on delay is 11.6 ms, replacing the LM5069's multi-second insertion timer."
     },
     "storedEnergyAt36V": {
       "10 modules": "2.14 J",
