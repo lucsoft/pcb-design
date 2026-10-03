@@ -33,25 +33,16 @@ HEADING = re.compile(r"^#{2,6}\s+(.+)$", re.M)
 # Two deliberate shapes, so a verb use of "see" is not mistaken for a pointer:
 # a Capitalised target, or "the <something> table/section". "parts in the
 # middle see amplified reflections" matches neither.
-# `\s` not a literal space, so a reference wrapped across a line is still seen;
-# Ω and the em dash are inside the class and the terminator set respectively,
-# because both appear in real references here and both used to end the match
-# early. The length ceiling is 80: "See Netlist for what is in it and what the
-# clean report does not mean" is 62 and was over the old 61.
-# The character class is now "anything but a terminator", not a list of
-# allowed characters. A list is a fail-open design: every character missing
-# from it -- `(`, `/`, `&`, a digit at the start -- silently truncated or
-# dropped a reference, and the rename probe cannot see that, because it only
-# exercises references the regex already captures. The inverse probe is in
-# tests/test_xref.py.
 # Two deliberate shapes, so "the modules see the bus up to that point" is not
 # read as a pointer: a Capitalised target, or "the <something> table/section".
-# Within a shape the class is "anything but a terminator" rather than a list
-# of allowed characters -- a list is fail-open, and every character missing
+# Inside a shape the class is "anything but a terminator" rather than a list of
+# allowed characters -- an allow-list is fail-open, and every character missing
 # from the previous one (`(`, `/`, `&`, a leading digit) silently truncated or
-# dropped a reference. The rename probe cannot see that, because it exercises
-# only references the regex already captures; tests/test_xref.py has the
-# inverse probe that can.
+# dropped a reference. `\s` rather than a literal space, so a reference wrapped
+# across a line is still seen; Ω and the em dash are handled for the same
+# reason. The rename probe cannot find any of that, because it exercises only
+# references the regex already captures -- tests/test_xref.py has the inverse
+# probe that can.
 REF = re.compile(
     r"[Ss]ee\s+(?:the\s+)?\*{0,2}("
     r"[A-Z0-9][^.,;:)\]|—–*\n]{1,120}?"

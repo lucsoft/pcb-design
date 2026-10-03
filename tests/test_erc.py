@@ -615,6 +615,37 @@ def _():
         assert erc.first_word(s) in erc.TRUSTED, s
 
 
+@case("`series` is not `pullup`: a shunt on the sense net does not satisfy it")
+def _():
+    # The INA226 rule was first written as `pullup`, which on a current-sense
+    # front end passes by construction -- the shunt itself is a resistor on
+    # the sense net, and ground has twenty. The rule guarded nothing and the
+    # commit that added it said otherwise.
+    design = ("rails:\n  GND: {type: ground}\n  V3: {voltage: 3.3}\n"
+              "  RTN: {type: ground}\nbuses: []\n")
+    base = {"1": "GND", "2": "GND", "6": "V3", "7": "GND", "8": "V3",
+            "3": "ALERT", "4": "SDA", "5": "SCL"}
+    rest = {
+        **comp("gge2", "R1", "C393074", {"1": "RTN", "2": "GND"}),
+        **comp("gge3", "C1", "C131394", {"1": "V3", "2": "GND"}),
+        **comp("gge4", "R2", "C25744", {"1": "ALERT", "2": "V3"}),
+    }
+    # Straight to the shunt: the shunt is a resistor on that net, so a
+    # `pullup` check would pass. `series` must not.
+    direct = {**comp("gge1", "U6", "C49851",
+                     {**base, "9": "GND", "10": "RTN"}), **rest}
+    assert "R-input-series" in rules(run(direct, design))
+
+    # One series resistor per input, each on a net of exactly two pins.
+    fixed = {
+        **comp("gge1", "U6", "C49851", {**base, "9": "IN_N", "10": "IN_P"}),
+        **rest,
+        **comp("gge5", "R49", "C138066", {"1": "RTN", "2": "IN_P"}),
+        **comp("gge6", "R50", "C138066", {"1": "GND", "2": "IN_N"}),
+    }
+    assert "R-input-series" not in rules(run(fixed, design))
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:

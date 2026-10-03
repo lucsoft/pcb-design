@@ -274,7 +274,8 @@ def cmd_list() -> int:
 # The verbs erc.py's check_part_rules actually dispatches on. Kept here so a
 # rule naming something else is caught where the data is written, not silently
 # ignored where it is read.
-VALID_REQUIRES = {"decoupling", "pullup", "not-pulled-low", "connected"}
+VALID_REQUIRES = {"decoupling", "pullup", "not-pulled-low", "connected",
+                  "series"}
 
 
 def cmd_check() -> int:

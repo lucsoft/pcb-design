@@ -694,6 +694,23 @@ class Check:
                             self.add(f"R-{rid}", sev,
                                      f"{where} requires a pull-up resistor",
                                      where=where, hint=note)
+                    elif req == "series":
+                        # A two-terminal resistor BETWEEN this pin and the rest
+                        # of the circuit, not merely a resistor somewhere on
+                        # the net. `pullup` cannot express this: on a shunt
+                        # sense front end the shunt itself is a resistor on the
+                        # sense net, so a `pullup` rule there passes by
+                        # construction and guards nothing.
+                        conns = self.nets.get(net, []) if net else []
+                        ok = (len(conns) == 2 and any(
+                            c.category == "resistor" and len(c.pins) == 2
+                            for c, _ in conns))
+                        if not ok:
+                            self.add(f"R-{rid}", sev,
+                                     f"{where} needs a series resistor of its "
+                                     f"own — its net carries "
+                                     f"{len(conns)} pin(s)",
+                                     where=where, hint=note)
                     elif req == "not-pulled-low":
                         if net and self.design.is_ground(net):
                             self.add(f"R-{rid}", sev,

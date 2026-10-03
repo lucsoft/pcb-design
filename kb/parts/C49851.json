@@ -143,9 +143,9 @@
         "IN_P",
         "IN_N"
       ],
-      "requires": "pullup",
+      "requires": "series",
       "severity": "warning",
-      "note": "datasheet SS7.4.2 p.14: with no large electrolytic on either side of the shunt, a hard short's dV/dt can reach the input ESD structures. TI's remedy is 10 Ohm in series with EACH input, which it says has minimal effect on accuracy. This rule only sees that a resistor is present - it cannot tell a series element from a pull-up, so read the schematic once rather than trusting it."
+      "note": "datasheet SS7.4.2 p.14: with no large electrolytic on either side of the shunt, a hard short's dV/dt can reach the input ESD structures. TI's remedy is 10 Ohm in series with EACH input, which it says has minimal effect on accuracy. Checked as , not : a pullup rule passes by construction here, because the shunt itself is a resistor on the sense net."
     }
   ]
 }

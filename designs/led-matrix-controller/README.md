@@ -1199,7 +1199,8 @@ transistors left on this net are the two FAULT interlocks.
   11.1 A the two eFuses can pass — the **range** is sized for the second figure
   and the **dissipation** quoted at the first, because one is a fault lasting
   milliseconds and the other is continuous. Its sense traces are not a routing
-  afterthought. (The eFuse
+  afterthought, and they now have **R49/R50 in them** — take the Kelvin tap
+  from the shunt-side pad of each, not from the resistor's far end. (The eFuse
   has no sense resistor — this is the INA226's shunt, one part in the shared
   return, not a per-channel pair.)
 - **Second-source risk is lower than it was.** C1849461 is TI silicon at 1141
@@ -1374,8 +1375,8 @@ it.
 | R45 | **10 kΩ 1% 0402** | C25744 | INA226 ALERT pull-up — the pin is open-drain and cannot assert high without it. Stated as a requirement in Tie-offs for three revisions with no BOM line |
 | R46 | **10 kΩ 1% 0402** | C25744 | W5500 module RSTn pull-down — holds the PHY in reset until firmware drives GPIO21, instead of leaving it floating through the boot window |
 | R47 | **10 kΩ 1% 0402** | C25744 | W5500 module INTn pull-up — open-drain, same reasoning as the HUSB238A's INT_N |
-| R49,R50 | **10 Ω 1% 0402** | C138066 | INA226 input series resistors, one per sense lead. §7.4.2 p.14 asks for them wherever there is no large electrolytic on either side of the shunt — which is this board — because a hard short's dV/dt can reach the input ESD structures. "Minimal effect on accuracy" at this value, and the shunt itself still carries the current |
 | R48 | **0 Ω 0402, do not fit** | C17168 | follower bypass link. Fitted only on a build that never exceeds 28 V, where Q3 and D1 come out and VBUS connects straight through. **DNF** on this board |
+| R49,R50 | **10 Ω 1% 0402** | C138066 | INA226 input series resistors, one per sense lead. §7.4.2 p.14 asks for them wherever there is no large electrolytic on either side of the shunt — which is this board — because a hard short's dV/dt can reach the input ESD structures. "Minimal effect on accuracy" at this value, and the shunt itself still carries the current |
 
 **Capacitors** — 36 parts.
 

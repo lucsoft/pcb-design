@@ -97,6 +97,12 @@ Supported `requires` values:
 
 - `decoupling` — a capacitor must sit on this pin's net
 - `pullup` — a resistor must sit on this pin's net
+- `series` — a two-terminal resistor must sit **between** this pin and the
+  rest of the circuit: the pin's net carries exactly two pins and one of them
+  is that resistor. Not the same as `pullup`, and the difference is not
+  academic — on a current-sense front end the shunt itself is a resistor on
+  the sense net, so a `pullup` rule there passes by construction and guards
+  nothing
 - `not-pulled-low` — the pin must not be tied to ground (strapping pins)
 - `connected` — the pin must not be left floating. An `NC_*` net does **not**
   satisfy this: those names record "open on purpose", and a pin the datasheet
