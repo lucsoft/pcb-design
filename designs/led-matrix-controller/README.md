@@ -205,7 +205,7 @@ Cross-sections per **IEC 60228**, loop resistance 2ρ/A with ρ(Cu) = 0.0172
 
 Worked at **2.80 A**, which is the real per-channel worst case — one channel at
 the 70% thermal cap while the other is dark, since PD caps the total and not the
-split. The balanced 2.43 A would be 16% kinder and is not what sizes a cable.
+split. The balanced 2.43 A would be 13% kinder and is not what sizes a cable.
 
 | mm² | 5 m | 10 m | 15 m | max at 5% |
 |---|---|---|---|---|
@@ -766,7 +766,9 @@ across that whole range; at 4.7 kΩ it is negative over half of it.
 
 The cost is real and worth stating plainly: **100 mW** of board heat against
 69 mW, and R44's own dissipation goes **up** from 17 mW to 25 mW at the nominal
-36 V contract, where 9 V stands across it — 28% of its 62.5 mW rating to 40%. At the corner this document works
+36 V contract, where 9 V stands across it — the 17 mW is the **4.7 kΩ** this
+resistor passed through, not the vendor's original 10 kΩ; it came down in two
+steps and only the second one costs power — 28% of its 62.5 mW rating to 40%. At the corner this document works
 everywhere else, a +5% bus against the Zener's low bin, R44 sees 37.8 − 25.65 =
 12.15 V and **45.6 mW, 73%** of the rating at 70 °C, above which a thick-film
 0402 derates further. The 50 V limit is never approached. During a 64.5 V TVS
@@ -1093,6 +1095,13 @@ this design previously carried. With 1% resistors the trip lands between
 modules' 45 V absolute by 2.7 V. The window the old part could not fit into is
 comfortable for this one.
 
+**Measured against the modules' 40 V *operating* rating rather than their 45 V
+absolute, the trip's high corner is already over it by 2.3 V** — the eFuse does
+not shed until it trips, so on any divider the modules see the bus up to that
+point. That is the honest comparison, and it is the one the retune option
+below has to be judged on too: both exceed 40 V operating, and the question is
+by how much. 42.3 V against 44.1 V.
+
 **The release threshold is not comfortable, and closing the trip point did not
 close it.** V(OVPF) is 1.09/1.122/1.15 V against a nominal divider ratio of 33.9, so the
 channel re-enables at **37.0-39.0 V** on the comparator spread alone and
@@ -1120,9 +1129,11 @@ the I2C link it needs are already on the board for the initial negotiation.
 Retuning the divider instead was worked and rejected. Clearing 37.8 V on the
 release corner needs a divider ratio of at least 35.36 once the 1% resistors are
 carried on both sides, which pushes the trip's
-high corner to about 44.1 V — above the modules' XL1509 **40 V operating** rating,
-though still inside its 45 V absolute. Trading a recoverable stall for an
-overvoltage the modules are not rated to see is the wrong direction.
+high corner to about 44.1 V. Both options sit above the modules' XL1509
+**40 V operating** rating and inside its 45 V absolute, so the choice is
+between 2.3 V over and 4.1 V over — and 44.1 V leaves only 0.9 V to the
+absolute. Trading a recoverable stall for nearly twice the overvoltage excursion
+is the wrong direction.
 
 ### Enable
 
@@ -1257,7 +1268,7 @@ cannot carry two currencies.
 | U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.8002 |
 | Q1,Q2 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see Enable | 0.0266 |
 | Q3 | **MMBT5551** | C7420357 | 1 | **emitter** follower feeding the VBUS pin — V_BE 0.6-0.8 V where a BSS138 gate is 0.8-1.6 V, which is what lets 9-15 V contracts hold. 160 V V_CEO | 0.0122 |
-| D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.0164 |
+| D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see *The follower's offset is fixed*; a 20 V part here drops every 36 V contract | 0.0164 |
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.0629 |
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
 | D7-D9 | **SMCJ40CA** | C19077610 | 3 | **40 V TVS**, which stands off the 37.8 V a compliant PDO may hold indefinitely where a 36 V part does not. Its 0.66 Ω dynamic resistance keeps the node under the 60 V TPS54360B and SS36 to **16.5 A** of surge. The residual is J1 at 48 V, which no 37.8 V-standoff TVS can protect — see ESD and surge protection | 0.1242 |
@@ -1266,7 +1277,7 @@ cannot carry two currencies.
 | D15,D16 | **MBRS3100T3G** | C12790 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. 100 V rather than the 60 V SS36 for **leakage**, not breakdown: these sit at 36 V reverse continuously, and the SS36 would run at 60% of its rating for 0.5 mA against this part's 50 µA | 0.3045 |
 | L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.2279 |
 | L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.0676 |
-| R1,R2 | see Passives | — | — | the shunt and the bleeder are listed with the other passives below | — |
+| R1,R2 | — | — | — | the shunt and the bleeder are listed in the passives tables below, in this same section | — |
 | J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.9868 |
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
 | LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.1112 |
@@ -1495,9 +1506,13 @@ finding in Known electrical limits.
 height — so 71.6 x 98 mm, 7017 mm2.**
 
 Component area estimates at **~2445 mm2** — the itemised rows below sum to
-1546 mm², and the remaining ~900 mm² is every part not itemised there: the
-sixteen diodes, three transistors, two inductors, the USB-C receptacle, the two
-transceivers, the buffer and the two converters. Counting the passives
+1546 mm², and the remaining ~900 mm² is every part not itemised there:
+the sixteen diodes, three transistors, two inductors, the USB-C receptacle, the
+two transceivers, the buffer, the two converters, the PD controller, the current
+sense, the fan header — and **J2/J3, the two picoMAX headers at roughly
+100-150 mm² each**, which are the largest items in that remainder and the ones
+most likely to be forgotten, because they are hand-fitted and absent from the
+netlist. Counting the passives
 individually rather than as an allowance. The three bus TVS
 moved from SMA to SMC with the 40 V part: 50.6 mm² against 26 mm² of maximum
 package envelope, so the **change** is about 25 mm² each and 74 mm² of the
@@ -1992,7 +2007,7 @@ design is built around had no entry.
 | D14, 5V rail → VBUS pin | **RB751V-40** (C7502691) | lifts the VBUS pin at vSafe5V; reverse-biased once the follower takes over |
 | ADDR, DEBUG_N | 910 kΩ each | p.4-5 calls for 900 kΩ, which is not an E96 value; 910 kΩ is the nearest stocked one. Keeps standby current low |
 | INT_N pull-up | 10 kΩ | p.5, open-drain |
-| Q3 follower base pull-up (R44) | **3.24 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — that is Q1/Q2 sharing one 10 kΩ pull-**down** (R15) on `PD_FAULT`, because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
+| Q3 follower base pull-up (R44) | **3.24 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see *The follower's offset is fixed*. Nothing here is a pull-*up* on the FAULT interlocks — that is Q1/Q2 sharing one 10 kΩ pull-**down** (R15) on `PD_FAULT`, because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
 | Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
 | EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest stocked value — E24, since E96's neighbour is 909 kΩ. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
 | FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V) that cannot float. p.5 gives it **two** functions — disabling the GATE driver *and* raising an INT_N interrupt on a valid high voltage — and either can be configured alone. Neither is wanted here, and GND is the inactive state by **inference, not by citation**: p.5 Table 1 speaks of detecting "a valid high voltage", which is a condition on the *bus* rather than a level on the pin, and the datasheet gives FLGIN no polarity anywhere. The inference is that Hynetek suffixes every active-low pin `_N` and this one carries none. **The vendor leaves this pin open in all three application figures**, so tying it low is a deliberate deviation, taken because an unterminated CMOS input is not a state |
@@ -2145,7 +2160,7 @@ a quick tally leaves out:
 | TPS16630 PGOOD, both channels wire-ORed | 1 |
 | **total** | **20** |
 
-**Seven pins carry constraints**, though three of them can still carry signals.
+**Seven pins carry constraints**, though four of them can still carry signals.
 GPIO4 and GPIO5 are MTMS/MTDI straps (§3.3 p.11-12) carrying the MAX3485 DI
 lines — benign, because they only select the SDIO sampling edge, which is unused.
 The cost is that external JTAG is no longer available; see Recovery and debug.
@@ -2218,9 +2233,11 @@ different question.** The TPS16630 operates from **4.5 V** and vSafe5V is
 4.75-5.5 V, so the channels switch on from a plain laptop port. The port's budget
 minus the controller leaves
 
-    15 W port − 2.3 W controller = 12.7 W
+    15 W port − 5 W controller = 10 W
 
-at the connector — but that 12.7 W is **not convertible into light**, because the
+at the connector, on the document's standing 5 W allowance and not the 2.3 W
+that is the *3.3 V rail's* sizing ceiling — but that 10 W is **not convertible
+into light**, because the
 module's XL1509 needs 6.5 V in to regulate and gets at most 5 V. It runs as a
 saturated pass-through instead, so the module rail is the bus minus the switch
 drop at whatever current flows. At the full 2.5 A the drop is the datasheet's
@@ -2246,7 +2263,7 @@ brightness**, since halving power costs far less than half the apparent light.
 Past that the blue channel loses its driver headroom first, so the failure mode
 is a warm colour cast before it is darkness.
 
-**The binding constraint is not the port.** 12.7 W would be 2.5 A at 5 V and the
+**The binding constraint is not the port.** 10 W would be 2.0 A at 5 V and the
 port would supply it; the module's own buck is what stops it, two rows below
 where the LEDs give up. Reasoning from the port budget alone lands on "one module
 at 88% of full-white power" — the last row of that table, where the rail has
@@ -2277,7 +2294,7 @@ power. See Known electrical limits.
 
 | Source | PDO | for LEDs | perceived brightness |
 |---|---|---|---|
-| MacBook port, as a source | 5 V / 15 W | ~5 W usable | **~70% of one module** — the module buck cannot regulate below 6.5 V in, so the rail sags with current and caps it near 1.0 A, well before the port's 12.7 W. See Recovery |
+| MacBook port, as a source | 5 V / 15 W | ~5 W usable | **~70% of one module** — the module buck cannot regulate below 6.5 V in, so the rail sags with current and caps it near 1.0 A, well before the port's 10 W. See Recovery |
 | 9 V PDO | 8.55–9.45 V | 22 W | **~31%** — 9 V × 3 A less the 5 W controller, on the same basis as the row below. The lowest PDO that clears the module converter's 6.5 V input, so the first one that produces full-colour light |
 | 12 V PDO | 11.4–12.6 V | 31 W | ~36% |
 | Apple 96 W charger | 20.5 V / 4.7 A | 91 W | **59%** |
@@ -2341,7 +2358,8 @@ change but not all of it, and two of the five terms pull the other way: of the
 max against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
 lower-DCR inductor, **+0.04 W** is the PD follower (the 27 V clamp draws less than
 the 20 V one did, but the NPN's 3.24 kΩ base pull-up draws considerably more than
-the 10 kΩ it replaced), **−0.125 W** is halving R1 to 5 mΩ, and **+0.12 W** is the status-LED row, which the 3.71 W figure simply
+the vendor's 10 kΩ this design started from — via 4.7 kΩ, which is the figure
+the R44 derating paragraph compares against), **−0.125 W** is halving R1 to 5 mΩ, and **+0.12 W** is the status-LED row, which the 3.71 W figure simply
 did not count. The other four net to −0.005 W, so the eFuse alone would give
 the same 1.19x — a coincidence of this revision, not a reason to stop counting
 them. And that is
@@ -2683,6 +2701,7 @@ is deleting a line. The JSON is still the artefact that gets imported.
     nix-shell --run './designs/led-matrix-controller/netlist.py'
     nix-shell --run './tools/erc.py designs/led-matrix-controller/netlist.json'
     nix-shell --run './tools/consistency.py designs/led-matrix-controller'
+    nix-shell --run './tools/xref.py designs/led-matrix-controller/README.md'
 
 The third checks **this document** against the netlist: the stated counts at
 every occurrence, each BOM row's C-number, Qty and price, and the open-pin

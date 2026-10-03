@@ -328,6 +328,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── plot.py            chart helper: palette and house style
     │   ├── stale.py           find superseded values after a numeric change
     │   ├── consistency.py     check a document against the netlist it describes
+    │   ├── xref.py            check a document's "see X" pointers resolve
     │   ├── stock.py           check a BOM against live LCSC stock
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
     └── tests/test_erc.py      regression tests
@@ -385,7 +386,12 @@ false completeness claim into the commit message.
 
     ./tools/consistency.py designs/<name>
 
-It derives the component, pin, net, open-pin and passive counts from
+A section rename leaves every pointer at it aimed at nothing, which
+`./tools/xref.py <file>` catches — two here pointed at a heading that had
+never existed, with the material three sections away, so a reader could not
+tell whether they had failed to find it or it was gone.
+
+`consistency.py` derives the component, pin, net, open-pin and passive counts from
 `netlist.json`, reads the BOM tables **by their headers** and cross-checks each
 row's C-number, Qty, price and Value — magnitude, package and dielectric —
 against the netlist and `kb/`, expands the
