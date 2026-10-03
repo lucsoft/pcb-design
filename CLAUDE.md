@@ -387,7 +387,12 @@ false completeness claim into the commit message.
     ./tools/consistency.py designs/<name>
 
 A section rename leaves every pointer at it aimed at nothing, which
-`./tools/xref.py <file>` catches — two here pointed at a heading that had
+`./tools/xref.py <file>` catches. It resolves a reference against any **leading
+phrase** of it, so "see Recovery and debug for what that leaves" matches the
+heading without the sentence having to stop there — the first version matched
+the whole captured string, found that false, and answered it with a whitelist
+entry whose comment claimed the target was not a heading in the file. It was.
+Fix the matcher, never the list — two here pointed at a heading that had
 never existed, with the material three sections away, so a reader could not
 tell whether they had failed to find it or it was gone.
 

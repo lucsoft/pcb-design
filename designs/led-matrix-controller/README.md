@@ -530,7 +530,7 @@ so §Cooling's 50 mA bound is about the *typical* part, not the worst one. And t
 At the applicable 0.24 Ω corner the rail is 4.48 V and D14 then holds the VBUS
 pin at **4.11 V**, which takes `VBUS_OK` to **+0.11 V** on typ and −0.29 V on max,
 and leaves the under-voltage detector at **+0.11 V on the adjacent F1 band,
-0.19 V short on the pessimistic F0 reading** — see the residual table. At the
+0.19 V short on the pessimistic F0 reading** — see *The follower does not reach the thresholds at 5 V*. At the
 non-applicable 190 mΩ reading the rail is 4.515 V and the pin 4.15 V; the 4.56 V
 row is the typical, not the floor.
 
@@ -652,7 +652,7 @@ What protects the load, in order of speed:
 3. the PD source limiting at the negotiated level
 4. HUSB238A FAULT into the interlock transistors, pulling both SHDN pins low on
    OTP or an adapter-capability fault. OVP does not survive the clamp topology
-   above 28 V; UVP does, offset by one V_BE — see the follower section
+   above 28 V; UVP does, offset by one V_BE — see *The follower's offset is fixed*
 5. software via the INA226, as a slow safety net
 
 **What is still unprotected is the bus node upstream of the two controllers.**
@@ -2705,8 +2705,7 @@ is deleting a line. The JSON is still the artefact that gets imported.
 
 The third checks **this document** against the netlist: the stated counts at
 every occurrence, each BOM row's C-number, Qty and price, and the open-pin
-table. It prints what it could *not* check rather than passing it — five rows
-here carry no comparable number, and `--strict` makes those gate too. It exists
+table. It prints what it could *not* check rather than passing it — the four rows that carry no comparable number are named, plus the one table that has no Value column at all It exists
 because the counts are derivable and were repeatedly left behind when the
 netlist changed.
 
