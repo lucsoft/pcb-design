@@ -43,7 +43,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "SOD-123 zener: pin 1 cathode (banded), pin 2 anode"
+    "pins": "symbol BZT52C27 read with tools/eda.py: pin 1 is named C and pin 2 A. No datasheet is cached for this part; the symbol is the only source, and it is the one the importer resolves against"
   },
   "designVerdict": "SELECTED as D1, the Q3 emitter-follower base clamp. BZT52C27, SOD-123, 25.65-28.35 V.",
   "notes": [

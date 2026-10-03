@@ -107,7 +107,7 @@ def verify(codes):
     symbol does not have is one, every time: the netlist would carry a pin the
     importer cannot place, and it places silently.
     """
-    bad = 0
+    bad = unreachable = 0
     for code in codes:
         f = PARTS / f"{code}.json"
         if not f.exists():
@@ -127,6 +127,7 @@ def verify(codes):
             # a gate over a knowledge base that holds evaluated-and-rejected
             # parts as well as fitted ones.
             print(f"  ?  {code:<11} {e}")
+            unreachable += 1
             continue
         sym = {n for n, _, _ in rows}
         missing = sorted(kb - sym)   # in kb, not in the symbol: the netlist breaks
@@ -142,7 +143,7 @@ def verify(codes):
                   f"omits: {', '.join(extra)}")
         else:
             print(f"     {code:<11} {len(kb)} pin(s) agree")
-    return bad
+    return bad, unreachable
 
 
 def main():
@@ -180,16 +181,25 @@ def main():
                         codes.append(c)
         if not codes:
             ap.error("nothing to check -- give a file, a C-number, or --kb")
-        bad = verify(codes)
-        print(f"\n{len(codes)} part(s), {bad} with a key the symbol does not have"
-              f"  (a '?' line is a part the library does not carry, which S4 and "
-              f"K1 cover)")
+        bad, unreachable = verify(codes)
+        print(f"\n{len(codes)} part(s), {bad} with a key the symbol does not "
+              f"have, {unreachable} unreachable")
         if bad:
             print("\nFix these before writing the netlist. The importer keys "
                   "pins by the symbol's numbering and ignores anything else, "
                   "so a key it does not have is a pin that silently goes "
                   "nowhere.")
-        return 1 if bad else 0
+        if unreachable:
+            # Unreachable is not agreement. The endpoint is unofficial and has
+            # moved before: if it moves again every part comes back '?' and an
+            # exit of 0 would read as "every pin map checks out". stock.py
+            # already fails this way; this now matches it.
+            print(f"\n{unreachable} part(s) could not be read. A few are parts "
+                  f"the library does not carry, which S4 and K1 cover -- but if "
+                  f"it is most of them the endpoint has moved, and a clean "
+                  f"report here proves nothing. See CLAUDE.md under Maintenance.")
+        # Fail when nothing could be checked, or when most of it could not.
+        return 1 if bad or unreachable > max(1, len(codes) // 10) else 0
 
     if args.cmd == "device":
         dev = device(args.code)

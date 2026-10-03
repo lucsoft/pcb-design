@@ -39,7 +39,30 @@ WEAK_DRIVERS = {"bidirectional", "tri_state", "open_collector", "open_emitter"}
 # Pin types that consume but never drive.
 SINKS = {"input", "power_in"}
 # Provenance markers that mean "nobody checked this against a datasheet".
-UNVERIFIED = {"inferred", "assumed", "guess", ""}
+# Trust is a WHITELIST, not a blacklist. It used to be the other way round:
+# anything whose first word was not "inferred"/"assumed"/"guess" counted as
+# datasheet-backed, so "TODO", "unverified", "uncertain" and "probably pin 1"
+# all read as full confidence and raised errors. Allow-by-default is the wrong
+# direction for the rule CLAUDE.md calls a standing one.
+TRUSTED = {
+    "datasheet",     # a page or table citation
+    "symbol",        # the EasyEDA library, read with tools/eda.py
+    "easyeda",       #   "
+    "catalogue",     # a manufacturer catalogue
+    "manual",        # recorded by hand against a primary source
+    "measured",      # on a part in hand
+    "lcsc-api",      # scraped, and only ever used for non-pin fields
+    "jlcsearch",     #   "
+    "hirose",        # a manufacturer name, for a catalogue reading
+    "wiznet",
+    # first_word() takes the first run of LETTERS, so these are the forms it
+    # actually produces: "two-terminal passive..." -> "two".
+    "two",           # a symmetric two-terminal passive with no polarity
+    "chip",          # ditto, written the other way round
+    "led",
+    "espressif",
+    "ti",
+}
 
 SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 
@@ -48,7 +71,7 @@ def first_word(source) -> str:
     """The provenance marker at the head of a source string.
 
     Sources are written for people — "inferred - by elimination, the only SPI
-    signal left" — so matching the whole string against UNVERIFIED silently
+    signal left" — so matching the whole string against the marker set silently
     treats every annotated guess as datasheet-backed. Only the first word
     carries the claim.
 
@@ -191,12 +214,19 @@ def is_nc(net) -> bool:
     return bool(net) and (net.upper() == "NC" or net.upper().startswith("NC_"))
 
 
+# Every rule id this checker can emit, read out of its own source so the set
+# cannot drift from the code. K7 validates `ignore:` entries against it.
+_SOURCE = Path(__file__).read_text(encoding="utf-8")
+RULE_IDS = set(re.findall(r'self\.add\(\s*"([A-Z]\d?[\w-]*)"', _SOURCE))
+
+
 class Check:
     """Container for the netlist under test plus everything derived from it."""
 
     def __init__(self, netlist: dict, design: Design, kb: dict):
         self.design = design
         self.findings: list[Finding] = []
+        self.suppressed: list[tuple] = []
         self.components: dict[str, Component] = {}
         self.nets: dict[str, list[tuple[Component, str]]] = defaultdict(list)
         self.raw = netlist
@@ -223,8 +253,14 @@ class Check:
         # dangerous: silencing P2-no-decoupling for the one sense pin that does
         # not want a capacitor would otherwise silence it for every real supply
         # rail on the board, which is the rule's whole job.
-        if rule in self.design.ignore or f"{rule}@{where}" in self.design.ignore:
-            return
+        for key in (rule, f"{rule}@{where}"):
+            if key in self.design.ignore:
+                # Record it. A suppression that fires and leaves no trace is
+                # how a check stops working without anyone noticing -- and
+                # replacing a scoped entry with a bare one made this board's
+                # report read BETTER while silencing a deliberate warning.
+                self.suppressed.append((key, where or "-", message))
+                return
         self.findings.append(Finding(rule, severity, message, where, hint))
 
     # -- helpers ---------------------------------------------------------
@@ -253,10 +289,10 @@ class Check:
                 if str(rec.get("number")) == str(pin) or rec.get("name") == pin:
                     own = rec.get("source")
                     if own is not None:
-                        return first_word(own) in UNVERIFIED
+                        return first_word(own) not in TRUSTED
                     break
         prov = (comp.kb or {}).get("provenance", {})
-        return first_word(prov.get(field_name, "")) in UNVERIFIED
+        return first_word(prov.get(field_name, "")) not in TRUSTED
 
     def nets_touching(self, comp: Component) -> set:
         return {n for n in comp.pins.values() if n}
@@ -699,16 +735,45 @@ class Check:
         # part, and an anchored match would read the decoration as "not zero".
         return bool(self.ZERO_OHM.match(raw)), raw
 
+    def check_ignores(self):
+        """Every `ignore:` entry must name a rule id this checker can emit.
+
+        Unvalidated, a typo silences nothing and reads as a decision; and the
+        suppressions that DO fire were invisible, so swapping a scoped entry
+        for a board-wide one improved the report.
+        """
+        known = set(RULE_IDS)
+        for entry in sorted(self.design.ignore):
+            rid = entry.split("@", 1)[0]
+            if rid.startswith("R-"):
+                continue        # a part rule, named by the kb record
+            if rid not in known:
+                self.add("K7-ignore-unknown", "error",
+                         f"design.yaml ignores '{entry}', and '{rid}' is not a "
+                         f"rule this checker emits",
+                         where=entry,
+                         hint="a typo here silences nothing and reads like a "
+                              "decision; see rules/README.md for the ids")
+
     def check_dnf(self):
         """Every `dnf:` entry must name a part that is actually placed.
 
         Nothing validated this list, and it is now the only machine-readable
-        record that a part must not be fitted. A typo was completely silent --
-        and so was listing a fitted, load-bearing part by mistake, which would
-        tell a reader the opposite of the truth about it.
+        record that a part must not be fitted. A typo was completely silent.
+        Every entry is also reported at info, so a part that must not be
+        fitted appears in the output whether or not another rule mentions it:
+        U3 is the case -- it is the one whose mis-assembly costs $22.89 and no
+        rule had anything to say about it.
         """
         placed = {c.designator for c in self.components.values()}
         for d in sorted(self.design.dnf):
+            if d in placed:
+                self.add("P4-do-not-fit", "info",
+                         f"{d} is placed and must NOT be fitted",
+                         where=d,
+                         hint=self.design.dnf[d] or
+                              "design.yaml lists it under dnf: with no reason "
+                              "given — write one, it is printed here")
             if d not in placed:
                 self.add("K6-dnf-unknown", "error",
                          f"design.yaml lists '{d}' as do-not-fit and the "
@@ -782,14 +847,21 @@ class Check:
         # design.yaml says is not fitted. Q1 was counting the fan header's
         # feeder fee on a header nobody fits, which is the one cost-facing
         # number on the board being wrong by one part.
-        extended, skipped = [], []
+        extended, skipped, untiered = [], [], set()
         for comp in self.components.values():
             kb = comp.kb or {}
+            tier = kb.get("tier")
             if comp.designator in self.design.dnf:
-                if kb.get("tier") == "extended":
+                if tier == "extended":
                     skipped.append(comp.designator)
                 continue
-            if kb.get("tier") == "extended":
+            if tier is None:
+                # "basic" and "nobody recorded a tier" are different facts and
+                # this used to return the same answer for both, so a count of
+                # extended parts read as the answer while most of the board was
+                # simply unclassified.
+                untiered.add(comp.lcsc)
+            if tier == "extended":
                 extended.append(f"{comp.designator} ({comp.lcsc})")
             stock = kb.get("stock")
             if isinstance(stock, int) and stock < 100:
@@ -797,12 +869,25 @@ class Check:
                          f"{comp.lcsc} has {stock} in stock at LCSC",
                          where=comp.designator,
                          hint="pick an alternative before this goes out of stock")
+        if untiered:
+            # info, not warning: this is sourcing completeness, the same class
+            # as Q1, and it fires on the clean demo fixture. CLAUDE.md says to
+            # demote a rule that fires on designs which turn out to be fine
+            # rather than leave it to be routinely ignored.
+            self.add("Q3-tier-unknown", "info",
+                     f"{len(untiered)} part(s) have no tier recorded, so "
+                     f"Q1's count is a lower bound: "
+                     f"{', '.join(sorted(untiered))}",
+                     hint="set \"tier\" to \"basic\" or \"extended\" in each "
+                          "kb record; until then the feeder-fee total is unknown, "
+                          "not zero")
         if extended:
             note = (f" ({len(skipped)} more are do-not-fit and carry no fee: "
                     f"{', '.join(sorted(skipped))})" if skipped else "")
             self.add("Q1-extended-parts", "info",
-                     f"{len(extended)} extended-tier part(s): "
-                     f"{', '.join(extended)}{note}",
+                     f"{len(extended)} extended-tier placement(s)"
+                     + (f" — a lower bound, see Q3" if untiered else "")
+                     + f": {', '.join(extended)}{note}",
                      hint="JLCPCB charges a one-off feeder fee per extended part; "
                           "basic-tier equivalents avoid it")
 
@@ -816,6 +901,7 @@ class Check:
         self.check_decoupling()
         self.check_buses()
         self.check_part_rules()
+        self.check_ignores()
         self.check_dnf()
         self.check_rail_bridges()
         self.check_sourcing()
@@ -872,7 +958,8 @@ def main() -> int:
     design_path = args.design or args.netlist.parent / "design.yaml"
     design = Design.load(design_path)
 
-    findings = Check(netlist, design, load_kb()).run()
+    check = Check(netlist, design, load_kb())
+    findings = check.run()
 
     if args.json:
         print(json.dumps([f.__dict__ for f in findings], indent=2))
@@ -896,7 +983,20 @@ def main() -> int:
                 print(f.render(use_colour))
             print()
         print(f"  {counts['error']} error(s), {counts['warning']} warning(s), "
-              f"{counts['info']} info\n")
+              f"{counts['info']} info", end="")
+        if check.suppressed:
+            # Name them. A suppression that fires silently is indistinguishable
+            # from a rule that found nothing, so swapping a scoped entry for a
+            # board-wide one used to make the report read better.
+            by_entry = {}
+            for key, where, _ in check.suppressed:
+                by_entry.setdefault(key, []).append(where)
+            print(f", {len(check.suppressed)} suppressed by design.yaml:")
+            for key, wheres in sorted(by_entry.items()):
+                print(f"      {key}  ({', '.join(sorted(set(wheres)))})")
+            print()
+        else:
+            print("\n")
 
     failed = any(f.severity == "error" for f in findings) or (
         args.strict and any(f.severity == "warning" for f in findings))

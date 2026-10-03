@@ -30,12 +30,12 @@
   "pins": [
     {
       "number": "1",
-      "name": "K",
+      "name": "A",
       "type": "passive"
     },
     {
       "number": "2",
-      "name": "A",
+      "name": "K",
       "type": "passive"
     }
   ],
@@ -46,7 +46,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "0603 LED, cathode marked"
+    "pins": "symbol KT-0603R read with tools/eda.py: pin 1 is named A and pin 2 K. This record previously had them REVERSED, under an unsourced 0603 LED, cathode marked note - a package observation standing in for a citation."
   },
   "tier": null,
   "notes": []

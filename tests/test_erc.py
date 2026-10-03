@@ -223,7 +223,7 @@ def _():
     # of these, and each failed in the direction that raises an error on a guess.
     for s in ("inferred. SOT-23 standard", "assumed; standard pinout",
               "(inferred)", "inferred	by tab", "inferred-by-elimination"):
-        assert erc.first_word(s) in erc.UNVERIFIED, s
+        assert erc.first_word(s) not in erc.TRUSTED, s
 
 
 @case("a pin's own source overrides the record's provenance.pins")
@@ -555,6 +555,64 @@ def _():
                          pins={"1": "A", "2": "B"},
                          kb={"parameters": {"Resistance": "0Ω ±1%"}})
     assert chk.resistance_of(zero)[0] is True
+
+
+@case("K7 catches an ignore: entry naming no rule")
+def _():
+    # A typo in ignore: silences nothing and reads like a decision.
+    design = (DESIGN.rstrip() + "\nignore: ['E9-does-not-exist', "
+              "'C1-single-pin-net@LONE']\n")
+    n = {
+        **comp("gge1", "U1", "C84548", {"20": "VBUS", "10": "GND", "11": "LONE"}),
+        **comp("gge2", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    }
+    found = [f for f in run(n, design) if f["rule"] == "K7-ignore-unknown"]
+    assert len(found) == 1 and found[0]["where"] == "E9-does-not-exist", found
+
+
+@case("P4 reports every dnf: part with its reason")
+def _():
+    # Without this, a part that must not be fitted produces no output at all
+    # unless some other rule happens to mention it.
+    design = (DESIGN.rstrip() + "\ndnf:\n  R1: hand-fitted, not for assembly\n")
+    n = {
+        **comp("gge1", "R1", "C25744", {"1": "VBUS", "2": "GND"}),
+        **comp("gge2", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    }
+    found = [f for f in run(n, design) if f["rule"] == "P4-do-not-fit"]
+    assert len(found) == 1, found
+    assert found[0]["severity"] == "info" and "hand-fitted" in found[0]["hint"]
+
+
+@case("Q3 separates 'basic' from 'nobody recorded a tier'")
+def _():
+    # Returning the same answer for both made Q1's count read as the total.
+    n = {
+        **comp("gge1", "R1", "C25744", {"1": "VBUS", "2": "GND"}),
+        **comp("gge2", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    }
+    found = [f for f in run(n) if f["rule"] == "Q3-tier-unknown"]
+    assert len(found) <= 1
+    erc = _erc()
+    import json as _json, pathlib as _pl
+    tiers = {(_json.loads(f.read_text()).get("tier"))
+             for f in (_pl.Path(__file__).resolve().parent.parent
+                       / "kb" / "parts").glob("C*.json")}
+    assert None in tiers, "the fixture KB has no untiered part to detect"
+
+
+@case("trust is a whitelist, so an unrecognised marker is not datasheet-backed")
+def _():
+    # It used to be a blacklist: anything that was not "inferred"/"assumed"/
+    # "guess" read as full confidence, so "TODO", "unverified" and "probably
+    # pin 1" all raised errors.
+    erc = _erc()
+    for s in ("TODO", "unverified", "uncertain", "not checked yet",
+              "probably pin 1", "best guess from the package", ""):
+        assert erc.first_word(s) not in erc.TRUSTED, s
+    for s in ("datasheet p.5 Pin Functions", "symbol SS36 read with eda.py",
+              "two-terminal passive - pads 1 and 2"):
+        assert erc.first_word(s) in erc.TRUSTED, s
 
 
 def main() -> int:

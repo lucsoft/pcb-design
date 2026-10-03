@@ -42,7 +42,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "SMC (DO-214AB) rectifier: pin 1 cathode (banded), pin 2 anode"
+    "pins": "symbol MBRS3100T3G read with tools/eda.py: pin 1 is named C and pin 2 A. The datasheet marks polarity by cathode band and numbers no terminal, so the symbol is the citable source"
   },
   "designVerdict": "SELECTED as D15/D16 - the transient Schottky across each TPS16630 output, cathode on the channel output, anode to GND.",
   "notes": [

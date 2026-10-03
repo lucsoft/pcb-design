@@ -1320,7 +1320,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | R28 | **100 kΩ 1% 0402** | C25741 | SY8089 feedback, upper |
 | R29 | **22.1 kΩ 1% 0402** | C43473 | SY8089 feedback, lower |
 | R30 | **100 kΩ 1% 0402** | C25741 | SY8089 EN pull-up — the datasheet forbids leaving it floating |
-| R31 | **470 kΩ 1% 0402** | C25790 | bus-voltage ADC divider, upper |
+| R31 | **470 kΩ 1% 0402** | C25790 | bus-voltage ADC divider, upper. During a 64.5 V TVS clamp the tap would sit at 3.50 V against the ESP32-C6's 3.6 V absolute maximum — but C36 and the 25.5 kΩ source give τ = 2.55 ms, so a 10/1000 µs event reaches ~2.5 V. Worked here because the divider is otherwise only ever considered against the ADC's *usable* range |
 | R32 | **27 kΩ 1% 0402** | C25771 | bus-voltage ADC divider, lower → 36 V reads 1.96 V |
 | R33,R34 | **499 Ω 1% 0402** | C4125 | status-chain data series — **R34 on the 3.3 V side** (GPIO15 → buffer input), **R33 on the 5 V side** (buffer output → LED1 DIN). See Status indication |
 | R35-R38 | **33 Ω 1% 0402** | C138002 | MAX3485 A/B series — slows the edge without disturbing the 120 Ω far-end termination |
@@ -1603,8 +1603,10 @@ design it has specific gaps:
   hand — which the checker cannot see.
 - **The netlist format has no do-not-fit field** — `value` would be the
   obvious place and CLAUDE.md is explicit that it is cosmetic and ignored by
-  the importer. `design.yaml` carries a **`dnf:` list** instead, naming
-  **R48**, **J4** and **U3**, and `P3-rail-bridge` reads it: R48 is a 0 Ω link
+  the importer. `design.yaml` carries a **`dnf:` mapping** instead — designator to reason,
+  naming **R48**, **J4** and **U3** — and the reason is printed as the
+  finding's hint, so it is a machine-read artefact and not a comment.
+  `P4-do-not-fit` reports one line per entry and `P3-rail-bridge` reads it: R48 is a 0 Ω link
   from the 37.8 V bus onto the rail feeding a pin rated 33 V absolute, so an
   unlisted one is an **error** and a listed one an **info** that appears in
   every ERC run. What the checker still cannot do is get the marking onto a
@@ -2411,7 +2413,7 @@ undetectable. None of these is all three.
 
 | Assumption | Rests on | If wrong | Settled by |
 |---|---|---|---|
-| **Q3 V_BE = 0.6-0.8 V** at 800 µA | silicon junction over −20…+85 °C. The MMBT5551 datasheet publishes no V_BE(on) at any current; its only V_BE figure is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
+| **Q3 V_BE = 0.6-0.8 V** at 800 µA | **Fig.5 p.3**, read off the plot: ≈0.63 V at 25 °C and ≈0.47 V at 100 °C, both at I_C = 1 mA. The curve stops at 1 mA and this follower runs near 0.8 mA, and −20 °C is off the plot — extrapolated at −2 mV/°C it is ≈0.72 V. So the band is supported and conservative at the high end. There is no *tabulated* V_BE(on); the table's only V_BE is V_BE(sat) at forced β 10, which is deep saturation and does not apply | the 12 V contract false-disconnects — **not** a dead board: the source reverts to vSafe5V and firmware renegotiates higher | **firmware, at runtime.** R31/R32 divide VBUS onto an ADC pin, so the board asks for 12 V, measures the bus, and drops 12 V from the ladder if it did not hold. A bench measurement of V_BE closes it properly |
 | **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.84 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.22 V at β 40, 0.15 V at β 20, zero near β 9 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
 | **Rd survives the powered-but-disabled window** (see Cold-start sequence, which depends on it) | not stated. p.11 says that with EN_N high "the whole system is disabled"; p.14 guarantees Rd only "even in the un-powered state". Between those two the board sits powered with EN_N held high by its internal pull-up for the whole MCU boot — see Cold-start step 3 — and no line covers it | the source detaches after tCCDebounce, VBUS drops, the rails collapse and the board power-cycles in a loop. This is the one assumption here that could stop it booting at all | **bench, and cheap**: plug into a PD source and watch CC with firmware never pulling EN_N low. If it fails, the fix is a pull-down on `PD_EN_N` so the chip enables before the MCU does — a part this board has room for |
@@ -2445,11 +2447,15 @@ emitter follower feeding the HUSB238A VBUS pin subtracts a fixed V_BE while the
 disconnect threshold is 86% of the requested voltage, and 12 V sits just inside
 that band — where the required offset is at its smallest. Worked at V_BE 0.80 V
 and h_FE 60 the pin clears by 0.24 V on a 10.32 V threshold, i.e. 2.3%. Every other
-contract has 0.51 V or better. What would close it is a **measured V_BE**: the
-datasheet publishes no V_BE(on) at any current, and its only V_BE-family figure is
-V_BE(sat) ≤ 1.0 V at I_C = 10 mA with a forced β of 10 — deep saturation, which
-does not bound the active-region value at 800 µA and should not be read as if it
-did. h_FE is *not* the gap it was once called here: p.1 carries a row at
+contract has 0.51 V or better. What would close it is a **measured V_BE**, and
+the datasheet gets closer than this section once claimed: **Fig.5 p.3** plots
+V_BE against I_C, reading ≈0.63 V at 25 °C and ≈0.47 V at 100 °C. Both are at
+I_C = 1 mA, which is where the curve stops — this follower runs near 0.8 mA,
+and −20 °C is off the plot entirely, so the 0.80 V worked here stays an
+extrapolation and a conservative one. What the datasheet still does not give is
+a *tabulated* V_BE(on); its only V_BE-family table figure is V_BE(sat) ≤ 1.0 V
+at I_C = 10 mA with a forced β of 10 — deep saturation, which does not bound
+the active-region value at 800 µA and should not be read as if it did. h_FE is *not* the gap it was once called here: p.1 carries a row at
 **I_C = 1.0 mA → 80 min**, which brackets the operating point, and using 80
 instead of the conservative 60 widens the 12 V margin to 0.25 V. Treat 12 V as
 the contract to test first on real hardware.

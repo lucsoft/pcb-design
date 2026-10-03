@@ -42,6 +42,7 @@ finding prints in brackets.
 | `K4-unconnected-pin` | error for supply pins, warning otherwise | a declared pin left floating |
 | `K5-nc-connected` | warning | a not-connected pin wired to a real net. An `NC_*` net is not a real net — it is how K4 asks you to record "open on purpose" — so it does not fire on those |
 | `K6-dnf-unknown` | error | a `dnf:` entry in `design.yaml` naming a designator the netlist does not place. That list is the only machine-readable record that a part must not be fitted, so a typo in it is silent everywhere else |
+| `K7-ignore-unknown` | error | an `ignore:` entry naming a rule id this checker cannot emit. A typo there silences nothing and reads like a decision |
 
 ## Connectivity
 
@@ -67,8 +68,9 @@ finding prints in brackets.
 | `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax`. Compared against the rail's `voltageMax` when `design.yaml` declares one, otherwise its nominal `voltage` — a bus stated only at nominal passes a pin that the source's +5% tolerance breaks. When a pin carries no `vMax` of its own it falls back to the working voltage in the record's `parameters`, which in practice means two-terminal passives — the rating there belongs to the part, not a terminal — always at **warning** severity, because that field is scraped from LCSC and `kb.py add` overwrites it on every refresh, so nobody asserted its confidence |
 | `P1-undervoltage` | warning | rail below a pin's `vMin`. Compared against the rail's `voltageMin` when `design.yaml` declares one, otherwise its nominal `voltage` — a rail stated only at nominal hides the sag that crosses the floor |
 | `P2-no-decoupling` | error | a supply rail with no capacitor to ground |
+| `P4-do-not-fit` | info | one line per `dnf:` part, printed with its reason. Not a complaint — it is how a part that must not be fitted appears in the output at all, including the ones no other rule has anything to say about |
 | `P2-thin-decoupling` | warning | fewer capacitors than supplied **parts** on a rail. Counted per part, not per pad: a part taking four pins off one bus wants one capacitor, not four |
-| `P3-rail-bridge` | error, or **info** when the part is in `design.yaml`'s `dnf:` list | a **zero-ohm link** joining two rails whose declared `voltageMax` differ. `S6` cannot see this — it fires only when both pins carry the *same* net — so a do-not-fit bypass across a 37.8 V bus and a 27.75 V rail was checked by nothing. Whether the part is a link is read from the kb record's `parameters.Resistance`, not from `value`, which the importer ignores and nobody validates. **Do not suppress it to record do-not-fit** — list the part under `dnf:` and it reports at info, so the decision stays visible in every run; a suppression would read identically on the variant that *does* fit the link |
+| `P3-rail-bridge` | error; **info** when the part is in `design.yaml`'s `dnf:` mapping; **warning** when the kb record states no resistance at all, so whether it is a link is unknown | a **zero-ohm link** joining two rails whose declared `voltageMax` differ. `S6` cannot see this — it fires only when both pins carry the *same* net — so a do-not-fit bypass across a 37.8 V bus and a 27.75 V rail was checked by nothing. Whether the part is a link is read from the kb record's `parameters.Resistance`, not from `value`, which the importer ignores and nobody validates. **Do not suppress it to record do-not-fit** — list the part under `dnf:` and it reports at info, so the decision stays visible in every run; a suppression would read identically on the variant that *does* fit the link |
 
 `P1` needs rail voltages declared in `design.yaml`; without them it cannot fire.
 
@@ -85,6 +87,7 @@ finding prints in brackets.
 |----|----------|---------|
 | `Q1-extended-parts` | info | extended-tier parts, which carry a per-part JLCPCB feeder fee |
 | `Q2-low-stock` | warning | fewer than 100 in stock at LCSC |
+| `Q3-tier-unknown` | info | parts with no `tier` recorded, which makes Q1's count a lower bound rather than the answer. "basic" and "nobody checked" are different facts |
 
 ## Part-specific rules
 
@@ -109,8 +112,12 @@ not something this toolchain can check. Per-pin names are inert either way.
 
 Worth being explicit, because a clean ERC report is not a correct board:
 
-- **Component values.** Nothing verifies that a current-limiting resistor is
-  the right resistance, or that a divider produces the intended voltage.
+- **Component values, as a design question.** `P1-overvoltage` reads a passive's
+  voltage rating and `P3-rail-bridge` reads a resistance, both from the kb
+  record — but nothing verifies that a current-limiting resistor is the *right*
+  resistance, or that a divider produces the intended voltage.
+  `tools/consistency.py` does check that the value a document *states* matches
+  the part it names.
 - **Analogue behaviour.** Loop stability, filter response, and regulator
   transient behaviour need SPICE. EasyEDA Pro has ngspice built in; use it on
   the analogue blocks.

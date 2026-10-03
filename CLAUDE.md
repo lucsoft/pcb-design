@@ -609,11 +609,29 @@ likely still working — and `ds.py fetch --url` always accepts a URL directly.
 1. Write a `check_*` method on `Check` in `tools/erc.py` and call it from
    `run()`. Use `self.add(rule_id, severity, message, where, hint)`; the hint
    should say what to *do*, not restate the problem.
-2. Add a case to `tests/test_erc.py` — a minimal netlist that trips it.
-3. Add a row to the table in `rules/README.md`.
-4. Re-run the suite. `clean design produces no errors` is the case that
-   matters most: a new rule that fires on the good fixture is a false positive,
-   and false positives are how a checker gets ignored.
+2. Add a case to `tests/test_erc.py` — a minimal netlist that trips it, **and
+   one that does not**. A rule with only a positive case can be loosened to
+   nothing without failing the suite; that has happened here twice.
+3. Add a row to the table in `rules/README.md`, listing **every** severity the
+   rule can emit. A rule that reports at three and documents one tells a reader
+   the fail-closed branch does not exist.
+4. Re-run the suite **and `erc.py designs/demo-ldo`**. A new rule that fires on
+   the good fixture is a false positive, and false positives are how a checker
+   gets ignored. `Q3-tier-unknown` was demoted from warning to info for exactly
+   this.
+
+**Give the rule three answers where the data can be absent.** Yes, no, and
+"the record does not say" are different, and collapsing the third into "no" is
+how every check added in this project has first failed: it fails *open*, and
+the report gets cleaner. `P3-rail-bridge` keyed on a field `kb.py add`
+overwrites, so a routine refresh would have deleted it silently; it now warns
+instead. `consistency.py` reports every row it cannot read for the same reason.
+
+**Validate the things that switch a rule off.** `appliesTo`, `requires`,
+`ignore:` and `dnf:` are all data that silently disables checking when it is
+wrong — a typo in `appliesTo` makes a part rule match no pin and never run.
+`kb.py check` and `K6`/`K7` cover these; anything new of that kind needs the
+same.
 
 Rule ids are prefixed by area — `S` structural, `K` knowledge base,
 `C` connectivity, `E` electrical, `P` power, `B` bus, `Q` sourcing,

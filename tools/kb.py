@@ -247,6 +247,12 @@ def cmd_list() -> int:
     return 0
 
 
+# The verbs erc.py's check_part_rules actually dispatches on. Kept here so a
+# rule naming something else is caught where the data is written, not silently
+# ignored where it is read.
+VALID_REQUIRES = {"decoupling", "pullup", "not-pulled-low", "connected"}
+
+
 def cmd_check() -> int:
     files = sorted(PARTS.glob("*.json"))
     problems = 0
@@ -286,6 +292,40 @@ def cmd_check() -> int:
             print(f"WARN  {f.name}: pin map has no provenance — record where it "
                   f"came from, e.g. 'datasheet p.21 Table 5'")
             problems += 1
+
+        # Part rules were validated by nothing, and they fail OPEN: erc.py
+        # resolves `appliesTo` against the pin map and runs the matching
+        # pins, so a typo there matches nothing and the rule silently does
+        # not exist. Same for an unrecognised `requires` verb -- the dispatch
+        # is an if/elif chain with no else. 29 of these on one board include
+        # the one keeping a 36 V bus off a 33 V-absolute pin.
+        names = {str(p.get("name", "")).upper() for p in pins}
+        nums = {str(p.get("number", "")) for p in pins}
+        for rule in r.get("rules") or []:
+            rid = rule.get("id", "unnamed")
+            req = rule.get("requires")
+            if req not in VALID_REQUIRES:
+                print(f"ERROR {f.name}: rule '{rid}' requires '{req}', which "
+                      f"erc.py does not implement (one of "
+                      f"{', '.join(sorted(VALID_REQUIRES))})")
+                problems += 1
+            applies = rule.get("appliesTo") or []
+            if not applies:
+                print(f"ERROR {f.name}: rule '{rid}' has no appliesTo, so it "
+                      f"matches no pin and never runs")
+                problems += 1
+            for a in applies:
+                if not pins:
+                    break      # the missing pin map is already reported above
+                if str(a).upper() not in names and str(a) not in nums:
+                    print(f"ERROR {f.name}: rule '{rid}' appliesTo '{a}', "
+                          f"which is neither a pin name nor a pin number here "
+                          f"— the rule silently never runs")
+                    problems += 1
+            if rule.get("severity") not in ("error", "warning", "info", None):
+                print(f"ERROR {f.name}: rule '{rid}' has severity "
+                      f"'{rule.get('severity')}'")
+                problems += 1
 
         if r.get("tier") not in ("basic", "extended", None):
             print(f"ERROR {f.name}: tier must be 'basic', 'extended' or null")

@@ -47,7 +47,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal LED: pin 1 anode, pin 2 cathode"
+    "pins": "symbol YLED0805R read with tools/eda.py: pin 1 is named + and pin 2 -"
   },
   "designVerdict": "NOT FITTED. Costed alternative only: eight plain 0805 indicators on a 74HC595 instead of the SK6812 chain. Recorded so the comparison in the design README can be checked rather than taken on trust.",
   "notes": [

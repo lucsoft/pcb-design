@@ -50,7 +50,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "1x2 2.54 mm pin header, 3 A per contact"
+    "pins": "symbol PZ254V-11-02P read with tools/eda.py: two pins, 1 and 2, no polarity. 1x2 2.54 mm pin header, 3 A per contact"
   },
   "designVerdict": "SELECTED as J4, the fan header. 1x2 2.54 mm, 3 A per contact. Specified for a fan of 50 mA or less - see Cooling.",
   "notes": [
