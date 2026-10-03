@@ -35,10 +35,10 @@
     "category": "manual",
     "pins": ""
   },
-  "designVerdict": "NOT FITTED. Evaluated against SMCJ40CA (C19077610), which has the same 40 V standoff in a larger die: 0.66 Ohm dynamic resistance against this part's 1.9 Ohm, so it reaches 60 V at 16.5 A where this one crosses at 4.4 A. Same standoff, a third the clamp rise.",
+  "designVerdict": "NOT FITTED. Evaluated against SMCJ40CA (C19077610), which has the same 40 V standoff in a larger die: 0.66 Ohm dynamic resistance against this part's 2.48 Ohm, so it reaches 60 V at 16.5 A where this one crosses at 4.4 A. Same standoff, a third the clamp rise.",
   "notes": [
     "SMAJ40CA, 40 V bidirectional TVS. Evaluated for the 36 V bus and not fitted.",
-    "REJECTED because its clamping voltage is 64.5 V. That is below the TPS16630's 67 V absolute, but only by 1.04x, and it is ABOVE the 60 V TPS54360B and SS36 that share the unswitched bus - which is the reason it fails. The SMAJ36CA (C19077551) clamps at 58.1 V and is fitted instead.",
-    "Worth knowing when reading any older analysis of this part: the conclusion that 'no part both stays off at 36 V and clamps below 60 V' is false - the SMAJ36CA does exactly that. So is any argument that leans on a P-channel body diode to excuse a 64 V clamp; the discrete switch that argument assumed was replaced by the TPS16630 eFuse."
+    "REJECTED because its clamping voltage is 64.5 V. That is below the TPS16630's 67 V absolute, but only by 1.04x, and it is ABOVE the 60 V TPS54360B and SS36 that share the unswitched bus - which is the reason it fails. Neither this part nor the SMAJ36CA is fitted; C19077610 is.",
+    "Worth knowing when reading any older analysis of this part: the conclusion that 'no part both stays off at 36 V and clamps below 60 V' is false - the SMAJ36CA appears to do that only at its own smaller rated surge. So is any argument that leans on a P-channel body diode to excuse a 64 V clamp; the discrete switch that argument assumed was replaced by the TPS16630 eFuse."
   ]
 }

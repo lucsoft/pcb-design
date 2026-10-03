@@ -117,8 +117,7 @@
     "RSTn needs LOW for at least 500 us, and firmware must wait 50 ms after it returns HIGH before talking to the module (p.2). The controller keeps the pull-down that holds the PHY in reset while the MCU boots.",
     "AREA IS NOT A WIN: 25 x 23 mm = 575 mm2 against roughly 496 mm2 for the parts it replaces, so the board gets slightly bigger. The win is the retired open questions, six retired exact values and the differential routing.",
     "Not a JLCPCB assembly part - fitted by hand like the picoMAX connectors. Soldered down rather than socketed, because this is a soundwall and a stacked daughterboard on a receptacle is the connection that works loose.",
-    "PIN KEYS ARE NOT PAD NUMBERS. The map is keyed J1-1..J2-6 after the module's own silkscreen. A netlist keys \"pins\" by pad number, so these keys cannot be used directly and K3-unknown-pin would fire on all twelve. The EasyEDA symbol's pad numbering has to be read off the library part before the netlist is written - and is not knowable from the datasheet.",
     "The J1/J2 naming also collides with this board's own J1 (USB-C) and J2/J3 (picoMAX). Keep the module's designations inside this record and never in design prose.",
-    "erc.py has no per-pin provenance: unverified() matches provenance.pins against the whole string, so the MISO caveat above does NOT downgrade severity. Treated at full confidence by the checker today."
+    "Pin numbers here are the EasyEDA symbol's 1-12, with the silkscreen designation in each pin's `contact` field; eda.py verify confirms all twelve against the library. Pin 7 (MISO) carries its own `source` marking it inferred, and erc.py's unverified() prefers a pin's source over the record's - so that one pin is checked at warning severity and the other eleven at full."
   ]
 }

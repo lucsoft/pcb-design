@@ -170,6 +170,19 @@ class Design:
         return net.upper() in {"GND", "AGND", "DGND", "VSS", "GNDA"}
 
 
+def is_nc(net) -> bool:
+    """Is this the project's "open on purpose" net?
+
+    `NC` on its own, or any `NC_*` name. The suffixed form is what designs
+    should use: a single shared `NC` net puts every deliberately open pin on
+    ONE node, and that is only harmless if the importer also treats the name
+    specially. Nothing here can verify that it does -- and on the LED matrix
+    controller the shared form would have tied seven enabled 74AHCT541 outputs
+    to a buck converter's EN pin. A per-pin name is inert under either reading.
+    """
+    return bool(net) and (net.upper() == "NC" or net.upper().startswith("NC_"))
+
+
 class Check:
     """Container for the netlist under test plus everything derived from it."""
 
@@ -340,7 +353,7 @@ class Check:
                 # here made the two rules contradict each other: connect the
                 # pin and K5 fires, leave it and K4 does.
                 if (rec.get("type") == "nc" and comp.pins.get(num)
-                        and comp.pins[num].upper() != "NC"):
+                        and not is_nc(comp.pins[num])):
                     self.add("K5-nc-connected", "warning",
                              f"pin {num} is marked not-connected but is wired to "
                              f"'{comp.pins[num]}'",
@@ -351,7 +364,7 @@ class Check:
 
     def check_connectivity(self):
         for net, conns in sorted(self.nets.items()):
-            if net.upper() == "NC":
+            if is_nc(net):
                 continue
             if len(conns) == 1:
                 comp, pin = conns[0]
@@ -379,7 +392,7 @@ class Check:
         # A one-pin net one edit away from a well-connected net is a typo.
         busy = [n for n, c in self.nets.items() if len(c) >= 2]
         for net, conns in self.nets.items():
-            if len(conns) != 1 or net.upper() == "NC":
+            if len(conns) != 1 or is_nc(net):
                 continue
             for other in busy:
                 if _edit_distance_within_one(net.upper(), other.upper()):
@@ -407,7 +420,7 @@ class Check:
         for comp in self.components.values():
             if comp.category not in SHORTABLE:
                 continue
-            nets = [n for n in comp.pins.values() if n and n.upper() != "NC"]
+            nets = [n for n in comp.pins.values() if n and not is_nc(n)]
             if len(nets) < 2 or len(set(nets)) != 1:
                 continue
             net = nets[0]
@@ -425,7 +438,7 @@ class Check:
 
     def check_electrical(self):
         for net, conns in sorted(self.nets.items()):
-            if net.upper() == "NC":
+            if is_nc(net):
                 continue
             types = [(c, p, self.pin_type(c, p)) for c, p in conns]
             strong = [(c, p) for c, p, t in types if t in DRIVERS]
@@ -648,7 +661,7 @@ class Check:
                         # Without that, wiring a pin to NC silently defeated
                         # every `connected` rule on the board, including the one
                         # that keeps a 36 V bus off a 33 V-absolute pin.
-                        if not net or net.upper() == "NC":
+                        if not net or is_nc(net):
                             self.add(f"R-{rid}", sev,
                                      f"{where} must be connected"
                                      + (" -- NC records a deliberate decision, "

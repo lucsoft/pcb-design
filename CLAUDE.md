@@ -233,10 +233,14 @@ than working around it in the netlist. Write `rule@where` rather than a bare
 `rule` wherever the exception is local: a bare id silences the rule across the
 whole board, which is how a check that was doing real work quietly stops.
 
-A pin that is open **on purpose** goes to a net literally named `NC`. The
-checker treats that as a recorded decision; a pin simply left out of the
-netlist is reported as forgotten. Both are right, and only you know which one
-it is.
+A pin that is open **on purpose** goes to a net named `NC_<something>` — one
+**per pin**, never a shared `NC`. The checker treats any `NC_*` name as a
+recorded decision, where a pin left out of the netlist is reported as
+forgotten; both are right and only you know which. Give each its own name
+because a shared `NC` puts every open pin on one node, and that is harmless
+only if the *importer* also treats the name specially — which nothing here can
+verify. On the LED matrix controller the shared form would have tied seven
+enabled buffer outputs to a buck converter's enable pin.
 
 ### 6. Check before importing
 

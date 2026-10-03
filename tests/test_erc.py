@@ -431,6 +431,32 @@ def _():
     assert "P1-overvoltage" not in rules(run(ok, bus))
 
 
+@case("NC_* names are per-pin open markers, and a shared NC is not required")
+def _():
+    # A suffixed name has to behave exactly like the bare one: skipped by the
+    # connectivity and driver checks, counted as connected by K4. The point of
+    # allowing the suffix is that a SHARED NC net is only inert if the importer
+    # also treats the name specially -- per-pin names are inert either way.
+    erc = _erc()
+    for name in ("NC", "nc", "NC_BUF_Y7", "nc_mcu_22"):
+        assert erc.is_nc(name), name
+    for name in ("", "NCX", "SYNC", "GND", "VBUS"):
+        assert not erc.is_nc(name), name
+
+    # Two 74AHCT541 outputs on their own NC_* nets: no contention, no
+    # single-pin-net error, and K4 stays quiet because they are connected.
+    n = {
+        **comp("gge1", "U1", "C84548",
+               {"20": "VBUS", "10": "GND", "17": "NC_Y1", "18": "NC_Y0"}),
+        **comp("gge2", "C1", "C131394", {"1": "VBUS", "2": "GND"}),
+    }
+    found = rules(run(n))
+    for rule in ("E1-driver-contention", "C1-single-pin-net"):
+        assert rule not in found, (rule, found)
+    assert not any(f["where"].startswith("U1.17") for f in run(n)
+                   if f["rule"] == "K4-unconnected-pin")
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:

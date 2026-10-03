@@ -19,10 +19,14 @@ argued in README.md:
   imports as a part that silently is not there, which is worse than a part
   that visibly is not there. They are drawn by hand after import, along with
   TP1-TP3.
-- **`NC` is a real net name here.** erc.py skips it in the connectivity check
-  and counts the pin as connected, so wiring a pin to `NC` records "left open
-  on purpose" where leaving it out of the netlist records "nobody got to it".
-  Every deliberately open pin on this board is wired to `NC`.
+- **Every deliberately open pin gets its OWN `NC_*` net**, never a shared one.
+  erc.py treats any `NC_*` name as "left open on purpose" -- which distinguishes
+  it from leaving the pin out of the netlist, where the record is "nobody got
+  to it". The per-pin naming is not cosmetic: a single shared `NC` puts all
+  thirty on one node, and that is inert only if the IMPORTER also treats the
+  name specially, which nothing here can verify. Shared, this board would have
+  tied seven enabled 74AHCT541 outputs to the TPS54360B's EN pin and to the
+  status chain's last DOUT. Per-pin, it is inert either way.
 """
 import json
 import pathlib
@@ -44,9 +48,9 @@ COMPONENTS = [
     # Shell bonds straight to GND: there is no separate chassis to isolate.
     ("J1", "C3198004", "CX90B-16P", "USB-C 16P", {
         "A1": "GND", "A4": "VBUS", "A5": "CC1", "A6": "USB_DP",
-        "A7": "USB_DM", "A8": "NC", "A9": "VBUS", "A12": "GND",
+        "A7": "USB_DM", "A8": "NC_USB_SBU1", "A9": "VBUS", "A12": "GND",
         "B1": "GND", "B4": "VBUS", "B5": "CC2", "B6": "USB_DP",
-        "B7": "USB_DM", "B8": "NC", "B9": "VBUS", "B12": "GND",
+        "B7": "USB_DM", "B8": "NC_USB_SBU2", "B9": "VBUS", "B12": "GND",
         "0": "GND", "1": "GND", "2": "GND", "3": "GND"}),
 
     # D+/D- are the MCU's native USB. The two contact pairs are commoned, which
@@ -71,10 +75,10 @@ COMPONENTS = [
     # sharing it would break enumeration. pin 15 (GATE) stays open: there is
     # no external VBUS switch left for it to drive.
     ("U1", "C24833806", "HUSB238A-BB001-QN16R", "PD sink", {
-        "1": "NC", "2": "NC", "3": "CC1", "4": "CC2", "5": "BUS_3V3",
+        "1": "NC_PD_DP", "2": "NC_PD_DM", "3": "CC1", "4": "CC2", "5": "BUS_3V3",
         "6": "PD_DEBUG_N", "7": "PD_EN_HVDCP", "8": "PD_ADDR",
         "9": "I2C_SDA", "10": "I2C_SCL", "11": "PD_INT_N", "12": "PD_EN_N",
-        "13": "PD_FAULT", "14": "GND", "15": "NC", "16": "PD_VBUS_SENSE",
+        "13": "PD_FAULT", "14": "GND", "15": "NC_PD_GATE", "16": "PD_VBUS_SENSE",
         "17": "GND"}),
 
     ("R21", "C25800", "0402WGF9103TCE", "910k", {"1": "PD_ADDR", "2": "GND"}),
@@ -103,7 +107,7 @@ COMPONENTS = [
     # EN is left open deliberately: abs max 8.4 V, and any UVLO divider off a
     # 36 V bus would sit over it. Open gives the internal 4.3 V UVLO.
     ("U4", "C524806", "TPS54360BDDAR", "buck 5V", {
-        "1": "SW_BOOT", "2": "VBUS", "3": "NC", "4": "RT_SET", "5": "FB_5V",
+        "1": "SW_BOOT", "2": "VBUS", "3": "NC_BUCK_EN", "4": "RT_SET", "5": "FB_5V",
         "6": "COMP_5V", "7": "GND", "8": "SW_5V", "9": "GND"}),
     ("C5", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "SW_BOOT", "2": "SW_5V"}),
     ("R24", "C25741", "0402WGF1003TCE", "100k", {"1": "RT_SET", "2": "GND"}),
@@ -139,7 +143,7 @@ COMPONENTS = [
         "8": "CH1_EN", "9": "CH2_EN", "10": "ETH_SCSN", "11": "PD_EN_N",
         "12": "INA_ALERT", "13": "USB_DM", "14": "USB_DP", "15": "MCU_BOOT",
         "16": "ETH_SCLK", "17": "ETH_MOSI", "18": "ETH_MISO",
-        "19": "ETH_RSTN", "20": "ETH_INTN", "21": "PD_INT_N", "22": "NC",
+        "19": "ETH_RSTN", "20": "ETH_INTN", "21": "PD_INT_N", "22": "NC_MCU_22",
         "23": "LED_DATA_3V3", "24": "UART_RX", "25": "UART_TX",
         "26": "VBUS_ADC", "27": "PGOOD", "28": "GND", "29": "GND",
         "30": "GND", "31": "GND", "32": "GND", "33": "GND", "34": "GND",
@@ -161,7 +165,7 @@ COMPONENTS = [
     ("U3", "C134462", "WIZ850io", "W5500 module", {
         "1": "GND", "2": "GND", "3": "ETH_MOSI", "4": "ETH_SCLK",
         "5": "ETH_SCSN", "6": "ETH_INTN", "7": "ETH_MISO", "8": "ETH_RSTN",
-        "9": "NC", "10": "BUS_3V3", "11": "BUS_3V3", "12": "GND"}),
+        "9": "NC_ETH_9", "10": "BUS_3V3", "11": "BUS_3V3", "12": "GND"}),
     ("R46", "C25744", "0402WGF1002TCE", "10k", {"1": "ETH_RSTN", "2": "GND"}),
     ("R47", "C25744", "0402WGF1002TCE", "10k", {"1": "ETH_INTN", "2": "BUS_3V3"}),
     ("C32", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
@@ -198,8 +202,8 @@ COMPONENTS = [
     ("U9", "C84548", "74AHCT541PW,118", "level shift", {
         "1": "GND", "2": "LED_DATA_BUF", "3": "GND", "4": "GND", "5": "GND",
         "6": "GND", "7": "GND", "8": "GND", "9": "GND", "10": "GND",
-        "11": "NC", "12": "NC", "13": "NC", "14": "NC", "15": "NC",
-        "16": "NC", "17": "NC", "18": "LED_DATA_5V", "19": "GND",
+        "11": "NC_BUF_Y7", "12": "NC_BUF_Y6", "13": "NC_BUF_Y5", "14": "NC_BUF_Y4", "15": "NC_BUF_Y3",
+        "16": "NC_BUF_Y2", "17": "NC_BUF_Y1", "18": "LED_DATA_5V", "19": "GND",
         "20": "BUS_5V"}),
     ("C23", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_5V", "2": "GND"}),
     ("R34", "C4125", "0402WGF4990TCE", "499R", {
@@ -213,10 +217,10 @@ COMPONENTS = [
     # the divider -- swapping it with OVP gives a part that never turns on.
     # MODE open = latch off; firmware owns the retry policy.
     ("U10", "C1849461", "TPS16630PWPR", "eFuse ch1", {
-        "1": "VBUS", "2": "VBUS", "3": "VBUS", "4": "NC", "5": "NC",
+        "1": "VBUS", "2": "VBUS", "3": "VBUS", "4": "NC_EFUSE1_4", "5": "NC_EFUSE1_5",
         "6": "VBUS", "7": "CH1_UVLO", "8": "CH1_OVP", "9": "GND",
-        "10": "CH1_DVDT", "11": "CH1_ILIM", "12": "NC", "13": "CH1_SHDN",
-        "14": "NC", "15": "NC", "16": "PGOOD", "17": "NC",
+        "10": "CH1_DVDT", "11": "CH1_ILIM", "12": "NC_EFUSE1_MODE", "13": "CH1_SHDN",
+        "14": "NC_EFUSE1_IMON", "15": "NC_EFUSE1_FLT", "16": "PGOOD", "17": "NC_EFUSE1_17",
         "18": "CH1_36V", "19": "CH1_36V", "20": "CH1_36V", "21": "GND"}),
     ("R5", "C5159692", "FRC0402F7323TS", "732k", {"1": "VBUS", "2": "CH1_UVLO"}),
     ("R7", "C270623", "0402WGF2553TCE", "255k", {"1": "CH1_UVLO", "2": "CH1_OVP"}),
@@ -242,10 +246,10 @@ COMPONENTS = [
 
     # ---- Channel 2 eFuse -------------------------------------------------
     ("U11", "C1849461", "TPS16630PWPR", "eFuse ch2", {
-        "1": "VBUS", "2": "VBUS", "3": "VBUS", "4": "NC", "5": "NC",
+        "1": "VBUS", "2": "VBUS", "3": "VBUS", "4": "NC_EFUSE2_4", "5": "NC_EFUSE2_5",
         "6": "VBUS", "7": "CH2_UVLO", "8": "CH2_OVP", "9": "GND",
-        "10": "CH2_DVDT", "11": "CH2_ILIM", "12": "NC", "13": "CH2_SHDN",
-        "14": "NC", "15": "NC", "16": "PGOOD", "17": "NC",
+        "10": "CH2_DVDT", "11": "CH2_ILIM", "12": "NC_EFUSE2_MODE", "13": "CH2_SHDN",
+        "14": "NC_EFUSE2_IMON", "15": "NC_EFUSE2_FLT", "16": "PGOOD", "17": "NC_EFUSE2_17",
         "18": "CH2_36V", "19": "CH2_36V", "20": "CH2_36V", "21": "GND"}),
     ("R6", "C5159692", "FRC0402F7323TS", "732k", {"1": "VBUS", "2": "CH2_UVLO"}),
     ("R8", "C270623", "0402WGF2553TCE", "255k", {"1": "CH2_UVLO", "2": "CH2_OVP"}),
@@ -267,7 +271,7 @@ COMPONENTS = [
     # RE_N to VCC as well as DE: RE is a CMOS input and "unused" is not a state.
     # RO is then permanently high-Z and says so.
     ("U7", "C6395158", "MAX3485CSA-JSM", "RS-485 ch1", {
-        "1": "NC", "2": "BUS_3V3", "3": "BUS_3V3", "4": "CH1_DI",
+        "1": "NC_RS485_RO1", "2": "BUS_3V3", "3": "BUS_3V3", "4": "CH1_DI",
         "5": "GND", "6": "CH1_A_DRV", "7": "CH1_B_DRV", "8": "BUS_3V3"}),
     ("C21", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
     ("R42", "C25744", "0402WGF1002TCE", "10k", {"1": "CH1_DI", "2": "GND"}),
@@ -277,7 +281,7 @@ COMPONENTS = [
     ("D11", "C19077529", "SMAJ7.0CA", "TVS 7V", {"1": "CH1_B", "2": "LED_RTN"}),
 
     ("U8", "C6395158", "MAX3485CSA-JSM", "RS-485 ch2", {
-        "1": "NC", "2": "BUS_3V3", "3": "BUS_3V3", "4": "CH2_DI",
+        "1": "NC_RS485_RO2", "2": "BUS_3V3", "3": "BUS_3V3", "4": "CH2_DI",
         "5": "GND", "6": "CH2_A_DRV", "7": "CH2_B_DRV", "8": "BUS_3V3"}),
     ("C22", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
     ("R43", "C25744", "0402WGF1002TCE", "10k", {"1": "CH2_DI", "2": "GND"}),
@@ -298,7 +302,7 @@ for _i in range(1, 9):
     COMPONENTS.append((
         f"LED{_i}", "C2909058", "SK6812-EC20", "RGB", {
             "1": "BUS_5V",
-            "2": f"LED_D{_i + 1}" if _i < 8 else "NC",
+            "2": f"LED_D{_i + 1}" if _i < 8 else "NC_LED_CHAIN_END",
             "3": "GND",
             "4": f"LED_D{_i}"}))
     COMPONENTS.append((
@@ -375,7 +379,8 @@ def main():
         return 1
     out.write_text(json.dumps(net, indent=2) + "\n", encoding="utf-8")
     pins = sum(len(c["pins"]) for c in net.values())
-    nets = {n for c in net.values() for n in c["pins"].values()} - {"NC"}
+    nets = {n for c in net.values() for n in c["pins"].values()
+            if not n.upper().startswith("NC")}
     print(f"{out.relative_to(ROOT)}: {len(net)} components, {pins} pins, "
           f"{len(nets)} nets")
     return 1 if problems else 0

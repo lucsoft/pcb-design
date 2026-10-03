@@ -48,7 +48,7 @@ fatigue. Affected, and still to be revisited:
 | PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind an emitter follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **TPS16630** (C1849461) x2 | 60 V / 6 A eFuse with an integrated FET. Works from **4.5 V**, so the LED output follows the rails down instead of dying below a 12 V contract |
-| External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute, which the TVS reaches only at 27 A of surge, and the TPS54360B and SS36 are 60 V, which sets the real limit at 1.03x. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
+| External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute, which the TVS reaches only at 27 A of surge; the 60 V TPS54360B and SS36 are reached at 16.5 A, and the TPS54360B and SS36 are 60 V, which sets the real limit at 1.03x. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
@@ -264,7 +264,7 @@ ones for the bar, and it does not pay:
 **GPIO count is a tie, not a win.** A 74HC595 shares SCLK and MOSI with the Ethernet module and needs only
 a latch pin — exactly what the addressable chain costs — and it would replace the
 74AHCT541, which exists only because SK6812 wants 5 V logic. The plain option is
-genuinely buildable: YLED0805R (C19171391) at 127k stock and 0.8 ¢.
+genuinely buildable: YLED0805R (C19171391) at 130k stock and 0.8 ¢.
 
 **Part count is a wash, counting each option's own support parts.** The real
 counts are **19 or 20 against 18**: eight SK6812s, the 74AHCT541, eight
@@ -592,7 +592,7 @@ rail's own sag is counted.
 | 2x MAX3485 | ~28 | 2 mA I_CC each **plus ~12 mA each of line current** — a driver with DE asserted pulls load current 100% of the time |
 | HUSB238A VDD | 4.5 | active sink |
 | INA226 + pull-ups | ~6 | |
-| **total** | **~574 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
+| **total** | **~573 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
 
 The transceivers' line current is the row that was missing: it appears in the
 thermal budget as 0.06 W of *board heat*, and the split is worth stating because
@@ -739,7 +739,7 @@ than the MOSFET gave, because V_BE is smaller than V_GS. Worked at the binding
 corner — a +5% bus against the lowest emitter the spread allows, 25.65 − 0.80 =
 24.85 V — V_CE is **12.95 V** in normal operation and **39.65 V** during a 64.5 V
 TVS clamp, against the part's **160 V**
-V_CEO — where the BSS138's 50 V was only 1.5× that event.
+V_CEO — where the BSS138's 50 V would have been only 1.3× that event.
 
 **What is not datasheet-backed here is V_BE.** The MMBT5551 datasheet specifies
 V_CEO, V_EBO and h_FE and gives **no V_BE(on)** at any current. The 0.6-0.8 V
@@ -1230,34 +1230,41 @@ inrush scales, and at the headline 20-module
 
 Active parts. Passives are listed below the table.
 
+**The `$` column is the unit price at LCSC's lowest quantity break**, taken from
+each part's knowledge-base record and so carrying that record's `retrieved`
+date. One basis for the whole column, because mixing tiers is how a BOM total
+becomes unreproducible — five cells here used to sit at different breaks, two of
+them at no published break at all. Real quantities are cheaper: the eFuse is
+$2.80 at one and $1.78 at a hundred.
+
 | Ref | Part | LCSC | Qty | Role | $ |
 |---|---|---|---|---|---|
-| U1 | HUSB238A-BB001-QN16R | C24833806 | 1 | USB PD sink, I2C mode | 0.66 |
-| U2 | ESP32-C6-WROOM-1-N8 | C5366877 | 1 | MCU, native USB | 4.25 |
+| U1 | HUSB238A-BB001-QN16R | C24833806 | 1 | USB PD sink, I2C mode | 0.6572 
+| U2 | ESP32-C6-WROOM-1-N8 | C5366877 | 1 | MCU, native USB | 4.2495 
 | U3 | W5500 module, WIZ850io-class | **C134462, DO NOT FIT** | 1 | 10/100 Ethernet, **soldered down**. The C-number is in the netlist so EasyEDA resolves the symbol and footprint — it must **not** reach a PCBA order, where it buys the $22.89 WIZnet original instead of the €12.30 JOY-IT clone in the sourcing table below. See Ethernet module | — |
-| U4 | TPS54360B | C524806 | 1 | bus to 5 V, ~100% duty | 0.760 |
-| U5 | SY8089A1AAC | C479074 | 1 | 5 V to 3.3 V | 0.087 |
-| U6 | INA226 | C49851 | 1 | low-side current sense | 0.76 |
-| U7,U8 | MAX3485 | C6395158 | 2 | differential line driver, one per channel | 0.35 |
+| U4 | TPS54360B | C524806 | 1 | bus to 5 V, ~100% duty | 0.7605 
+| U5 | SY8089A1AAC | C479074 | 1 | 5 V to 3.3 V | 0.0869 
+| U6 | INA226 | C49851 | 1 | low-side current sense | 0.7621 
+| U7,U8 | MAX3485 | C6395158 | 2 | differential line driver, one per channel | 0.3495 
 | U9 | 74AHCT541 | C84548 | 1 | status-chain level shift (oversized, see KB) | 0.224 |
-| U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.80 |
-| Q1,Q2 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see Enable | 0.027 |
-| Q3 | **MMBT5551** | C7420357 | 1 | **emitter** follower feeding the VBUS pin — V_BE 0.6-0.8 V where a BSS138 gate is 0.8-1.6 V, which is what lets 9-15 V contracts hold. 160 V V_CEO | 0.009 |
-| D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.021 |
-| D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
+| U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.8002 
+| Q1,Q2 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see Enable | 0.0266 
+| Q3 | **MMBT5551** | C7420357 | 1 | **emitter** follower feeding the VBUS pin — V_BE 0.6-0.8 V where a BSS138 gate is 0.8-1.6 V, which is what lets 9-15 V contracts hold. 160 V V_CEO | 0.0122 
+| D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.0164 
+| D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.0629 
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
-| D7-D9 | **SMCJ40CA** | C19077610 | 3 | **40 V TVS**, which stands off the 37.8 V a compliant PDO may hold indefinitely where a 36 V part does not. Its 0.66 Ω dynamic resistance keeps the node under the 60 V TPS54360B and SS36 to **16.5 A** of surge. The residual is J1 at 48 V, which no 37.8 V-standoff TVS can protect — see ESD and surge protection | 0.124 |
-| D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.043 |
-| D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
-| D15,D16 | **MBRS3100T3G** | C12790 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. 100 V rather than the 60 V SS36 for **leakage**, not breakdown: these sit at 36 V reverse continuously, and the SS36 would run at 60% of its rating for 0.5 mA against this part's 50 µA | 0.21 |
-| L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.228 |
-| L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.068 |
+| D7-D9 | **SMCJ40CA** | C19077610 | 3 | **40 V TVS**, which stands off the 37.8 V a compliant PDO may hold indefinitely where a 36 V part does not. Its 0.66 Ω dynamic resistance keeps the node under the 60 V TPS54360B and SS36 to **16.5 A** of surge. The residual is J1 at 48 V, which no 37.8 V-standoff TVS can protect — see ESD and surge protection | 0.1242 
+| D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.0428 
+| D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.0179 
+| D15,D16 | **MBRS3100T3G** | C12790 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. 100 V rather than the 60 V SS36 for **leakage**, not breakdown: these sit at 36 V reverse continuously, and the SS36 would run at 60% of its rating for 0.5 mA against this part's 50 µA | 0.3045 
+| L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.2279 
+| L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.0676 
 | R1,R2 | see Passives | — | — | the shunt and the bleeder are listed with the other passives below | — |
-| J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.99 |
+| J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.9868 
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
-| LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.111 |
-| SW1,SW2 | TS-1088-AR02016 | C720477 | 2 | **BOOT** (GPIO9 to GND) and **EN** (reset) — recovery only; programming is over the ESP32-C6's native USB on J1 | 0.023 |
-| J4 | PZ254V-11-02P | C492401 | 1 | **fan header, do not fit by default** — 1x2 2.54 mm across the 5 V rail. See Cooling | 0.013 |
+| LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.1112 
+| SW1,SW2 | TS-1088-AR02016 | C720477 | 2 | **BOOT** (GPIO9 to GND) and **EN** (reset) — recovery only; programming is over the ESP32-C6's native USB on J1 | 0.0528 
+| J4 | PZ254V-11-02P | C492401 | 1 | **fan header, do not fit by default** — 1x2 2.54 mm across the 5 V rail. See Cooling | 0.0188 
 | TP1-TP3 | — | — | 3 | UART0 TX / RX / GND, bare pads. A footprint, not a part: the console is a fallback for when USB enumeration itself is what is broken | — |
 
 **Not from LCSC/JLCPCB.** Two board items are hand-fitted — the Ethernet module
@@ -1456,7 +1463,7 @@ starts 4 V higher. It also has **more** stock, which is not why it was chosen bu
 is worth knowing.
 
 **J1 is the part this does not fully rescue.** The CX90B-16P is rated **48 V
-AC/DC**, and 48 V is reached at 0 A of surge on the SMA part's 44.2 V V_BR and at
+AC/DC**, and 48 V is reached at 1.9 A of surge on the retired SMA part's 44.2 V V_BR and at
 −1.7 A on the SMC's 49.1 V — that is, the SMC does not conduct at all until the
 node is already past J1's rating. No 37.8 V-standoff avalanche TVS can protect a
 48 V connector, because its own breakdown has to sit above the bus and below
@@ -1479,10 +1486,11 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7017 mm2.**
 
-Component area estimates at **~2480 mm2**, counting the passives individually
+Component area estimates at **~2445 mm2**, counting the passives individually
 rather than as an allowance — the itemised list is in the BOM. The three bus TVS
-moved from SMA to SMC with the 40 V part, which is about 37 mm² each in land
-pattern and 111 mm² of the total. The Ethernet
+moved from SMA to SMC with the 40 V part: 50.6 mm² against 26 mm² of maximum
+package envelope, so the **change** is about 25 mm² each and 74 mm² of the
+total, not the 111 mm² a full-area reading would give. The Ethernet
 module made the board slightly *bigger*, 575 mm2 against the ~496 it replaced.
 At 45% utilisation (2-layer, relaxed) that is roughly
 **72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
@@ -1796,7 +1804,7 @@ any of them does not work. Cited so they can be checked rather than trusted.
 | Part | Value | Source |
 |---|---|---|
 | BOOT cap, BOOT→SW | 100 nF X7R ≥10 V | p.27 §8.2.2.7 "must be connected for proper operation" |
-| RT/CLK to GND | **100 kΩ 1% → 964 kHz** | p.14 §7.3.9 — the pin **cannot float**. The equation gives 963.3 kHz; "1 MHz" elsewhere is that rounded |
+| RT/CLK to GND | **100 kΩ 1% → 963 kHz** | p.14 §7.3.9 — the pin **cannot float**. The equation gives 963.3 kHz; "1 MHz" elsewhere is that rounded |
 | Feedback divider | 53.6 kΩ / 10.2 kΩ 1% (VREF 0.8 V) | p.28 §8.2.2.9 |
 | COMP network | ~4.7 kΩ + 33 nF series, 150 pF parallel | p.13 §7.3.5, eq. 44-51 |
 | CIN | ≥3 µF **effective after DC-bias derating**, 100 V X7R | p.26 §8.2.2.6 |
@@ -2276,14 +2284,13 @@ stays at vSafe5V. Nothing needs disabling to flash.
 
 ### Recovery
 
-Absent from the design and worth fixing before layout: there is **no way to
-recover the board if firmware misbehaves**. Native USB Serial/JTAG covers normal
-flashing, but it lives on GPIO12/13 and disappears the moment firmware
-reconfigures them or the chip hangs before USB enumerates.
-
-Espressif's reference (Figure 7, p.28) shows both a BOOT button on GPIO9 and a
-reset button on EN. Minimum: **BOOT button, EN button, and UART0 TX/RX/GND
-pads.**
+**Fitted.** Native USB Serial/JTAG covers normal flashing, but it lives on
+GPIO12/13 and disappears the moment firmware reconfigures them or the chip hangs
+before USB enumerates — so the board carries the fallback Espressif's reference
+shows (Figure 7, p.28): **SW1** on GPIO9 (BOOT), **SW2** on EN (reset), and
+**TP1-TP3**, bare pads on UART0 TX, RX and GND. The three pads are drawn by
+hand after import; `UART_TX` and `UART_RX` are in the netlist with a scoped
+`C1-single-pin-net` suppression so they survive as named nets to attach to.
 
 Also not yet specified as parts rather than prose: four M3 mounting holes and
 three fiducials (the vibration section argues for standoffs at several points),
@@ -2537,10 +2544,12 @@ landed at.
 
 **It is still not a clean ordering, and OVP could not fully fix it anyway.** OVP
 sheds the **channels**, while the TVS, the rails and the PD front end all sit
-**upstream** of the eFuses. On a sustained overvoltage above ~42.3 V the TVS
-conducts continuously — an SMA part rated 400 W at 10/1000 µs, i.e. a surge
-device, not a sustained one — and nothing on this board disconnects the upstream
-node. Accepted.
+**upstream** of the eFuses. There is now a **2.1 V window** between the OVP's
+high corner (42.3 V) and the TVS's breakdown minimum (44.4 V) where neither
+acts — that is the price of the clean ordering above, and it is the right price,
+because the alternative is the two bands overlapping. Above 44.4 V the TVS
+conducts continuously, and it is a 1.5 kW 10/1000 µs part: a surge device, not a
+sustained one. Nothing on this board disconnects the upstream node. Accepted.
 
 **L1 still saturates before the converter current-limits, but less.** The part
 was changed from ANR5040T100M (2.9 A Isat, 163 mΩ) to **SPM6530T-100M** (3.8 A,
@@ -2556,7 +2565,7 @@ The swap pays for itself elsewhere: **halving the DCR** lifts the 5 V rail from
 4.50 V to **4.56 V** at the bottom of vSafe5V, which was sitting exactly on the
 74AHCT541's floor, and cuts the inductor's own loss from 0.08 W to 0.04 W.
 
-**TPS54360B at 964 kHz sits at its pulse-skip boundary.** The governing formula
+**TPS54360B at 963 kHz sits at its pulse-skip boundary.** The governing formula
 is the one **tagged (9)** on p.15, `f_SW(max skip)` — and the citation is worth a
 sentence because the datasheet contradicts itself: TI's prose on that page says
 "Equation 10 calculates the maximum switching frequency limitation set by the
@@ -2564,7 +2573,7 @@ minimum controllable on time", while the equation actually tagged (10) is
 `f_SW(shift)`, the short-circuit foldback limit. The tags are right and the prose
 is wrong — following the prose leads you to cite (10). Read by
 formula rather than by number, it gives f_SW(max skip) ≈
-1.13 MHz typ, falling to 1.07 MHz at a +5 % PDO. Against the 964 kHz the fitted
+1.13 MHz typ, falling to 1.07 MHz at a +5 % PDO. Against the 963 kHz the fitted
 R_T sets, that is **1.11-1.17×** on nominal parts, and **1.01×** once the ±10%
 f_SW spread from p.5 is carried. TI's own example sits at 0.85×. RT = 200 kΩ (500 kHz) would
 give 2.2× and halve switching loss.
@@ -2717,6 +2726,13 @@ none:
 - **TP1-TP3**, the UART0 console pads. `UART_TX` and `UART_RX` are named in the
   netlist and carry one pin each; `design.yaml` suppresses `C1-single-pin-net`
   at those two nets specifically, so the rule stays live everywhere else.
+
+The third and last suppression is unrelated to anything hand-drawn:
+**`P2-no-decoupling@PD_VBUS_SENSE`**, because that pin is a sense input behind
+the follower and not a supply — the chip's supply is VDD, decoupled by C18 and
+C19. Fitting a capacitor there to satisfy the rule would delay the undervoltage
+detector by about 1.2 ms, and UVP is the one protection the clamp topology
+preserves above 28 V. The reasoning is in `design.yaml` beside the entry.
 
 **`LED_RTN` is the one to check twice.** It is the module return and it is *not*
 GND: R1, the 5 mΩ shunt, sits between them and they meet nowhere else. Wiring

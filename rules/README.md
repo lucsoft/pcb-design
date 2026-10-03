@@ -31,7 +31,7 @@ finding prints in brackets.
 | `K2-no-pin-map` | warning | part is known but has no pins, so electrical checks are skipped |
 | `K3-unknown-pin` | error | a pin number the part does not have |
 | `K4-unconnected-pin` | error for supply pins, warning otherwise | a declared pin left floating |
-| `K5-nc-connected` | warning | a not-connected pin wired to a real net. The literal net `NC` is not a real net — it is how K4 asks you to record "open on purpose" — so it does not fire on that |
+| `K5-nc-connected` | warning | a not-connected pin wired to a real net. An `NC_*` net is not a real net — it is how K4 asks you to record "open on purpose" — so it does not fire on those |
 
 ## Connectivity
 
@@ -54,7 +54,7 @@ finding prints in brackets.
 
 | id | severity | catches |
 |----|----------|---------|
-| `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax`. Compared against the rail's `voltageMax` when `design.yaml` declares one, otherwise its nominal `voltage` — a bus stated only at nominal passes a pin that the source's +5% tolerance breaks. For a **two-terminal passive**, which has no per-pin `vMax` because the rating belongs to the part, it falls back to the working voltage in the record's `parameters` — always at **warning** severity, because that field is scraped from LCSC and `kb.py add` overwrites it on every refresh, so nobody asserted its confidence |
+| `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax`. Compared against the rail's `voltageMax` when `design.yaml` declares one, otherwise its nominal `voltage` — a bus stated only at nominal passes a pin that the source's +5% tolerance breaks. When a pin carries no `vMax` of its own it falls back to the working voltage in the record's `parameters`, which in practice means two-terminal passives — the rating there belongs to the part, not a terminal — always at **warning** severity, because that field is scraped from LCSC and `kb.py add` overwrites it on every refresh, so nobody asserted its confidence |
 | `P1-undervoltage` | warning | rail below a pin's `vMin`. Compared against the rail's `voltageMin` when `design.yaml` declares one, otherwise its nominal `voltage` — a rail stated only at nominal hides the sag that crosses the floor |
 | `P2-no-decoupling` | error | a supply rail with no capacitor to ground |
 | `P2-thin-decoupling` | warning | fewer capacitors than supplied **parts** on a rail. Counted per part, not per pad: a part taking four pins off one bus wants one capacitor, not four |
@@ -84,10 +84,15 @@ Supported `requires` values:
 - `decoupling` — a capacitor must sit on this pin's net
 - `pullup` — a resistor must sit on this pin's net
 - `not-pulled-low` — the pin must not be tied to ground (strapping pins)
-- `connected` — the pin must not be left floating. The literal net `NC` does
-  **not** satisfy this: `NC` records "open on purpose", and a pin the datasheet
+- `connected` — the pin must not be left floating. An `NC_*` net does **not**
+  satisfy this: those names record "open on purpose", and a pin the datasheet
   requires to be tied is not allowed one. This is the opposite of K4's reading
   of the same net, deliberately.
+
+**On `NC_*` names.** `NC` alone and any `NC_<suffix>` are both recognised, but
+write one **per pin**. A single shared `NC` puts every open pin on one node,
+which is inert only if the importer treats the name specially too — and that is
+not something this toolchain can check. Per-pin names are inert either way.
 
 ## What this does not check
 
