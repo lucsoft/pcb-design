@@ -169,7 +169,12 @@ COMPONENTS = [
         "1": "GND", "2": "GND", "3": "INA_ALERT", "4": "I2C_SDA",
         "5": "I2C_SCL", "6": "BUS_3V3", "7": "GND", "8": "BUS_3V3",
         "9": "GND", "10": "LED_RTN"}),
-    ("R1", "C7419995", "FRM252WFR010TN", "10mR 2512", {"1": "LED_RTN", "2": "GND"}),
+    # 5 mOhm, not 10. The INA226's +-81.92 mV differential range is 16.4 A at
+    # 5 mOhm and only 8.19 A at 10 -- and this board's own full-white flash is
+    # 8.0 A, which would have put normal operation at 98% of full scale with
+    # the two eFuses able to pass 11.1 A beyond it. Halving the shunt also
+    # halves the LED_RTN ground lift and the dissipation.
+    ("R1", "C393074", "RLP25FEGMR005", "5mR 2512", {"1": "LED_RTN", "2": "GND"}),
     ("R45", "C25744", "0402WGF1002TCE", "10k", {"1": "INA_ALERT", "2": "BUS_3V3"}),
     ("C20", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
     ("R17", "C25900", "0402WGF4701TCE", "4.7k", {"1": "I2C_SDA", "2": "BUS_3V3"}),

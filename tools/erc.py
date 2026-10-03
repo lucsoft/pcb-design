@@ -472,6 +472,31 @@ class Check:
                          hint="open-drain outputs can only pull low; without a "
                               "pull-up the high level never appears")
 
+    # Matches "50V", "100 V", "16Vdc", "±50V" -- LCSC is not consistent.
+    RATING = re.compile(r"(\d+(?:\.\d+)?)\s*V", re.I)
+
+    def rated_voltage(self, comp):
+        """A two-terminal passive's working voltage, from its LCSC parameters.
+
+        No capacitor or resistor record in this project carries a pin `vMax`,
+        because a passive's rating is a property of the part and not of one
+        terminal. That left P1 unable to see any of them -- and on a board whose
+        named hazard is a 37.8 V bus, a 50 V 0402 sitting on it would have
+        passed in silence. The rating is already in `parameters`; this reads it.
+        """
+        if comp.category not in {"capacitor", "resistor", "inductor"}:
+            return None
+        if len(comp.pins) != 2:
+            return None
+        params = (comp.kb or {}).get("parameters") or {}
+        for key, val in params.items():
+            if "voltage" not in key.lower():
+                continue
+            m = self.RATING.search(str(val))
+            if m:
+                return float(m.group(1))
+        return None
+
     def check_voltage(self):
         for net, conns in sorted(self.nets.items()):
             v = self.design.rail_voltage(net)
@@ -482,6 +507,8 @@ class Check:
                 if not rec:
                     continue
                 vmax = rec.get("vMax")
+                if vmax is None:
+                    vmax = self.rated_voltage(comp)
                 vhigh = self.design.rail_voltage_max(net)
                 if vmax is not None and vhigh is not None and vhigh > float(vmax) + 1e-9:
                     sev = "warning" if self.unverified(comp, "pins", pin) else "error"
@@ -599,9 +626,18 @@ class Check:
                                      f"{where} must not be tied to ground",
                                      where=where, hint=note)
                     elif req == "connected":
-                        if not net:
+                        # The literal net NC means "open on purpose", which is
+                        # exactly what this rule forbids -- so it must count as
+                        # not connected here, the opposite of K4's treatment.
+                        # Without that, wiring a pin to NC silently defeated
+                        # every `connected` rule on the board, including the one
+                        # that keeps a 36 V bus off a 33 V-absolute pin.
+                        if not net or net.upper() == "NC":
                             self.add(f"R-{rid}", sev,
-                                     f"{where} must be connected",
+                                     f"{where} must be connected"
+                                     + (" -- NC records a deliberate decision, "
+                                        "and this pin is not allowed one"
+                                        if net else ""),
                                      where=where, hint=note)
 
     def check_sourcing(self):

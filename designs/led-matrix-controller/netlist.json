@@ -771,9 +771,9 @@
   "gge57": {
     "props": {
       "Designator": "R1",
-      "device_name": "FRM252WFR010TN",
-      "value": "10mR 2512",
-      "Supplier Part": "C7419995"
+      "device_name": "RLP25FEGMR005",
+      "value": "5mR 2512",
+      "Supplier Part": "C393074"
     },
     "pins": {
       "1": "LED_RTN",

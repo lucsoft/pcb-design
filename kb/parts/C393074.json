@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C393074",
+  "@type": "Component",
+  "lcscId": "C393074",
+  "mpn": "RLP25FEGMR005",
+  "manufacturer": "TA-I Tech",
+  "description": "5mΩ 3W Current Sense Resistor ±1% ±50ppm/℃ 2512 Chip Resistor - Surface Mount RoHS",
+  "category": "resistor",
+  "package": "2512",
+  "stock": 221730,
+  "priceUsd": 0.0681,
+  "parameters": {
+    "Resistance": "5mΩ",
+    "Power(Watts)": "3W",
+    "Voltage Rating": "-",
+    "Type": "Current Sense Resistor",
+    "Tolerance": "±1%",
+    "Temperature Coefficient": "±50ppm/℃"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/84ac05a504f84ba19b033165924b4e71.pdf",
+  "retrieved": "2026-10-03",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "A",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "B",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal current-sense resistor, 2512. Pin numbers from the EasyEDA Pro symbol via tools/eda.py; the element is symmetrical and carries no polarity."
+  }
+}

@@ -94,7 +94,8 @@
   },
   "notes": [
     "Common-mode and VBUS absolute max 40 V. On a 36 V bus that is only 1.11x margin, so it is NOT usable high-side here.",
-    "Used LOW SIDE instead - shunt in the ground return, common mode near 0 V, so the 40 V rating is irrelevant. Costs the ability to detect an output short to ground, and lifts the load ground by 50 mV at 5 A through a 10 mOhm shunt.",
+    "Used LOW SIDE instead - shunt in the ground return, common mode near 0 V, so the 40 V rating is irrelevant. Costs the ability to detect an output short to ground, and lifts the load ground by 25 mV at 5 A through a 5 mOhm shunt.",
+    "RANGE IS SET BY THE SHUNT, AND THE FULL-SCALE CURRENT IS NOT THE CONTRACT. The differential input is +-81.92 mV, so a 5 mOhm shunt measures to 16.4 A and a 10 mOhm one only to 8.19 A. Size it against what the return can actually carry - on the LED matrix controller that is the 8.0 A full-white flash and the 11.1 A the two eFuses can pass before either limits, not the 5 A PD contract. Saturation does not stop ALERT firing if its threshold is below full scale, but it does stop the reading being a measurement, and a software power limiter reasons in watts from that reading.",
     "The 85 V parts that would have allowed high-side sensing (INA228, INA238) are both at zero stock at LCSC, which is what forced this. Low-side turned out to be the better answer anyway."
   ],
   "designVerdict": "SELECTED - current sense, LOW SIDE",

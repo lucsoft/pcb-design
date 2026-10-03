@@ -160,7 +160,7 @@ so the extra front-end complexity is worth it.
 
 180 W, less **5 W** for the controller, leaves **175 W** for modules. 5 W is the
 figure every calculation and `figures.py` actually use; the thermal budget's
-4.14 W is the computed total and the 0.9 W difference is deliberate headroom.
+4.02 W is the computed total and the 1.0 W difference is deliberate headroom.
 Perceived brightness applies a gamma of 2.2.
 
 | Modules | Power | Perceived | fps (2 ch) | Binds on |
@@ -280,7 +280,7 @@ is dark or the supply is small; without colour there is no way to tell those
 apart. That did not matter while 36 V was the only normal case — since the UVLO
 change, 12, 20, 28 and 36 V all are.
 
-Power is not the deciding factor: 67 mW is 1.6% of a budget sitting at 1.16×.
+Power is not the deciding factor: 67 mW is 1.7% of a budget sitting at 1.19×.
 
 **A real simplification does exist and is not taken:** three addressable LEDs
 showing two colours each would encode the same six power levels, so five parts
@@ -665,7 +665,7 @@ and the PD source's own limiting between them and a fault.
 common-mode is near 0 V and the INA226's rating — 0-36 V operating, 40 V absolute,
 so no operating margin on a 36 V bus — stops mattering. Forced by both 85 V parts (INA228, INA238) being at zero stock;
 it turned out to be the better answer. Costs the ability to detect an output
-short to ground, and lifts the load ground by 50 mV at 5 A through 10 mOhm.
+short to ground, and lifts the load ground by 25 mV at 5 A through 5 mOhm.
 
 **The Figure 6 "Voltage Regulator" is a source follower** — a BSS138 in the vendor reference, an NPN emitter follower here, for the reason worked below. Hynetek
 publishes it with values at [hynetek.com/2730.html](https://www.hynetek.com/2730.html)
@@ -741,7 +741,7 @@ than the MOSFET gave, because V_BE is smaller than V_GS. Worked at the binding
 corner — a +5% bus against the lowest emitter the spread allows, 25.65 − 0.80 =
 24.85 V — V_CE is **12.95 V** in normal operation and **33.25 V** during a 58.1 V
 TVS clamp, against the part's **160 V**
-V_CEO — where the BSS138's 50 V was only 1.6× that event.
+V_CEO — where the BSS138's 50 V was only 1.5× that event.
 
 **What is not datasheet-backed here is V_BE.** The MMBT5551 datasheet specifies
 V_CEO, V_EBO and h_FE and gives **no V_BE(on)** at any current. The 0.6-0.8 V
@@ -768,10 +768,13 @@ across that whole range; at 4.7 kΩ it is negative over half of it.
 
 The cost is real and worth stating plainly: **100 mW** of board heat against
 69 mW, and R44's own dissipation goes **up** from 17 mW to 25 mW at the nominal
-9 V — 28% of its 62.5 mW rating to 40%. At the corner this document works
+36 V contract, where 9 V stands across it — 28% of its 62.5 mW rating to 40%. At the corner this document works
 everywhere else, a +5% bus against the Zener's low bin, R44 sees 37.8 − 25.65 =
-12.15 V and **45.6 mW, 73%** of the rating. Inside it, and the 0402's 50 V limit
-is never approached, but 73% is the number that binds. Lowering a resistor with a
+12.15 V and **45.6 mW, 73%** of the rating at 70 °C, above which a thick-film
+0402 derates further. The 50 V limit is never approached. During a 58.1 V TVS
+clamp R44 sees 32.45 V and **325 mW, 5.2x rating** — survivable because the
+event is microseconds and the part's thermal mass is not, but it is the same
+corner Q3's V_CE is worked at and it belongs here too. Lowering a resistor with a
 fixed voltage across it necessarily heats it more. 3.24 kΩ is where the margin stops depending on an unpublished
 number without the resistor leaving comfortable derating; it is also a part
 already in the BOM. And V_EBO is 6.0 V: at power-down D14 holds the pin at 4.19 V
@@ -879,7 +882,8 @@ Hynetek states it plainly: *"因为HUSB238A没有36V/48V OV保护"* — there is
 36 V/48 V OV protection. The clamp preserves the supply function and
 VBUS-present detection, but **destroys OVP and the discharge path**. UVP is the
 exception and the whole follower analysis below depends on it: the clamped pin
-tracks the bus again once the bus falls below about 26.4 V, so vVBUV_F2's flat
+tracks the bus again once the Zener stops conducting, which is a **bus** figure
+of 25.7–28.4 V across the clamp's spread, so vVBUV_F2's flat
 22.4 V fires at a bus of roughly 23.2 V — the intended threshold plus one V_BE.
 OVP genuinely cannot fire, because VBUS_OV is 120% of the requested voltage —
 43.2 V on a 36 V contract — and the clamp never lets the pin near it. It is
@@ -975,7 +979,7 @@ The last row is the cost and it is real. It is the whole **switched path**, not
 the FET alone: the conduction half is 45 mΩ max integrated against 9.5 mΩ
 discrete plus a 10 mΩ shunt, which is 0.53 W against 0.23 W, and each column
 carries its own controller's quiescent and divider draw on top — 0.13 W here,
-0.12 W there. Thermal headroom falls from 1.29x to **1.16x**, on a board
+0.12 W there. Thermal headroom falls from 1.29x to **1.19x**, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
 **What it buys back is three of this document's own known limits.** The inrush is
@@ -1153,8 +1157,8 @@ transistors left on this net are the two FAULT interlocks.
   enabled. The part also brings an **IMON** current-monitor output per channel,
   which would give the per-channel sensing the shared shunt cannot — unused for
   now because there are no spare ADC pins.
-- **The low-side shunt wants Kelvin connection.** R1 is 10 mΩ carrying the full
-  5 A, so 0.25 W, and its sense traces are not a routing afterthought. (The eFuse
+- **The low-side shunt wants Kelvin connection.** R1 is 5 mΩ carrying the full
+  5 A, so 0.125 W, and its sense traces are not a routing afterthought. (The eFuse
   has no sense resistor — this is the INA226's shunt, one part in the shared
   return, not a per-channel pair.)
 - **Second-source risk is lower than it was.** C1849461 is TI silicon at 1141
@@ -1279,7 +1283,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 
 | Ref | Value | LCSC | Role |
 |---|---|---|---|
-| R1 | **10 mΩ 1% 2512** | C7419995 | low-side current-sense shunt, shared return |
+| R1 | **5 mΩ 1% 3 W 2512** | C393074 | low-side current-sense shunt, shared return. **5 mΩ, not 10**: the INA226's ±81.92 mV range is 16.4 A here against 8.19 A at 10 mΩ, and this board's own full-white flash is 8.0 A — normal operation would have sat at 98% of full scale with the two eFuses able to pass 11.1 A beyond it. Halves the ground lift and the dissipation too |
 | R2 | **10 kΩ 1206 250 mW** | C17902 | 36 V bus bleeder — 130 mW, which is why it is not an 0402 |
 | R3,R4 | **3.24 kΩ 1% 0402** | C11457 | R_ILIM, one per eFuse → 5.56 A |
 | R5,R6 | **732 kΩ 1% 0402** | C5159692 | R_UV1, upper leg of each eFuse divider |
@@ -1402,7 +1406,7 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V**. Clamps under the eFuse's 67 V absolute, by 1.15x; the 60 V parts it does *not* clear are the TPS54360B and the SS36. **Vrwm is 36 V against a bus that may sit at 37.8 V indefinitely** — leakage above Vrwm is unspecified, so this is not a part that is comfortably off. See below |
+| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V**. Clamps under the eFuse's 67 V absolute, by 1.15x; the 60 V parts it does *not* clear are the TPS54360B, the SS36 and **J1 itself**, rated 48 V. **Vrwm is 36 V against a bus that may sit at 37.8 V indefinitely** — leakage above Vrwm is unspecified, so this is not a part that is comfortably off. See below |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
@@ -1474,7 +1478,7 @@ The largest items are where any further shrink comes from:
 ### Cooling
 
 **A fan is not in the thermal budget and the board is not designed to need one.**
-4.14 W against 4.80 W of free-air capacity is 1.16x at 25 °C ambient — and that
+4.02 W against 4.80 W of free-air capacity is 1.19x at 25 °C ambient — and that
 margin is gone by 45 °C, which an enclosure on a wall can reach without trying.
 The enclosure is not designed. **J4** is the cheap insurance against finding that
 out after the boards arrive: a 1x2 2.54 mm header across the 5 V rail, not fitted
@@ -1688,7 +1692,7 @@ around it, and a small board has less of it.
 The TPS16630's integrated FET is **33 mΩ min / 45 mΩ max at T_J = 85 °C** — p.7's 85 °C row is the one with **no typ column** — against 26 / 30.44 / 34.5 mΩ at 25 °C and 19 / 30.44 / 53 mΩ over −40…+125 °C. The 31 mΩ on the front page is the headline figure and matches no row. At
 2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
 0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
-the price of the part — thermal headroom goes from 1.29x to **1.16x**.
+the price of the part — thermal headroom goes from 1.29x to **1.19x**.
 
 **The ramp is the device's own problem now, by design.** There is no SOA
 calculation to do and no power limit to set: the part regulates its own junction
@@ -2270,7 +2274,7 @@ At the 72 x 74 mm envelope the board is 53.3 cm2.
 | TPS54360B IC | ~0.5 | conduction + switching at ~1 MHz |
 | 2x TPS16630 FET | 0.53 | 45 mΩ max at 85 °C, 2.43 A each |
 | 2x TPS16630 IQ + dividers | 0.13 | 1.7 mA max at 37.8 V, plus the 1 MΩ strings |
-| shunt 10 mΩ | 0.25 | at full 5 A |
+| shunt 5 mΩ | 0.125 | at full 5 A |
 | SY8089 + inductor | 0.19 | |
 | 10 µH inductor DCR | 0.04 | 72 mΩ at 0.7 A |
 | MMBT5551 follower + 3.24 kΩ + D1 | 0.11 | 8.4 mW collector at the 800 µA the pin draws with VDD tied; the 27 V clamp draws 2.78 mA through R44, so 25 mW in the resistor and 75 mW in the Zener |
@@ -2279,11 +2283,11 @@ At the 72 x 74 mm envelope the board is 53.3 cm2.
 | R2 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
 | D15/D16 leakage | ~0.004 | 2 × 50 µA at 25 °C and 36 V, which is 36% of the part's 100 V rating. A reverse-biased diode drawing µA self-heats by nothing, so it sits at ambient and the 5 mA 125 °C figure does not apply. Two SS36 here would have been 0.036 W |
 | status LEDs, capped | 0.12 | eight at one colour, 25% — see below |
-| **total** | **4.14** | TVS leakage not counted; D15/D16 are |
+| **total** | **4.02** | TVS leakage not counted; D15/D16 are |
 
-The rows sum to 4.14 W against **4.80 W** of capacity at 0.09 W/cm² over
-53.3 cm², so **1.16x headroom** — down from 1.29x. The eFuse is most of that
-change but not all of it: of the 0.43 W added, **0.31 W** is the eFuse's 45 mΩ
+The rows sum to 4.02 W against **4.80 W** of capacity at 0.09 W/cm² over
+53.3 cm², so **1.19x headroom** — down from 1.29x. The eFuse is most of that
+change but not all of it: of the 0.31 W added, **0.31 W** is the eFuse's 45 mΩ
 max against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
 lower-DCR inductor, **+0.04 W** is the PD follower (the 27 V clamp draws less than
 the 20 V one did, but the NPN's 3.24 kΩ base pull-up draws considerably more than
@@ -2314,8 +2318,8 @@ preference:
 | all eight, one colour, 100% | 0.48 W | |
 | **all eight, one colour, 25%** | **0.12 W** | **the budgeted case** |
 
-The budget carries **0.12 W**, giving a board total of **4.14 W against 4.80 W —
-1.16× headroom**. Budgeting the 70% tricolour case instead costs 1.01 W, which
+The budget carries **0.12 W**, giving a board total of **4.02 W against 4.80 W —
+1.19× headroom**. Budgeting the 70% tricolour case instead costs 1.01 W, which
 puts the board at 5.03 W and 1.05× *over* — but that case is a floodlight,
 not a status display, and nothing about indicating six power levels and two fault
 states needs white at 70%.
@@ -2329,7 +2333,7 @@ already calls over budget.
 
 Hot spots need local copper rather than relying on the board average: the
 ESP32-C6 (1.26 W), the Ethernet module and the TPS54360B (0.50 W each), the catch diode
-(0.30 W) and the shunt (0.25 W). The channel eFuses are now among the hot spots — 0.265 W each at the balanced 2.43 A, and **0.353 W** on the one device that carries the 2.80 A worst case while the other channel is dark — they
+(0.30 W) and the shunt (0.125 W). The channel eFuses are now among the hot spots — 0.265 W each at the balanced 2.43 A, and **0.353 W** on the one device that carries the 2.80 A worst case while the other channel is dark — they
 dissipate more than the discrete FET and shunt they replaced. The two bucks should not share a thermal zone with the module or
 the Ethernet controller.
 
@@ -2363,7 +2367,7 @@ undetectable. None of these is all three.
 | **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
 | **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 6.5-7.7 J available against 2.14 J needed at the design point is 3-3.6×, which a package change does not eat. The spread is the reading uncertainty on a light-grey trace over a log grid. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
-| **0.09 W/cm² free-air** | rule of thumb, for a 40 °C rise from 25 °C ambient | thermal headroom is not 1.16× | **J4**, the fan header — see Cooling. The *footprint* exists before the question is answered; nothing is fitted by default |
+| **0.09 W/cm² free-air** | rule of thumb, for a 40 °C rise from 25 °C ambient | thermal headroom is not 1.19× | **J4**, the fan header — see Cooling. The *footprint* exists before the question is answered; nothing is fitted by default |
 | **XL1509 V_CE ≈ 0.30 + 0.45·I** | fitted to the single datasheet point, 1.2 V at 2 A | the vSafe5V brightness estimate is wrong | measurement on one module. Affects a convenience figure, not the design |
 | **Tier flags** (basic/extended) | jlcsearch's cached `is_basic` | an unexpected per-part assembly fee | confirm against JLCPCB when ordering. `./tools/stock.py` already covers the stock half |
 | **20 mA per LED channel → 10.8 W per module** | p.3 of the WS2812D-F8 datasheet gives I_F = 20 mA as the *test condition* for the die's V_F and I_v, not as a rating of the internal sink | **everything.** Every brightness row, every fps row, the 2.43 A channel current, the 4.0 A flash peak, R_ILIM and the whole 180 W budget derive from it; `figures.py` hard-codes it as `FULL_W` | measure one module at full white. This is the single most load-bearing unsourced number in the design |
@@ -2442,7 +2446,7 @@ that 8 % exceedance. It is recorded in the module KB but was never surfaced here
 The 75 % efficiency behind 14.4 W is also characterised at 28 V, so at 36 V the
 real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 
-**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.16x** headroom
+**Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.19x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
 roughly 2.4 W, and the board is at **0.58x** — over budget, not merely tight.
@@ -2682,7 +2686,7 @@ none:
   at those two nets specifically, so the rule stays live everywhere else.
 
 **`LED_RTN` is the one to check twice.** It is the module return and it is *not*
-GND: R1, the 10 mΩ shunt, sits between them and they meet nowhere else. Wiring
+GND: R1, the 5 mΩ shunt, sits between them and they meet nowhere else. Wiring
 J2/J3 pin 2 to GND shorts the shunt through the ground pour and the current
 sense reads zero — with no ERC rule able to catch it, because a connector wired
 to the wrong net is indistinguishable from one wired to the right one.

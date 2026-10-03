@@ -67,7 +67,7 @@ rails:
     # The Zener's high corner (28.35 V) less the follower's low V_BE (0.6 V).
     voltageMax: 27.75
 
-  # The module return. NOT GND: R1, the 10 mOhm shunt, sits between them, and a
+  # The module return. NOT GND: R1, the 5 mOhm shunt, sits between them, and a
   # netlist that calls J2/J3 pin 2 GND shorts the shunt through the ground pour
   # and the current sense reads zero. The two nets meet at the shunt and nowhere
   # else. No ERC rule catches a connector wired to the wrong net, so the name is

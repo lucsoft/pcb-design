@@ -395,6 +395,42 @@ def _():
 
 
 
+@case("a `connected` part rule is not satisfied by the NC net")
+def _():
+    # NC records "open on purpose". A pin the datasheet says must be tied is
+    # not allowed one, so here -- unlike K4 -- NC has to count as unconnected.
+    # Wiring to NC otherwise defeated every `connected` rule silently,
+    # including the one keeping a 36 V bus off a 33 V-absolute pin.
+    base = {"5": "V3", "16": "V3", "17": "GND", "11": "SIG"}
+    rest = {
+        **comp("gge2", "C1", "C131394", {"1": "V3", "2": "GND"}),
+        **comp("gge3", "R1", "C25744", {"1": "SIG", "2": "V3"}),
+    }
+    design = "rails:\n  GND: {type: ground}\n  V3: {voltage: 3.3}\nbuses: []\n"
+    on_nc = {**comp("gge1", "U1", "C24833806", {**base, "14": "NC"}), **rest}
+    on_gnd = {**comp("gge1", "U1", "C24833806", {**base, "14": "GND"}), **rest}
+    assert "R-flgin-tied" in rules(run(on_nc, design))
+    assert "R-flgin-tied" not in rules(run(on_gnd, design))
+
+
+@case("P1-overvoltage reads a passive's rating when no pin carries vMax")
+def _():
+    # No capacitor record carries a pin vMax -- a passive's rating belongs to
+    # the part, not a terminal -- so P1 could not see one at all. A 16 V 0402
+    # on a 37.8 V bus has to be caught; the 50 V part beside it must not be.
+    bus = "rails:\n  GND: {type: ground}\n  VBUS: {voltage: 36.0, voltageMax: 37.8}\nbuses: []\n"
+    under = {
+        **comp("gge1", "C1", "C1525", {"1": "VBUS", "2": "GND"}),
+        **comp("gge2", "R1", "C25744", {"1": "VBUS", "2": "GND"}),
+    }
+    ok = {
+        **comp("gge1", "C1", "C513710", {"1": "VBUS", "2": "GND"}),
+        **comp("gge2", "R1", "C25744", {"1": "VBUS", "2": "GND"}),
+    }
+    assert "P1-overvoltage" in rules(run(under, bus))
+    assert "P1-overvoltage" not in rules(run(ok, bus))
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:
