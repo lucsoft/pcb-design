@@ -22,6 +22,7 @@ import datetime
 import json
 import pathlib
 import re
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -38,13 +39,29 @@ LOW = 5000
 
 
 def live(code):
-    """Return (model, stock) from LCSC, or (None, None) if unreachable."""
+    """Return (model, stock) from LCSC, or (None, None) if unreachable.
+
+    Falls back to curl, because the endpoint sometimes answers urllib with
+    403 and curl with 200 from the same machine in the same second. Without
+    the fallback every part came back unreachable, which this tool correctly
+    reports rather than passing -- but a BOM nobody can check is not the same
+    as a BOM that checks out, and the fallback is what keeps the difference
+    from being academic.
+    """
     try:
         req = urllib.request.Request(API + code, headers=UA)
         with urllib.request.urlopen(req, timeout=20) as r:
             result = json.load(r).get("result") or {}
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
-        return None, None
+    except Exception:
+        try:
+            out = subprocess.run(
+                ["curl", "-sS", "-A", UA["User-Agent"], API + code],
+                capture_output=True, text=True, timeout=25)
+            if out.returncode != 0 or not out.stdout.strip():
+                return None, None
+            result = json.loads(out.stdout).get("result") or {}
+        except Exception:
+            return None, None
     if not result:
         return None, None
     return result.get("productModel"), result.get("stockNumber")

@@ -4,7 +4,7 @@ Design brief in `BRIEF.md`. Nothing laid out yet. Requirements are settled and
 nothing under Open questions blocks the netlist any more — what remains there is
 verification, converter-board dependencies and accepted trade-offs.
 
-## What the board does
+## What the board is for
 
 Negotiates USB PD, supplies a chained set of LED matrix modules over a
 high-voltage bus, and runs an ESP32-C6 that drives the chain over Ethernet
@@ -1132,8 +1132,10 @@ close it.** V(OVPF) is 1.09/1.122/1.15 V against a nominal divider ratio of 33.9
 channel re-enables at **37.0-39.0 V** on the comparator spread alone and
 **36.2-39.7 V** once the 1% resistors are carried. A compliant source may sit at **37.8 V indefinitely** —
 which is inside that band. A low-corner part that trips on an excursion would
-then **not re-enable on a healthy bus**: it needs the bus below 36.2 V, which a
-36 V contract never reaches.
+then **not re-enable on a healthy bus**: it needs the bus below 36.2 V, and a
+compliant 36 V PDO may sit anywhere in 34.2-37.8 V — so 36.2 V is *inside* the
+contract, not outside it. What cannot be relied on is the source going there
+on demand.
 
 **And cycling SHDN does not clear it**, which the datasheet's own latch-reset
 sentence makes tempting to assume. OVP is not a latch: p.7 gives it a rising
@@ -1336,7 +1338,7 @@ Part` alone, so a passive without a C-number cannot go into the netlist at all,
 and omitting it instead trips the decoupling and pull-up rules that check for
 it.
 
-**Resistors** — 47 parts, 0402 1% unless stated. R16 is unused.
+**Resistors** — 49 parts, 0402 1% unless stated. R16 is unused.
 
 | Ref | Value | LCSC | Role |
 |---|---|---|---|
@@ -1372,6 +1374,7 @@ it.
 | R45 | **10 kΩ 1% 0402** | C25744 | INA226 ALERT pull-up — the pin is open-drain and cannot assert high without it. Stated as a requirement in Tie-offs for three revisions with no BOM line |
 | R46 | **10 kΩ 1% 0402** | C25744 | W5500 module RSTn pull-down — holds the PHY in reset until firmware drives GPIO21, instead of leaving it floating through the boot window |
 | R47 | **10 kΩ 1% 0402** | C25744 | W5500 module INTn pull-up — open-drain, same reasoning as the HUSB238A's INT_N |
+| R49,R50 | **10 Ω 1% 0402** | C138066 | INA226 input series resistors, one per sense lead. §7.4.2 p.14 asks for them wherever there is no large electrolytic on either side of the shunt — which is this board — because a hard short's dV/dt can reach the input ESD structures. "Minimal effect on accuracy" at this value, and the shunt itself still carries the current |
 | R48 | **0 Ω 0402, do not fit** | C17168 | follower bypass link. Fitted only on a build that never exceeds 28 V, where Q3 and D1 come out and VBUS connects straight through. **DNF** on this board |
 
 **Capacitors** — 36 parts.
@@ -1561,7 +1564,7 @@ The largest items are where any further shrink comes from:
 | 2x TPS16630 (HTSSOP-20) + copper | 260 | replaces 2x FET + 2x shunt + 2x MSOP at ~370 |
 | 8x status LED | 32 | 4.0 mm² each; the SK6812MINI-E was 98 mm² |
 | W5500 module (25 × 23 mm) | 575 | unavoidable if Ethernet stays; replaces chip + crystal + jack at ~496 |
-| 83 passives | ~196 | with pads: 67 × 0402 at 1.5 = 100, 8 × 0805 at 4 = 32, 3 × 1206 at 6 = 18, 2 × 1210 at 8 = 16, 2 × 0603 at 2.5 = 5, and the 2512 shunt at 25 |
+| 85 passives | ~199 | with pads: 69 × 0402 at 1.5 = 103, 8 × 0805 at 4 = 32, 3 × 1206 at 6 = 18, 2 × 1210 at 8 = 16, 2 × 0603 at 2.5 = 5, and the 2512 shunt at 25 |
 | SW1, SW2 | ~24 | recovery buttons; deletable if a pogo-pin jig is acceptable instead |
 
 
@@ -2675,13 +2678,22 @@ See Netlist for what is in it and what the clean report does not mean.
 
 ### Verification, not design
 
-1. **The Ethernet module's handedness.** Ring MJ2 position 1 against the two G
+1. **D2's cathode orientation.** The SS36's datasheet marks polarity by a
+   cathode band and numbers no terminal, and the EasyEDA symbol names its pins
+   `1`/`2` with no C/A — so "pin 1 = cathode" is the DO-214AC convention, not a
+   reading. Its KB record is `inferred` and `erc.py` trusts it at warning
+   severity accordingly. **Check the band against pin 1 before placing**: this
+   is the TPS54360B's catch diode, and reversed it is a forward short from SW
+   to GND on every switching cycle. Thirty seconds with the reel and the
+   footprint.
+
+2. **The Ethernet module's handedness.** Ring MJ2 position 1 against the two G
    pads on MJ1 to find which end of MJ1 is ground, and read the controller's
    silkscreen against the module's at assembly. Needs the physical module, not a
    datasheet — WIZnet does not publish the pin-1 end. Affects the **footprint**,
    not the netlist.
 
-2. **The eFuse's ramp is characterised by TI, not derived here.** The TPS16630
+3. **The eFuse's ramp is characterised by TI, not derived here.** The TPS16630
    regulates its own junction temperature through start-up and is published
    powering into 15 mF, against 3.3 mF per channel here. There is no SOA
    calculation left to verify — which is the point of moving to an integrated
@@ -2689,7 +2701,7 @@ See Netlist for what is in it and what the clean report does not mean.
    verified is the thermal path that lets it do that: the PowerPAD pour and its
    vias are a layout item with no datasheet to check them against.
 
-3. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
+4. **The thermal model is unmeasured.** ~70% sustainable brightness, calculated
    not observed. Testable for free using the XL1509's own thermal shutdown: run
    one module at full white for 15 minutes and watch for the LEDs cutting out and
    recovering. The TSD threshold is unspecified, so a pass means "below some
@@ -2733,7 +2745,7 @@ See Netlist for what is in it and what the clean report does not mean.
 ## Netlist
 
 `netlist.json` is generated by `netlist.py`, not written by hand, and both are
-committed. **127 components, 437 pins, 76 real nets** — `erc.py` prints 106,
+committed. **129 components, 441 pins, 78 real nets** — `erc.py` prints 108,
 because it counts the thirty single-pin `NC_*` nets alongside them. The ERC reports
 **0 errors** and one warning, the documented `P1-undervoltage` on U9.20.
 

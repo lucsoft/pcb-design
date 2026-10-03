@@ -68,6 +68,7 @@
     "Chosen over the side-emitting SK6812D-EC3210R (C2890041) because the enclosure is not designed. A top-view part sits anywhere on the board and needs a window in whatever face the operator looks at; a side-view part needs an unobstructed in-plane path and saves the window. Which is cheaper depends on how the board sits in the box, and while that is open the part that constrains nothing is the right default.",
     "PIN ORDER: 1 VDD / 2 DOUT / 3 GND / 4 DIN. All three SK6812 variants evaluated have DIFFERENT pin orders and no two agree - MINI-E is GND/DIN/VDD/DOUT, EC3210R is GND/DOUT/DIN/VDD. A netlist written for any one puts VDD on a data pin of either other.",
     "VIH is 0.6 x VDD, the most permissive of the three, which raised whether the 74AHCT541 could be deleted. It cannot: 0.6 x 5.0 = 3.0 V against the ESP32-C6's guaranteed V_OH of 0.8 x VDD = 2.64 V.",
-    "IDOUT 12 mA typ, same as the other two, so the 0.12 W budgeted figure (eight, one colour, 25% duty) is unchanged. 4.0 mm2 each against the MINI-E's 12.25."
+    "IDOUT 12 mA typ, same as the other two, so the 0.12 W budgeted figure (eight, one colour, 25% duty) is unchanged. 4.0 mm2 each against the MINI-E's 12.25.",
+    "THE DATASHEET CONTRADICTS ITSELF ON PIN NUMBERING, and the pin map here follows the right half. SS4/SS5 p.4 give 1 VDD / 2 DOUT / 3 GND / 4 DIN, which is what the symbol and this record use. SS16 'Packaging standards' p.11 prints 1.DOUT 2.GND 3.DIN 4.VDD on the tape-orientation label - the same part rotated in the carrier, with the corners renumbered for the reel rather than for the footprint. Reading p.11 as the pinout puts VDD on a data pin."
   ]
 }

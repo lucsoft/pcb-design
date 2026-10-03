@@ -38,10 +38,24 @@ HEADING = re.compile(r"^#{2,6}\s+(.+)$", re.M)
 # because both appear in real references here and both used to end the match
 # early. The length ceiling is 80: "See Netlist for what is in it and what the
 # clean report does not mean" is 62 and was over the old 61.
+# The character class is now "anything but a terminator", not a list of
+# allowed characters. A list is a fail-open design: every character missing
+# from it -- `(`, `/`, `&`, a digit at the start -- silently truncated or
+# dropped a reference, and the rename probe cannot see that, because it only
+# exercises references the regex already captures. The inverse probe is in
+# tests/test_xref.py.
+# Two deliberate shapes, so "the modules see the bus up to that point" is not
+# read as a pointer: a Capitalised target, or "the <something> table/section".
+# Within a shape the class is "anything but a terminator" rather than a list
+# of allowed characters -- a list is fail-open, and every character missing
+# from the previous one (`(`, `/`, `&`, a leading digit) silently truncated or
+# dropped a reference. The rename probe cannot see that, because it exercises
+# only references the regex already captures; tests/test_xref.py has the
+# inverse probe that can.
 REF = re.compile(
     r"[Ss]ee\s+(?:the\s+)?\*{0,2}("
-    r"[A-Z][A-Za-zΩ0-9\s,'’-]{1,80}?"
-    r"|[a-z][a-zΩ0-9\s'’-]{1,60}?\s(?:table|section)"
+    r"[A-Z0-9][^.,;:)\]|—–*\n]{1,120}?"
+    r"|[a-z][^.,;:)\]|—–*\n]{1,100}?\s(?:table|section)"
     r")\*{0,2}\s*(?=[.,;:)\]|—–]|$)")
 # Genuinely outside this file. Each needs a reason that is true.
 # Matched against the WHOLE target, like NOT_A_TARGET and for the same reason:
@@ -60,6 +74,10 @@ STOP = {"for", "below", "above", "and", "in", "on", "at", "to", "which",
 # ...", which is most of them here -- the same fail-open shape this tool
 # exists to catch, introduced while fixing it.
 NOT_A_TARGET = {"below", "above", "this", "that", "it", "the"}
+# "see below for why ..." is a direction, not a heading, whatever follows --
+# so this one IS a first-word rule, deliberately, and it is a shape rather
+# than an identity. EXTERNAL and NOT_A_TARGET match whole targets.
+DIRECTIONS = {"below", "above"}
 
 
 def norm(s):
@@ -107,13 +125,37 @@ def resolves(target, heads):
     return False
 
 
+def ambiguous(names):
+    """FULL heading names where one opens another.
+
+    Compared against full names, never against the clause set: "HUSB238A" and
+    "HUSB238A (U1)" are two clauses of one heading, and reporting that pair
+    would be noise about a section that cannot be confused with itself.
+
+    No matcher can report a rename of `Recovery and debug` while `Recovery`
+    survives, because the reference to the longer one contains the shorter as
+    a leading phrase of itself. That is not fixable in the matcher -- it is
+    fixable in the document, by not giving two sections names where one opens
+    the other. So the checker reports the structure instead of pretending.
+    """
+    out = []
+    for h in sorted(names):
+        for other in names:
+            if other != h and other.startswith(h + " "):
+                out.append((h, other))
+                break
+    return out
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__.strip())
     raw = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
-    heads = set()
+    heads, names = set(), set()
     for m in HEADING.finditer(raw):
-        heads |= clauses(norm(m.group(1)))
+        n = norm(m.group(1))
+        names.add(n)
+        heads |= clauses(n)
 
     # Flatten whitespace before looking for references. With re.M, `$` ends a
     # match at every line break, so a reference wrapped mid-phrase was
@@ -128,13 +170,19 @@ def main():
     bad = [(t, n) for t, n in sorted(refs.items())
            if t not in EXTERNAL
            and t not in NOT_A_TARGET
+           and t.split()[0] not in DIRECTIONS
            and not resolves(t, heads)]
+    pairs = ambiguous(names)
     for t, n in bad:
         print(f"  UNRESOLVED  'see {t}' x{n} — no heading matches it, or any "
               f"leading phrase of it")
+    for short, long in pairs:
+        print(f"  AMBIGUOUS   '{short}' opens '{long}' — a reference to the "
+              f"longer one also matches the shorter, so renaming it could "
+              f"not be reported")
     print(f"\n{len(heads)} heading(s), {len(refs)} distinct reference(s), "
-          f"{len(bad)} unresolved")
-    return 1 if bad else 0
+          f"{len(bad)} unresolved, {len(pairs)} ambiguous heading pair(s)")
+    return 1 if bad or pairs else 0
 
 
 if __name__ == "__main__":

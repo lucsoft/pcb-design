@@ -1,0 +1,48 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C138066",
+  "@type": "Component",
+  "lcscId": "C138066",
+  "mpn": "RC0402FR-0710RL",
+  "manufacturer": "YAGEO",
+  "description": "10Ω 62.5mW 50V Thick Film Resistor ±1% ±200ppm/℃ 0402 Chip Resistor - Surface Mount RoHS",
+  "category": "resistor",
+  "package": "0402",
+  "stock": 1139100,
+  "priceUsd": 0.0035,
+  "parameters": {
+    "Resistance": "10Ω",
+    "Power(Watts)": "62.5mW",
+    "Voltage Rating": "50V",
+    "Operating Temperature": "-55℃~+155℃",
+    "Type": "Thick Film Resistor",
+    "Tolerance": "±1%",
+    "Temperature Coefficient": "±200ppm/℃"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/b426be3ce22c6de3e0c3a2248e49159e.pdf",
+  "retrieved": "2026-10-03",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "A",
+      "type": "passive",
+      "vMax": 50.0
+    },
+    {
+      "number": "2",
+      "name": "B",
+      "type": "passive",
+      "vMax": 50.0
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal passive - pads 1 and 2, no polarity. Pin numbers from the EasyEDA Pro symbol via tools/eda.py."
+  }
+}

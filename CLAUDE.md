@@ -387,12 +387,19 @@ false completeness claim into the commit message.
     ./tools/consistency.py designs/<name>
 
 A section rename leaves every pointer at it aimed at nothing, which
-`./tools/xref.py <file>` catches. It resolves a reference against any **leading
-phrase** of it, so "see Recovery and debug for what that leaves" matches the
-heading without the sentence having to stop there — the first version matched
-the whole captured string, found that false, and answered it with a whitelist
-entry whose comment claimed the target was not a heading in the file. It was.
-Fix the matcher, never the list — two here pointed at a heading that had
+`./tools/xref.py <file>` catches. A reference resolves when some **leading
+phrase** of it is exactly a heading or one of that heading's leading clauses —
+the part before a comma, colon or bracket — so "see Recovery and debug for what
+that leaves" matches without the sentence having to stop there, and `Recovery`
+stays distinguishable from `Recovery and debug`. The first version matched the
+whole captured string, found that false, and answered it with a whitelist entry
+whose comment claimed the target was not a heading in the file. It was. Fix the
+matcher, never the list.
+
+It also reports **two headings where one opens the other**, because no matcher
+can report a rename of the longer one while the shorter survives: the reference
+contains it as a leading phrase of itself. That is unfixable in a checker and
+trivial in a document — two here pointed at a heading that had
 never existed, with the material three sections away, so a reader could not
 tell whether they had failed to find it or it was gone.
 
@@ -626,7 +633,15 @@ likely still working — and `ds.py fetch --url` always accepts a URL directly.
 3. Add a row to the table in `rules/README.md`, listing **every** severity the
    rule can emit. A rule that reports at three and documents one tells a reader
    the fail-closed branch does not exist.
-4. Re-run the suite **and `erc.py designs/demo-ldo`**. A new rule that fires on
+4. Re-run the suite **and `erc.py designs/demo-ldo`**.
+
+**Two probes, not one.** A *rename probe* (break the thing and require a
+report) exercises the matching; an *inverse probe* (inject a shape the tool has
+never seen and require a report) exercises the **capture**, which the first
+cannot reach by construction — a reference the regex never matches is invisible
+to a rename. `tools/xref.py` had three fail-open regressions in three
+consecutive commits, and each time the rename probe passed. `tests/test_xref.py`
+runs both. A new rule that fires on
    the good fixture is a false positive, and false positives are how a checker
    gets ignored. `Q3-tier-unknown` was demoted from warning to info for exactly
    this.

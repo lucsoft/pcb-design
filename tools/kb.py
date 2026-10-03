@@ -24,6 +24,7 @@ import argparse
 import datetime as dt
 import json
 import re
+import subprocess
 import sys
 import urllib.request
 from pathlib import Path
@@ -67,11 +68,34 @@ GENERIC_HINTS = [
 ]
 
 
+def _get(url: str) -> dict:
+    """GET and parse JSON, falling back to curl.
+
+    The endpoint sometimes answers urllib with HTTP 403 while answering curl
+    with 200 from the same machine, same User-Agent, same second -- a CDN
+    telling Python apart from a browser below the header layer. It is a
+    scraped endpoint and this is the cost of that; the fallback keeps the
+    tools working rather than making every record unfetchable. If BOTH fail
+    the caller still hears about it, which is the part that matters.
+    """
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            return json.load(resp)
+    except Exception as first:
+        try:
+            out = subprocess.run(["curl", "-sS", "-A", UA, url],
+                                 capture_output=True, text=True, timeout=30)
+            if out.returncode == 0 and out.stdout.strip():
+                return json.loads(out.stdout)
+        except Exception:
+            pass
+        raise first
+
+
 def fetch_lcsc(part: str) -> dict | None:
     try:
-        req = urllib.request.Request(API.format(part), headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            data = json.load(resp)
+        data = _get(API.format(part))
     except Exception as exc:
         print(f"error: LCSC request failed: {exc}", file=sys.stderr)
         return None

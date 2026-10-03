@@ -184,13 +184,23 @@ COMPONENTS = [
     ("U6", "C49851", "INA226AIDGSR", "current sense", {
         "1": "GND", "2": "GND", "3": "INA_ALERT", "4": "I2C_SDA",
         "5": "I2C_SCL", "6": "BUS_3V3", "7": "GND", "8": "BUS_3V3",
-        "9": "GND", "10": "LED_RTN"}),
+        "9": "INA_IN_N", "10": "INA_IN_P"}),
     # 5 mOhm, not 10. The INA226's +-81.92 mV differential range is 16.4 A at
     # 5 mOhm and only 8.19 A at 10 -- and this board's own full-white flash is
     # 8.0 A, which would have put normal operation at 98% of full scale with
     # the two eFuses able to pass 11.1 A beyond it. Halving the shunt also
     # halves the LED_RTN ground lift and the dissipation.
     ("R1", "C393074", "RLP25FEGMR005", "5mR 2512", {"1": "LED_RTN", "2": "GND"}),
+    # R49/R50: the INA226's own datasheet asks for these. SS7.4.2 p.14 -- "in
+    # applications that do not have large energy storage electrolytics on one
+    # or both sides of the shunt, an input overstress condition may result
+    # from an excessive dV/dt... a hard physical short is the most likely
+    # cause... the addition of 10-ohm resistors in series with each input
+    # sufficiently protects the inputs... minimal effect on accuracy". This
+    # board is that case exactly: no electrolytic either side of R1, and a
+    # hard channel short is the event the whole protection chapter is about.
+    ("R49", "C138066", "RC0402FR-0710RL", "10R", {"1": "LED_RTN", "2": "INA_IN_P"}),
+    ("R50", "C138066", "RC0402FR-0710RL", "10R", {"1": "GND", "2": "INA_IN_N"}),
     ("R45", "C25744", "0402WGF1002TCE", "10k", {"1": "INA_ALERT", "2": "BUS_3V3"}),
     ("C20", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_3V3", "2": "GND"}),
     ("R17", "C25900", "0402WGF4701TCE", "4.7k", {"1": "I2C_SDA", "2": "BUS_3V3"}),
