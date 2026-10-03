@@ -670,6 +670,43 @@ class Check:
                                         if net else ""),
                                      where=where, hint=note)
 
+    def check_rail_bridges(self):
+        """A zero-ohm link joining two rails whose declared maxima disagree.
+
+        R48 on the LED matrix controller is the case: 0 ohm from a 37.8 V bus
+        to the rail feeding a pin rated 33 V absolute. It is do-not-fit, and
+        the netlist format has no field that can say so -- `value` holds
+        "0R DNF" and the importer ignores it. S6 cannot see it either, because
+        S6 fires only when both pins carry the SAME net. So the one part on
+        this board whose mis-assembly is destructive was checked by nothing.
+
+        The data to catch it is already in design.yaml. Fit the link
+        deliberately on a variant and suppress the rule there, scoped, which
+        is the mechanism working as intended.
+        """
+        for comp in self.components.values():
+            if comp.category != "resistor" or len(comp.pins) != 2:
+                continue
+            val = str(comp.props.get("value", ""))
+            if not re.match(r"\s*0\s*(R|Ω|ohm)?\b", val, re.I):
+                continue
+            nets = [n for n in comp.pins.values() if n]
+            if len(nets) != 2 or nets[0] == nets[1]:
+                continue
+            highs = [self.design.rail_voltage_max(n) for n in nets]
+            if any(h is None for h in highs):
+                continue
+            if abs(highs[0] - highs[1]) < 1e-9:
+                continue
+            hi, lo = max(highs), min(highs)
+            self.add("P3-rail-bridge", "error",
+                     f"{comp.designator} is a 0 R link joining '{nets[0]}' and "
+                     f"'{nets[1]}', declared at {highs[0]} V and {highs[1]} V",
+                     where=comp.designator,
+                     hint=f"fitting it puts {hi} V on a rail declared to reach "
+                          f"{lo} V. If that is deliberate on a variant, suppress "
+                          f"P3-rail-bridge@{comp.designator} in that design.yaml")
+
     def check_sourcing(self):
         extended = []
         for comp in self.components.values():
@@ -698,6 +735,7 @@ class Check:
         self.check_decoupling()
         self.check_buses()
         self.check_part_rules()
+        self.check_rail_bridges()
         self.check_sourcing()
         self.findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.rule, f.where))
         return self.findings

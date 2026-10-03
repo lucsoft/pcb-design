@@ -115,7 +115,11 @@ COMPONENTS = [
     ("R26", "C11660", "0402WGF1022TCE", "10.2k", {"1": "FB_5V", "2": "GND"}),
     ("R27", "C25900", "0402WGF4701TCE", "4.7k", {"1": "COMP_5V", "2": "COMP_MID"}),
     ("C6", "C106862", "CC0402KRX7R9BB333", "33nF", {"1": "COMP_MID", "2": "GND"}),
-    ("C7", "C1527", "0402B151K500NT", "150pF", {"1": "COMP_5V", "2": "GND"}),
+    # NP0/C0G, not the X7R this was. It is the high-frequency pole of a
+    # type-II compensation network, where a +-15% temperature drift moves the
+    # pole and a +-30 ppm/C one does not. The old part's C-number was right
+    # and its dielectric was not -- the BOM said C0G, LCSC says X7R.
+    ("C7", "C106998", "CC0402JRNPO9BN151", "150pF C0G", {"1": "COMP_5V", "2": "GND"}),
     ("C8", "C2840282", "1210B475K101NT", "4.7uF 100V", {"1": "VBUS", "2": "GND"}),
     ("C9", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "VBUS", "2": "GND"}),
     ("D2", "C2903825", "SS36", "schottky 60V", {"1": "SW_5V", "2": "GND"}),
@@ -162,7 +166,11 @@ COMPONENTS = [
     ("R41", "C25744", "0402WGF1002TCE", "10k", {"1": "LED_DATA_3V3", "2": "GND"}),
 
     # ---- Ethernet module ----------------------------------------------
-    ("U3", "C134462", "WIZ850io", "W5500 module", {
+    # "DNF" in the value because U3 is do-not-fit for a different reason from
+    # R48 and J4: the C-number resolves the symbol and footprint, and must not
+    # reach a PCBA order, where it buys the $22.89 WIZnet original instead of
+    # the EUR 12.30 clone that drops into the same footprint.
+    ("U3", "C134462", "WIZ850io", "W5500 module DNF", {
         "1": "GND", "2": "GND", "3": "ETH_MOSI", "4": "ETH_SCLK",
         "5": "ETH_SCSN", "6": "ETH_INTN", "7": "ETH_MISO", "8": "ETH_RSTN",
         "9": "NC_ETH_9", "10": "BUS_3V3", "11": "BUS_3V3", "12": "GND"}),
@@ -368,10 +376,19 @@ def selfcheck(net):
     for comp in net.values():
         d = comp["props"]["Designator"]
         for pin, n in comp["pins"].items():
-            if n.upper().startswith("NC_"):
+            if n.upper().startswith("NC"):
                 nc.setdefault(n, []).append(f"{d}.{pin}")
     for name, pins in sorted(nc.items()):
-        if len(pins) > 1:
+        # Two tests, and the second is the one a narrowing to "NC_" quietly
+        # removed: a BARE `NC` is the shared form by definition, so it must
+        # fail even when only one pin uses it today. erc.py still accepts the
+        # bare name -- older designs may use it -- so this is the guard.
+        if name.upper() == "NC":
+            problems.append(
+                f"{name}: open pins take a name of their own, NC_<what it is>. "
+                f"A bare NC is the shared net this guard exists to prevent "
+                f"({', '.join(pins)})")
+        elif len(pins) > 1:
             problems.append(
                 f"{name}: shared by {', '.join(pins)} — open pins need one net "
                 f"each, or they are one node if the importer ignores the name")

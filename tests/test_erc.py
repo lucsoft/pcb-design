@@ -457,6 +457,42 @@ def _():
                    if f["rule"] == "K4-unconnected-pin")
 
 
+@case("P3 catches a zero-ohm link between rails declared at different maxima")
+def _():
+    # The LED matrix controller's R48 is the case: a 0 R bypass from a 37.8 V
+    # bus to the rail feeding a 33 V-absolute pin. It is do-not-fit, and the
+    # netlist format has no field that can say so, so nothing saw it -- S6
+    # fires only when both pins carry the SAME net.
+    design = ("rails:\n  GND: {type: ground}\n"
+              "  HIGH: {voltage: 36.0, voltageMax: 37.8}\n"
+              "  LOW: {voltage: 26.3, voltageMax: 27.75}\nbuses: []\n")
+    bridge = {
+        **comp("gge1", "R1", "C17168", {"1": "HIGH", "2": "LOW"}, value="0R DNF"),
+        **comp("gge2", "C1", "C131394", {"1": "HIGH", "2": "GND"}),
+        **comp("gge3", "C2", "C131394", {"1": "LOW", "2": "GND"}),
+    }
+    assert "P3-rail-bridge" in rules(run(bridge, design))
+
+    # Not a finding when the two rails agree...
+    same = ("rails:\n  GND: {type: ground}\n"
+            "  HIGH: {voltage: 36.0, voltageMax: 37.8}\n"
+            "  ALSO: {voltage: 36.0, voltageMax: 37.8}\nbuses: []\n")
+    ok = {
+        **comp("gge1", "R1", "C17168", {"1": "HIGH", "2": "ALSO"}, value="0R"),
+        **comp("gge2", "C1", "C131394", {"1": "HIGH", "2": "GND"}),
+        **comp("gge3", "C2", "C131394", {"1": "ALSO", "2": "GND"}),
+    }
+    assert "P3-rail-bridge" not in rules(run(ok, same))
+
+    # ...nor when the part is not a zero-ohm link.
+    real = {
+        **comp("gge1", "R1", "C25744", {"1": "HIGH", "2": "LOW"}, value="10k"),
+        **comp("gge2", "C1", "C131394", {"1": "HIGH", "2": "GND"}),
+        **comp("gge3", "C2", "C131394", {"1": "LOW", "2": "GND"}),
+    }
+    assert "P3-rail-bridge" not in rules(run(real, design))
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:

@@ -58,6 +58,7 @@ finding prints in brackets.
 | `P1-undervoltage` | warning | rail below a pin's `vMin`. Compared against the rail's `voltageMin` when `design.yaml` declares one, otherwise its nominal `voltage` — a rail stated only at nominal hides the sag that crosses the floor |
 | `P2-no-decoupling` | error | a supply rail with no capacitor to ground |
 | `P2-thin-decoupling` | warning | fewer capacitors than supplied **parts** on a rail. Counted per part, not per pad: a part taking four pins off one bus wants one capacitor, not four |
+| `P3-rail-bridge` | error | a **zero-ohm link** joining two rails whose declared `voltageMax` differ. `S6` cannot see this — it fires only when both pins carry the *same* net — so a do-not-fit bypass across a 37.8 V bus and a 27.75 V rail was checked by nothing. Suppress it scoped on a variant that fits the link deliberately |
 
 `P1` needs rail voltages declared in `design.yaml`; without them it cannot fire.
 

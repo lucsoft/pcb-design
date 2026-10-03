@@ -30,13 +30,15 @@
       "number": "1",
       "name": "A1",
       "type": "passive",
-      "vMax": 5.0
+      "vMax": 5.0,
+      "contact": "symbol pin C"
     },
     {
       "number": "2",
       "name": "A2",
       "type": "passive",
-      "vMax": 5.0
+      "vMax": 5.0,
+      "contact": "symbol pin A"
     }
   ],
   "provenance": {
@@ -46,7 +48,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "two-terminal BIDIRECTIONAL ESD diode in DFN1006-2L; pin numbers A1/A2 from the EasyEDA Pro symbol via tools/eda.py. No cathode band and no polarity. vMax is Vrwm = 5 V, the continuous limit, not the 10 V clamping voltage."
+    "pins": "two-terminal ESD diode in DFN1006-2L; pin numbers from the EasyEDA Pro symbol via tools/eda.py. LCSC parameters say Polarity=Bidirectional, so neither terminal is a cathode and either may sit on the signal - but the SYMBOL names its pins C and A, which reads as unidirectional. The names here follow the parameters; the netlist puts pin 1 on the signal and pin 2 on ground, which is correct under either reading. vMax is Vrwm = 5 V, the continuous limit, not the 10 V clamping voltage."
   },
   "designVerdict": "SELECTED as D3-D6 - ESD on the USB-C D+/D- and CC1/CC2 lines.",
   "notes": [

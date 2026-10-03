@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C106998",
+  "@type": "Component",
+  "lcscId": "C106998",
+  "mpn": "CC0402JRNPO9BN151",
+  "manufacturer": "YAGEO",
+  "description": "150pF ±5% 50V Ceramic Capacitor NP0 0402",
+  "category": "capacitor",
+  "package": "0402",
+  "stock": 311000,
+  "priceUsd": 0.0043,
+  "parameters": {
+    "Capacitance": "150pF",
+    "Temperature Coefficient": "NP0",
+    "Tolerance": "±5%",
+    "Voltage Rating": "50V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/4eca2bb4b507f1633db47e922d632b95.pdf",
+  "retrieved": "2026-10-03",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "A",
+      "type": "passive",
+      "vMax": 50.0
+    },
+    {
+      "number": "2",
+      "name": "B",
+      "type": "passive",
+      "vMax": 50.0
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal MLCC, 0402. Pin numbers from the EasyEDA Pro symbol via tools/eda.py; no polarity."
+  }
+}

@@ -367,9 +367,9 @@
   "gge28": {
     "props": {
       "Designator": "C7",
-      "device_name": "0402B151K500NT",
-      "value": "150pF",
-      "Supplier Part": "C1527"
+      "device_name": "CC0402JRNPO9BN151",
+      "value": "150pF C0G",
+      "Supplier Part": "C106998"
     },
     "pins": {
       "1": "COMP_5V",
@@ -694,7 +694,7 @@
     "props": {
       "Designator": "U3",
       "device_name": "WIZ850io",
-      "value": "W5500 module",
+      "value": "W5500 module DNF",
       "Supplier Part": "C134462"
     },
     "pins": {

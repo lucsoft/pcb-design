@@ -41,6 +41,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 150 pF 50 V C0G 0402. TPS54360B COMP, the parallel leg",
+  "designVerdict": "NOT FITTED. Was C7, the TPS54360B COMP high-frequency pole, on the belief that it is C0G. It is X7R - LCSC's own parameters and the Walsin part code both say so, and 0402B151K is the X7R code. For a compensation pole the difference is real: +-15% over temperature against +-30 ppm/C. Replaced by C106998 (NP0, +-5%, 311k stock).",
   "notes": []
 }

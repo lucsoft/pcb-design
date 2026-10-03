@@ -43,7 +43,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "manual",
-    "pins": "two-terminal Schottky, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
+    "pins": "inferred - the datasheet (p.1) states only 'Polarity: Indicated by cathode band' and numbers no terminal, and the EasyEDA symbol names both pins 1/2 with no C/A labels. Pin 1 = cathode is the DO-214AC convention, not a reading. CONFIRM AGAINST THE BAND BEFORE PLACING: this is the TPS54360B catch diode, and reversed it is a forward short from SW to GND on every switching cycle."
   },
   "notes": [
     "USED ON THE CONTROLLER as the TPS54360B's catch diode. That part is non-synchronous and 'requires an external catch diode between the SW pin and GND' (TPS54360B datasheet p.26) - it was missing from the BOM until the thermal pass. 60 V blocks the 36 V input; average current is Iout x (1-D) = 0.60 A at the 0.7 A rail load against a 3 A rating; it dissipates 0.30 W. A 1.0 A load assumption, which nothing else in this design uses, would give 0.86 A and 0.43 W instead.",

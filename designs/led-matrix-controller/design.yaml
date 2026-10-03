@@ -106,3 +106,15 @@ ignore:
   - C1-single-pin-net@UART_TX
   - C1-single-pin-net@UART_RX
 
+
+  # R48 is the 0 R follower bypass, and P3 is RIGHT about it: fitted, it puts
+  # the 37.8 V bus onto the rail feeding a pin rated 33 V absolute, destroying
+  # U1. It is in the netlist so the pad exists for a <=28 V build, where Q3 and
+  # D1 come out and the follower is not needed.
+  #
+  # This entry is the first machine-readable record that the part is do-not-fit
+  # -- the netlist format has no field for it and `value: "0R DNF"` is ignored
+  # by the importer. A <=28 V variant keeps the suppression; this board keeps it
+  # AND the do-not-fit step in 'from here to a board'. Scoped to R48, so P3
+  # still guards any other zero-ohm link anyone adds.
+  - P3-rail-bridge@R48

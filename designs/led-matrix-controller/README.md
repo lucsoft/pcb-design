@@ -1341,7 +1341,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | C1,C2 | **220 nF 50 V X7R 0603** | C64705 | C_dVdT, one per eFuse — sets the ramp |
 | C5 | **100 nF 50 V X7R 0402** | C131394 | TPS54360B BOOT — required for operation |
 | C6 | **33 nF 50 V X7R 0402** | C106862 | TPS54360B COMP series |
-| C7 | **150 pF 50 V C0G 0402** | C1527 | TPS54360B COMP parallel |
+| C7 | **150 pF 50 V NP0 0402** | C106998 | TPS54360B COMP parallel. NP0/C0G, because this is the high-frequency pole of the compensation network: ±30 ppm/°C holds it where ±15% over temperature would move it. C1527 sat here for several revisions labelled C0G and is **X7R** |
 | C8 | **4.7 µF 100 V X7R 1210** | C2840282 | TPS54360B input bulk — the part the "C_IN ≥3 µF effective after DC-bias derating" row means |
 | C33 | **2.2 µF 100 V X7R 1210** | C153036 | 36 V bulk at the USB-C inlet. 2.2 rather than a second 4.7 because of the Type-C sink bypass limit — see Resolved |
 | C3,C4,C34,C35 | **220 nF 100 V X7R 0805** | C513710 | C_IN and C_OUT at each eFuse, one of each per channel. p.6 gives 0.1 µF as a **minimum** at IN, P_IN *and* OUT; a nominal 100 nF ±10% part meets that with zero margin, so this is oversized deliberately |
@@ -1473,8 +1473,7 @@ is worth knowing.
 AC/DC**, and where the node reaches it depends on which breakdown corner the
 part lands at: at the SMCJ40CA's **low** corner, 44.4 V, 48 V arrives at
 **5.4 A** of surge; at its **high** corner, 49.1 V, the part does not conduct
-until the node is already past J1's rating. (The retired SMA part reached 48 V
-at 1.9 A, because its R_d is three times larger.) No 37.8 V-standoff avalanche TVS can protect a
+until the node is already past J1's rating.  No 37.8 V-standoff avalanche TVS can protect a
 48 V connector, because its own breakdown has to sit above the bus and below
 nothing in particular. The event is 10/1000 µs on a connector with no
 semiconductor junction, so this is a durability question rather than a
@@ -1495,8 +1494,11 @@ finding in Known electrical limits.
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
 height — so 71.6 x 98 mm, 7017 mm2.**
 
-Component area estimates at **~2445 mm2**, counting the passives individually
-rather than as an allowance — the itemised list is in the BOM. The three bus TVS
+Component area estimates at **~2445 mm2** — the itemised rows below sum to
+1546 mm², and the remaining ~900 mm² is every part not itemised there: the
+sixteen diodes, three transistors, two inductors, the USB-C receptacle, the two
+transceivers, the buffer and the two converters. Counting the passives
+individually rather than as an allowance. The three bus TVS
 moved from SMA to SMC with the 40 V part: 50.6 mm² against 26 mm² of maximum
 package envelope, so the **change** is about 25 mm² each and 74 mm² of the
 total — the change, not the new package's full area. The Ethernet
@@ -2674,9 +2676,12 @@ is deleting a line. The JSON is still the artefact that gets imported.
     nix-shell --run './tools/erc.py designs/led-matrix-controller/netlist.json'
     nix-shell --run './tools/consistency.py designs/led-matrix-controller'
 
-The third one checks **this document** against the netlist: every count stated
-above, every BOM C-number and every price cell. It exists because the counts
-here are derivable and were repeatedly left behind when the netlist changed.
+The third checks **this document** against the netlist: the stated counts at
+every occurrence, each BOM row's C-number, Qty and price, and the open-pin
+table. It prints what it could *not* check rather than passing it — five rows
+here carry no comparable number, and `--strict` makes those gate too. It exists
+because the counts are derivable and were repeatedly left behind when the
+netlist changed.
 
 **The pin keys come from the EasyEDA library, not from the datasheets.** This
 distinction had been written down as a chore and turned out to be the most

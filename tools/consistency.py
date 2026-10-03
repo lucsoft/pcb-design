@@ -11,11 +11,19 @@ Those numbers are derivable, so they should not be maintained by hand.
 
 What it checks, all against `netlist.json` and `kb/`:
 
-  component / pin / net / NC-pin counts the prose states
+  component / pin / net / NC-pin counts the prose states, at EVERY occurrence
   resistor and capacitor counts, and the passive total
-  every BOM row's C-number against the netlist's for that designator
+  every BOM row's C-number, read from the LCSC column, against the netlist's
   every designator in one and not the other
+  the Qty column against the reference range's cardinality
   the price column against each kb record's priceUsd
+  the "deliberately open pins" table, set-differenced both ways against the
+    netlist's NC_* pins -- it is expanded, not counted
+
+BOM tables are read by their HEADERS, so a table without a Qty or $ column is
+not expected to have one. A table that has a Ref column and C-numbers but no
+readable LCSC heading is reported rather than skipped: that is the shape where
+renaming one heading switches every row's checks off.
 
 Exit status is 1 on any mismatch, so it gates a document the way erc.py gates
 a netlist. A claim it cannot parse is reported as unchecked rather than passed:
@@ -74,13 +82,14 @@ WORDS = {"thirty": 30, "twenty": 20, "ten": 10}
 
 
 def check_counts(doc, f):
+    """Returns (findings, how many claim occurrences were actually read)."""
     """EVERY occurrence of each claim, not the first.
 
     The failure this tool exists for is a value corrected where it is derived
     and left standing somewhere else, so stopping at the first match would miss
     precisely the second copy.
     """
-    out = []
+    out, total = [], 0
     for pattern, key in CLAIMS:
         seen = 0
         for m in re.finditer(pattern, doc):
@@ -101,10 +110,10 @@ def check_counts(doc, f):
         if not seen:
             out.append(("unchecked", f"no claim matching /{pattern}/ for "
                                      f"'{key}' (now {f[key]})"))
-    return out
+        total += seen
+    return out, total
 
 
-BOM_ROW = re.compile(r"^\|\s*([A-Z]+\d+(?:[,-][A-Z]*\d+)*)\s*\|([^|]*)\|([^|]*)\|")
 CNUM = re.compile(r"\bC\d{3,9}\b")
 
 
@@ -123,16 +132,33 @@ def expand(ref):
 
 
 def check_bom(doc, desig):
+    """Designator -> C-number, read from the LCSC COLUMN.
+
+    Scanning the whole row for the first C-number let a stray code in the Part
+    column mask a wrong one in the LCSC column -- and this is the identity
+    check, the one CLAUDE.md's first standing rule is about: a wrong C-number
+    silently places a different component with nothing in the property table to
+    correct it afterwards.
+    """
     out, claimed = [], {}
-    for line in doc.splitlines():
-        m = BOM_ROW.match(line)
-        if not m:
+    for header, rows in tables(doc):
+        iref, ilcsc = col(header, "ref"), col(header, "lcsc")
+        if iref is None or ilcsc is None:
             continue
-        c = CNUM.search(m.group(2) + " " + m.group(3))
-        if not c:
-            continue
-        for d in expand(m.group(1)):
-            claimed.setdefault(d, c.group(0))
+        for cells in rows:
+            if len(cells) != len(header):
+                continue                       # reported by check_rows
+            ref = cells[iref].strip("* `")
+            if not re.fullmatch(r"[A-Z]+\d+(?:[,-][A-Z]*\d+)*", ref):
+                continue
+            found = CNUM.findall(cells[ilcsc])
+            if len(found) != 1:
+                continue                       # reported by check_rows
+            for d in expand(ref):
+                if d in claimed and claimed[d] != found[0]:
+                    out.append(("error", f"{d}: two BOM rows disagree — "
+                                         f"{claimed[d]} and {found[0]}"))
+                claimed.setdefault(d, found[0])
     for d, lcsc in sorted(claimed.items()):
         if d not in desig:
             out.append(("error", f"{d} has a BOM row ({lcsc}) and is not in the netlist"))
@@ -193,6 +219,25 @@ def check_rows(doc):
         iqty = col(header, "qty")
         icost = col(header, "$", "price")
         if iref is None or ilcsc is None:
+            # A table of designator-shaped rows whose Ref or LCSC heading this
+            # tool cannot find is the silent-skip case in a different costume:
+            # rename "LCSC" to "LCSC #" and every row's price and C-number stop
+            # being checked, with the summary reading cleaner than the truth.
+            # Complain only about a table that is unambiguously a BOM: it has
+            # a Ref column AND carries C-numbers. That is exactly the dangerous
+            # case -- an LCSC heading renamed, so every row stops being checked
+            # while the summary reads cleaner than before. A prose table that
+            # happens to cite a C-number is not one, and reporting it is noise
+            # that buries the case that matters.
+            looks_like_bom = iref is not None and any(
+                CNUM.search(c) for row in rows for c in row)
+            if looks_like_bom:
+                missing = " and ".join(
+                    n for n, i in (("Ref", iref), ("LCSC", ilcsc)) if i is None)
+                out.append(("unchecked",
+                            f"a table of {len(rows)} part row(s) has no "
+                            f"{missing} column — headings are {header!r}, so "
+                            f"none of its rows are checked"))
             continue
         for cells in rows:
             if len(cells) != len(header):
@@ -293,6 +338,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("design", help="a designs/<name>/ directory")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit 1 on an unchecked claim as well as a mismatch")
     args = ap.parse_args()
     design = pathlib.Path(args.design)
     for needed in ("netlist.json", "README.md"):
@@ -304,8 +351,8 @@ def main():
     net, doc = load(design)
     f, desig = facts(net)
     rows, priced, qtyd = check_rows(doc)
-    findings = (check_counts(doc, f) + check_bom(doc, desig) + rows
-                + check_open_pins(doc, net))
+    counts, counted = check_counts(doc, f)
+    findings = counts + check_bom(doc, desig) + rows + check_open_pins(doc, net)
 
     for sev, msg in findings:
         print(f"  {'ERROR' if sev == 'error' else 'unchecked'}  {msg}")
@@ -314,10 +361,10 @@ def main():
     print(f"\n{design}: {errors} mismatch(es), {unchecked} unchecked claim(s)")
     # Say what was checked, not that everything was. The previous wording
     # printed "every price matches" over prices it had silently skipped.
-    print(f"  {len(CLAIMS)} count claim(s), {len(desig)} designator(s), "
+    print(f"  {counted} count claim(s), {len(desig)} designator(s), "
           f"{priced} price cell(s), {qtyd} Qty cell(s), and the "
           f"open-pin table")
-    return 1 if errors else 0
+    return 1 if errors or (args.strict and unchecked) else 0
 
 
 if __name__ == "__main__":
