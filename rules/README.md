@@ -4,6 +4,11 @@ Every rule `tools/erc.py` can report. Suppress one for a design by listing its
 id under `ignore:` in that design's `design.yaml` — and write down why, because
 a suppressed rule is a decision, not a cleanup.
 
+`design.yaml` also takes a **`dnf:`** list of designators that are placed so
+their pads exist and must not be fitted. `P3-rail-bridge` reads it. This is not
+an `ignore:` entry and must not be written as one: a suppression removes the
+finding, where `dnf:` keeps it visible at info severity and says *why*.
+
 An entry is either a bare rule id, which silences the rule across the whole
 board, or **`rule@where`**, which silences it at one net or pin only. Prefer the
 scoped form. The bare form is how a real check gets lost: `P2-no-decoupling`
@@ -58,7 +63,7 @@ finding prints in brackets.
 | `P1-undervoltage` | warning | rail below a pin's `vMin`. Compared against the rail's `voltageMin` when `design.yaml` declares one, otherwise its nominal `voltage` — a rail stated only at nominal hides the sag that crosses the floor |
 | `P2-no-decoupling` | error | a supply rail with no capacitor to ground |
 | `P2-thin-decoupling` | warning | fewer capacitors than supplied **parts** on a rail. Counted per part, not per pad: a part taking four pins off one bus wants one capacitor, not four |
-| `P3-rail-bridge` | error | a **zero-ohm link** joining two rails whose declared `voltageMax` differ. `S6` cannot see this — it fires only when both pins carry the *same* net — so a do-not-fit bypass across a 37.8 V bus and a 27.75 V rail was checked by nothing. Suppress it scoped on a variant that fits the link deliberately |
+| `P3-rail-bridge` | error, or **info** when the part is in `design.yaml`'s `dnf:` list | a **zero-ohm link** joining two rails whose declared `voltageMax` differ. `S6` cannot see this — it fires only when both pins carry the *same* net — so a do-not-fit bypass across a 37.8 V bus and a 27.75 V rail was checked by nothing. Whether the part is a link is read from the kb record's `parameters.Resistance`, not from `value`, which the importer ignores and nobody validates. **Do not suppress it to record do-not-fit** — list the part under `dnf:` and it reports at info, so the decision stays visible in every run; a suppression would read identically on the variant that *does* fit the link |
 
 `P1` needs rail voltages declared in `design.yaml`; without them it cannot fire.
 

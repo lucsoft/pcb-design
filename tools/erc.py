@@ -110,6 +110,7 @@ class Design:
     rails: dict = field(default_factory=dict)   # net -> {voltage, type}
     buses: list = field(default_factory=list)
     ignore: set = field(default_factory=set)    # rule ids to suppress
+    dnf: set = field(default_factory=set)       # designators not to be fitted
 
     @classmethod
     def load(cls, path: Path) -> "Design":
@@ -123,6 +124,7 @@ class Design:
             rails=data.get("rails", {}) or {},
             buses=data.get("buses", []) or [],
             ignore=set(data.get("ignore", []) or []),
+            dnf={str(d).strip() for d in (data.get("dnf", []) or [])},
         )
 
     def rail_voltage(self, net: str) -> float | None:
@@ -670,6 +672,23 @@ class Check:
                                         if net else ""),
                                      where=where, hint=note)
 
+    # "0", "0R", "0Ω", "0.0 ohm" and the IEC form "0R0", where the unit letter
+    # stands in for the decimal point. Deliberately NOT "0R47" or "0.47Ω".
+    ZERO_OHM = re.compile(r"^\s*0+(?:[.,]0+)?\s*(?:R|Ω|ohm)?\s*0*\s*$", re.I)
+
+    def is_zero_ohm(self, comp) -> bool:
+        """A link, decided from the knowledge base rather than from `value`.
+
+        `value` is cosmetic -- CLAUDE.md says the importer ignores it -- so
+        keying on it meant the check could be switched off by editing a string
+        nobody validates. It also missed `0R0`, the IEC way of writing zero,
+        and `jumper`, while firing on `0.47R`. The kb record carries
+        `parameters.Resistance`, which came from LCSC with the part.
+        """
+        params = (comp.kb or {}).get("parameters") or {}
+        res = str(params.get("Resistance", ""))
+        return bool(res) and bool(self.ZERO_OHM.match(res))
+
     def check_rail_bridges(self):
         """A zero-ohm link joining two rails whose declared maxima disagree.
 
@@ -680,15 +699,14 @@ class Check:
         S6 fires only when both pins carry the SAME net. So the one part on
         this board whose mis-assembly is destructive was checked by nothing.
 
-        The data to catch it is already in design.yaml. Fit the link
-        deliberately on a variant and suppress the rule there, scoped, which
-        is the mechanism working as intended.
+        Severity follows `design.yaml`'s `dnf:` list, which is the point of the
+        rule: a link the design says is not fitted is reported at info, and one
+        it says nothing about is an error. Suppressing the rule instead would
+        record the opposite of the truth -- the scoped suppression belongs on
+        the VARIANT that fits the link.
         """
         for comp in self.components.values():
-            if comp.category != "resistor" or len(comp.pins) != 2:
-                continue
-            val = str(comp.props.get("value", ""))
-            if not re.match(r"\s*0\s*(R|Ω|ohm)?\b", val, re.I):
+            if len(comp.pins) != 2 or not self.is_zero_ohm(comp):
                 continue
             nets = [n for n in comp.pins.values() if n]
             if len(nets) != 2 or nets[0] == nets[1]:
@@ -699,13 +717,20 @@ class Check:
             if abs(highs[0] - highs[1]) < 1e-9:
                 continue
             hi, lo = max(highs), min(highs)
-            self.add("P3-rail-bridge", "error",
+            listed = comp.designator in self.design.dnf
+            self.add("P3-rail-bridge", "info" if listed else "error",
                      f"{comp.designator} is a 0 R link joining '{nets[0]}' and "
-                     f"'{nets[1]}', declared at {highs[0]} V and {highs[1]} V",
+                     f"'{nets[1]}', declared at {highs[0]} V and {highs[1]} V"
+                     + (" — listed do-not-fit" if listed else ""),
                      where=comp.designator,
-                     hint=f"fitting it puts {hi} V on a rail declared to reach "
-                          f"{lo} V. If that is deliberate on a variant, suppress "
-                          f"P3-rail-bridge@{comp.designator} in that design.yaml")
+                     hint=(f"fitted, it puts {hi} V on a rail declared to reach "
+                           f"{lo} V. design.yaml lists it under dnf:, so this is "
+                           f"a record of that decision, not a complaint"
+                           if listed else
+                           f"fitting it puts {hi} V on a rail declared to reach "
+                           f"{lo} V. If it is meant to be fitted, the rails are "
+                           f"declared wrong; if not, list it under dnf: in "
+                           f"design.yaml"))
 
     def check_sourcing(self):
         extended = []

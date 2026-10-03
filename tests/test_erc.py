@@ -457,6 +457,16 @@ def _():
                    if f["rule"] == "K4-unconnected-pin")
 
 
+@case("P3 reads the kb's resistance, not the cosmetic value field")
+def _():
+    erc = _erc()
+    for v in ("0Ω", "0R", "0R0", "0", "0.0Ω", "0 ohm", "0R00"):
+        assert erc.Check.ZERO_OHM.match(v), v
+    # A sub-ohm sense or inrush resistor between two rails is not a link.
+    for v in ("0.47Ω", "0R47", "0.1R", "10mΩ", "10kΩ", "", "jumper", "100Ω"):
+        assert not erc.Check.ZERO_OHM.match(v), v
+
+
 @case("P3 catches a zero-ohm link between rails declared at different maxima")
 def _():
     # The LED matrix controller's R48 is the case: a 0 R bypass from a 37.8 V
@@ -467,11 +477,18 @@ def _():
               "  HIGH: {voltage: 36.0, voltageMax: 37.8}\n"
               "  LOW: {voltage: 26.3, voltageMax: 27.75}\nbuses: []\n")
     bridge = {
-        **comp("gge1", "R1", "C17168", {"1": "HIGH", "2": "LOW"}, value="0R DNF"),
+        **comp("gge1", "R1", "C17168", {"1": "HIGH", "2": "LOW"}, value="anything"),
         **comp("gge2", "C1", "C131394", {"1": "HIGH", "2": "GND"}),
         **comp("gge3", "C2", "C131394", {"1": "LOW", "2": "GND"}),
     }
-    assert "P3-rail-bridge" in rules(run(bridge, design))
+    found = [f for f in run(bridge, design) if f["rule"] == "P3-rail-bridge"]
+    assert len(found) == 1 and found[0]["severity"] == "error", found
+
+    # Listed under dnf: it stays visible, as info, rather than being suppressed
+    # -- suppressing it would record the opposite of the decision.
+    listed = run(bridge, design + "dnf: ['R1']\n")
+    f2 = [f for f in listed if f["rule"] == "P3-rail-bridge"]
+    assert len(f2) == 1 and f2[0]["severity"] == "info", f2
 
     # Not a finding when the two rails agree...
     same = ("rails:\n  GND: {type: ground}\n"
@@ -484,9 +501,9 @@ def _():
     }
     assert "P3-rail-bridge" not in rules(run(ok, same))
 
-    # ...nor when the part is not a zero-ohm link.
+    # ...nor when the part is a real resistor, whatever its value field says.
     real = {
-        **comp("gge1", "R1", "C25744", {"1": "HIGH", "2": "LOW"}, value="10k"),
+        **comp("gge1", "R1", "C25744", {"1": "HIGH", "2": "LOW"}, value="0R"),
         **comp("gge2", "C1", "C131394", {"1": "HIGH", "2": "GND"}),
         **comp("gge3", "C2", "C131394", {"1": "LOW", "2": "GND"}),
     }

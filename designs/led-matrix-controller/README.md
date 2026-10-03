@@ -353,9 +353,9 @@ out the whole installation.
 
 The model needs three terms:
 
-    I_bus  =  (sum(channel values) x 20 mA / 255) x 5 V / (36 V x eta)   [LED term]
-           +  N_ICs x 0.6 mA x 5 V / (36 V x eta)                        [quiescent floor]
-           +  controller overhead
+    I_bus =  (sum(channel values) x 20 mA / 255) x 5 V / (36 V x eta) [LED term]
+           + N_ICs x 0.6 mA x 5 V / (36 V x eta) [quiescent floor]
+           + controller overhead
 
 - **The sum is amperes at the module's 5 V rail**, and the contract is amperes at
   the **negotiated** bus voltage. The divisor is `V_negotiated × η / 5` — **5.4**
@@ -705,7 +705,7 @@ is a *percentage of the requested voltage*. A fixed offset is a bigger fraction
 of a smaller number, so the lower the contract, the worse it gets. The pass
 condition in the 86% band is
 
-    0.95·V − V_offset ≥ 0.86·V      ⇒      V_offset ≤ 0.09·V
+    0.95·V − V_offset ≥ 0.86·V ⇒      V_offset ≤ 0.09·V
 
 — 0.95 because a compliant fixed PDO may sit 5% low, the figure this document
 uses everywhere. With the BSS138's 1.6 V worst-case V_GS that needs **V ≥ 17.8 V**,
@@ -994,8 +994,8 @@ example — **back-solving the gain from the rounded example in §10.2.2.3 gives
 `GAIN(dVdT) = 23.5 / 25 / 26 V/V` directly (p.7), and Equations 1 and 2 give it
 independently as `1/(20.8e3 × 2 µA) = 24.0`.
 
-    t(dVdT)   = 20.8e3 × V_IN × C_dVdT          (2)
-    I(INRUSH) = C_OUT × V_IN / t(dVdT)          (1)
+    t(dVdT) = 20.8e3 × V_IN × C_dVdT (2)
+    I(INRUSH) = C_OUT × V_IN / t(dVdT) (1)
 
 | Element | Value | Derivation |
 |---|---|---|
@@ -1341,7 +1341,7 @@ when this table first claimed otherwise — the importer resolves by `Supplier P
 | C1,C2 | **220 nF 50 V X7R 0603** | C64705 | C_dVdT, one per eFuse — sets the ramp |
 | C5 | **100 nF 50 V X7R 0402** | C131394 | TPS54360B BOOT — required for operation |
 | C6 | **33 nF 50 V X7R 0402** | C106862 | TPS54360B COMP series |
-| C7 | **150 pF 50 V NP0 0402** | C106998 | TPS54360B COMP parallel. NP0/C0G, because this is the high-frequency pole of the compensation network: ±30 ppm/°C holds it where ±15% over temperature would move it. C1527 sat here for several revisions labelled C0G and is **X7R** |
+| C7 | **150 pF 50 V NP0 0402** | C106998 | TPS54360B COMP parallel. NP0/C0G, because this is the high-frequency pole of the compensation network: ±30 ppm/°C holds it where ±15% over temperature would move it |
 | C8 | **4.7 µF 100 V X7R 1210** | C2840282 | TPS54360B input bulk — the part the "C_IN ≥3 µF effective after DC-bias derating" row means |
 | C33 | **2.2 µF 100 V X7R 1210** | C153036 | 36 V bulk at the USB-C inlet. 2.2 rather than a second 4.7 because of the Type-C sink bypass limit — see Resolved |
 | C3,C4,C34,C35 | **220 nF 100 V X7R 0805** | C513710 | C_IN and C_OUT at each eFuse, one of each per channel. p.6 gives 0.1 µF as a **minimum** at IN, P_IN *and* OUT; a nominal 100 nF ±10% part meets that with zero margin, so this is oversized deliberately |
@@ -1473,7 +1473,7 @@ is worth knowing.
 AC/DC**, and where the node reaches it depends on which breakdown corner the
 part lands at: at the SMCJ40CA's **low** corner, 44.4 V, 48 V arrives at
 **5.4 A** of surge; at its **high** corner, 49.1 V, the part does not conduct
-until the node is already past J1's rating.  No 37.8 V-standoff avalanche TVS can protect a
+until the node is already past J1's rating. No 37.8 V-standoff avalanche TVS can protect a
 48 V connector, because its own breakdown has to sit above the bus and below
 nothing in particular. The event is 10/1000 µs on a connector with no
 semiconductor junction, so this is a durability question rather than a
@@ -1601,13 +1601,15 @@ design it has specific gaps:
 - **No I2C address-collision rule.** This design has already got that question
   wrong once (0x42 against the INA226), and the fix depends on pinning A0/A1 by
   hand — which the checker cannot see.
-- **No do-not-fit / assembly-class flag**, and the netlist format has no field
-  that could carry one — `value` holds `"0R DNF"` for R48, but CLAUDE.md is
-  explicit that `value` is cosmetic and the importer ignores it. Three parts
-  depend on a human reading it: **R48**, **J4** and **U3**. R48 is the one that
-  matters most — a 0 Ω link from the 37.8 V bus onto a pin rated 33 V absolute,
-  so fitting it destroys U1 and bypasses the whole follower. Marking all three
-  is a step in *Next: from here to a board*, not a note someone has to find.
+- **The netlist format has no do-not-fit field** — `value` would be the
+  obvious place and CLAUDE.md is explicit that it is cosmetic and ignored by
+  the importer. `design.yaml` carries a **`dnf:` list** instead, naming
+  **R48**, **J4** and **U3**, and `P3-rail-bridge` reads it: R48 is a 0 Ω link
+  from the 37.8 V bus onto the rail feeding a pin rated 33 V absolute, so an
+  unlisted one is an **error** and a listed one an **info** that appears in
+  every ERC run. What the checker still cannot do is get the marking onto a
+  fabrication output, which is why it is also a step in *Next: from here to a
+  board*.
 - **No logic-level-domain rule**, which is the exact failure the 74AHCT541
   exists to prevent.
 - **Seven rules have no regression test**: S2, S4-malformed-lcsc, S5, K2, B1,
@@ -2755,7 +2757,7 @@ U3. U3 is in all three lists for three different reasons.)
   netlist and carry one pin each; `design.yaml` suppresses `C1-single-pin-net`
   at those two nets specifically, so the rule stays live everywhere else.
 
-The third and last suppression is unrelated to anything hand-drawn:
+The third suppression is unrelated to anything hand-drawn:
 **`P2-no-decoupling@PD_VBUS_SENSE`**, because that pin is a sense input behind
 the follower and not a supply — the chip's supply is VDD, decoupled by C18 and
 C19. Fitting a capacitor there to satisfy the rule would delay the undervoltage

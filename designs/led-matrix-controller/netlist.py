@@ -115,10 +115,8 @@ COMPONENTS = [
     ("R26", "C11660", "0402WGF1022TCE", "10.2k", {"1": "FB_5V", "2": "GND"}),
     ("R27", "C25900", "0402WGF4701TCE", "4.7k", {"1": "COMP_5V", "2": "COMP_MID"}),
     ("C6", "C106862", "CC0402KRX7R9BB333", "33nF", {"1": "COMP_MID", "2": "GND"}),
-    # NP0/C0G, not the X7R this was. It is the high-frequency pole of a
-    # type-II compensation network, where a +-15% temperature drift moves the
-    # pole and a +-30 ppm/C one does not. The old part's C-number was right
-    # and its dielectric was not -- the BOM said C0G, LCSC says X7R.
+    # NP0/C0G: the high-frequency pole of a type-II compensation network, where
+    # a +-15% temperature drift moves the pole and a +-30 ppm/C one does not.
     ("C7", "C106998", "CC0402JRNPO9BN151", "150pF C0G", {"1": "COMP_5V", "2": "GND"}),
     ("C8", "C2840282", "1210B475K101NT", "4.7uF 100V", {"1": "VBUS", "2": "GND"}),
     ("C9", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "VBUS", "2": "GND"}),
@@ -376,7 +374,10 @@ def selfcheck(net):
     for comp in net.values():
         d = comp["props"]["Designator"]
         for pin, n in comp["pins"].items():
-            if n.upper().startswith("NC"):
+            # Exactly erc.py's is_nc(): the bare name or an NC_ prefix. A
+            # plain startswith("NC") also caught real nets like NCS and
+            # refused to write the file over them.
+            if n.upper() == "NC" or n.upper().startswith("NC_"):
                 nc.setdefault(n, []).append(f"{d}.{pin}")
     for name, pins in sorted(nc.items()):
         # Two tests, and the second is the one a narrowing to "NC_" quietly

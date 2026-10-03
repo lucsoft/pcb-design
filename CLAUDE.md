@@ -233,6 +233,13 @@ than working around it in the netlist. Write `rule@where` rather than a bare
 `rule` wherever the exception is local: a bare id silences the rule across the
 whole board, which is how a check that was doing real work quietly stops.
 
+A part that is placed so its pad exists and must **not be fitted** goes in
+`design.yaml`'s `dnf:` list. The netlist format has no field for it — `value`
+is cosmetic and the importer ignores it — so this is the only machine-readable
+form. Do not write it as an `ignore:` entry instead: a suppression deletes the
+finding, where `dnf:` keeps it reported at info severity with the reason beside
+it, and reads identically on the variant that *does* fit the part.
+
 A pin that is open **on purpose** goes to a net named `NC_<something>` — one
 **per pin**, never a shared `NC`. The checker treats any `NC_*` name as a
 recorded decision, where a pin left out of the netlist is reported as
@@ -379,7 +386,8 @@ false completeness claim into the commit message.
 
 It derives the component, pin, net, open-pin and passive counts from
 `netlist.json`, reads the BOM tables **by their headers** and cross-checks each
-row's C-number, Qty and price against the netlist and `kb/`, expands the
+row's C-number, Qty, price and Value — magnitude, package and dielectric —
+against the netlist and `kb/`, expands the
 "deliberately open pins" table and set-differences it against the real `NC_*`
 pins, and exits 1 on a mismatch. This exists because nine
 consecutive review rounds of `designs/led-matrix-controller` found the same

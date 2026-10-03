@@ -131,6 +131,79 @@ def expand(ref):
             yield part.strip()
 
 
+UNITS = {"p": 1e-12, "n": 1e-9, "u": 1e-6, "µ": 1e-6, "m": 1e-3,
+         "": 1.0, "k": 1e3, "K": 1e3, "M": 1e6, "G": 1e9}
+VALUE = re.compile(r"([\d.]+)\s*([pnuµmkKMG]?)\s*(F|Ω|R|H)\b", re.I)
+PKG = re.compile(r"\b(0201|0402|0603|0805|1206|1210|1812|2010|2512)\b")
+DIEL = re.compile(r"\b(C0G|NP0|X[5-8][RS]|Y5V|Z5U)\b", re.I)
+
+
+def magnitude(text):
+    m = VALUE.search(text)
+    if not m:
+        return None
+    return float(m.group(1)) * UNITS.get(m.group(2), 1.0)
+
+
+def check_values(doc):
+    """The Value column against the kb record's own parameters.
+
+    This column was checked by nothing, and that is how C7 carried the wrong
+    dielectric through eleven review rounds: the C-number was right, so every
+    other check passed, and the row said C0G over a part LCSC calls X7R. The
+    data to catch it is in `parameters` -- Capacitance/Resistance/Inductance,
+    the package, and the temperature coefficient.
+    """
+    out, checked = [], 0
+    for header, rows in tables(doc):
+        iref, ilcsc = col(header, "ref"), col(header, "lcsc")
+        ival = col(header, "value")
+        if iref is None or ilcsc is None or ival is None:
+            continue
+        for cells in rows:
+            if len(cells) != len(header):
+                continue
+            found = CNUM.findall(cells[ilcsc])
+            if len(found) != 1:
+                continue
+            f = PARTS / f"{found[0]}.json"
+            if not f.exists():
+                continue
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            params = rec.get("parameters") or {}
+            said = cells[ival]
+            ref = cells[iref].strip("* `")
+
+            for key in ("Capacitance", "Resistance", "Inductance"):
+                if key not in params:
+                    continue
+                want, got = magnitude(str(params[key])), magnitude(said)
+                if want is None or got is None:
+                    out.append(("unchecked", f"{ref}: cannot compare {key} "
+                                             f"{params[key]!r} with {said!r}"))
+                elif abs(want - got) > max(want, got) * 0.01:
+                    out.append(("error", f"{ref}: value says {said!r}, "
+                                         f"{found[0]}'s {key} is {params[key]}"))
+                else:
+                    checked += 1
+
+            pkg_said, pkg_rec = PKG.search(said), PKG.search(str(rec.get("package", "")))
+            if pkg_said and pkg_rec and pkg_said.group(1) != pkg_rec.group(1):
+                out.append(("error", f"{ref}: value says package {pkg_said.group(1)}, "
+                                     f"{found[0]} is {pkg_rec.group(1)}"))
+
+            d_said = DIEL.search(said)
+            d_rec = DIEL.search(str(params.get("Temperature Coefficient", "")))
+            if d_said and d_rec:
+                # NP0 and C0G are the same dielectric under two names.
+                norm = lambda x: "C0G" if x.upper() in ("C0G", "NP0") else x.upper()
+                if norm(d_said.group(1)) != norm(d_rec.group(1)):
+                    out.append(("error", f"{ref}: value says {d_said.group(1)}, "
+                                         f"{found[0]} is "
+                                         f"{params['Temperature Coefficient']}"))
+    return out, checked
+
+
 def check_bom(doc, desig):
     """Designator -> C-number, read from the LCSC COLUMN.
 
@@ -229,8 +302,16 @@ def check_rows(doc):
             # while the summary reads cleaner than before. A prose table that
             # happens to cite a C-number is not one, and reporting it is noise
             # that buries the case that matters.
-            looks_like_bom = iref is not None and any(
-                CNUM.search(c) for row in rows for c in row)
+            # A BOM is a table carrying C-numbers in designator-shaped rows.
+            # Keying this on `iref is not None` made the "no Ref column" half
+            # of the message unreachable: renaming Ref to Designator produced
+            # 47 errors blaming the NETLIST instead of one line naming the
+            # heading, which is the wrong file to send a reader to.
+            has_cnums = any(CNUM.search(c) for row in rows for c in row)
+            looks_like_bom = has_cnums and (
+                iref is not None
+                or any(re.fullmatch(r"[A-Z]+\d+(?:[,-][A-Z]*\d+)*", c.strip("* `"))
+                       for row in rows for c in row[:1]))
             if looks_like_bom:
                 missing = " and ".join(
                     n for n, i in (("Ref", iref), ("LCSC", ilcsc)) if i is None)
@@ -310,6 +391,9 @@ def check_open_pins(doc, net):
         return [("unchecked", "no 'Deliberately open pins' section found, so "
                               f"the {len(want)} open pins are unlisted")]
     block = block[1].split("###")[0]
+    # Table rows only. Reading the whole section let a prose sentence naming a
+    # pin stand in for the table row that was deleted.
+    block = "\n".join(l for l in block.splitlines() if l.startswith("|"))
     listed = set()
     for ref in re.findall(r"\b([A-Z]+\d+)\s*\.\s*([A-Z]?\d+)", block):
         listed.add(f"{ref[0]}.{ref[1]}")
@@ -352,7 +436,9 @@ def main():
     f, desig = facts(net)
     rows, priced, qtyd = check_rows(doc)
     counts, counted = check_counts(doc, f)
-    findings = counts + check_bom(doc, desig) + rows + check_open_pins(doc, net)
+    values, valued = check_values(doc)
+    findings = (counts + check_bom(doc, desig) + rows + values
+                + check_open_pins(doc, net))
 
     for sev, msg in findings:
         print(f"  {'ERROR' if sev == 'error' else 'unchecked'}  {msg}")
@@ -362,8 +448,8 @@ def main():
     # Say what was checked, not that everything was. The previous wording
     # printed "every price matches" over prices it had silently skipped.
     print(f"  {counted} count claim(s), {len(desig)} designator(s), "
-          f"{priced} price cell(s), {qtyd} Qty cell(s), and the "
-          f"open-pin table")
+          f"{priced} price cell(s), {qtyd} Qty cell(s), {valued} value "
+          f"magnitude(s), and the open-pin table")
     return 1 if errors or (args.strict and unchecked) else 0
 
 

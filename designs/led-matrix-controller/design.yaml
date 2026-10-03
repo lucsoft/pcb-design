@@ -106,15 +106,24 @@ ignore:
   - C1-single-pin-net@UART_TX
   - C1-single-pin-net@UART_RX
 
-
-  # R48 is the 0 R follower bypass, and P3 is RIGHT about it: fitted, it puts
-  # the 37.8 V bus onto the rail feeding a pin rated 33 V absolute, destroying
-  # U1. It is in the netlist so the pad exists for a <=28 V build, where Q3 and
-  # D1 come out and the follower is not needed.
-  #
-  # This entry is the first machine-readable record that the part is do-not-fit
-  # -- the netlist format has no field for it and `value: "0R DNF"` is ignored
-  # by the importer. A <=28 V variant keeps the suppression; this board keeps it
-  # AND the do-not-fit step in 'from here to a board'. Scoped to R48, so P3
-  # still guards any other zero-ohm link anyone adds.
-  - P3-rail-bridge@R48
+# Parts that are placed so their pads exist and must NOT be fitted. This is the
+# machine-readable form of a decision the netlist format cannot carry: it has no
+# do-not-fit field, and `value` is cosmetic - the importer ignores it.
+#
+# P3-rail-bridge reads this list. A zero-ohm link across two rails declared at
+# different voltages is an ERROR when the design says nothing about it and an
+# INFO when it is listed here, which is the right way round: suppressing the
+# rule would have recorded the opposite of the truth, and would have been
+# identical on the variant that DOES fit the link.
+dnf:
+  # 0 R follower bypass. Fitted at 36 V it puts the bus onto the rail feeding a
+  # pin rated 33 V absolute and destroys U1. It exists for a <=28 V build, where
+  # Q3 and D1 come out; that variant drops R48 from this list.
+  - R48
+  # Fan header. Fitted only if the thermal model turns out optimistic, and then
+  # at <=50 mA - see Cooling.
+  - J4
+  # The C-number resolves the symbol and footprint and must not reach a PCBA
+  # order, where it buys the $22.89 WIZnet original instead of the EUR 12.30
+  # clone that drops into the same footprint. Hand-soldered.
+  - U3
