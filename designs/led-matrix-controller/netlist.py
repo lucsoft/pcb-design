@@ -368,7 +368,7 @@ def selfcheck(net):
     for comp in net.values():
         d = comp["props"]["Designator"]
         for pin, n in comp["pins"].items():
-            if n.upper().startswith("NC"):
+            if n.upper().startswith("NC_"):
                 nc.setdefault(n, []).append(f"{d}.{pin}")
     for name, pins in sorted(nc.items()):
         if len(pins) > 1:

@@ -378,14 +378,20 @@ false completeness claim into the commit message.
     ./tools/consistency.py designs/<name>
 
 It derives the component, pin, net, open-pin and passive counts from
-`netlist.json`, cross-checks every BOM row's C-number and price against the
-netlist and `kb/`, and exits 1 on a mismatch. This exists because nine
+`netlist.json`, reads the BOM tables **by their headers** and cross-checks each
+row's C-number, Qty and price against the netlist and `kb/`, expands the
+"deliberately open pins" table and set-differences it against the real `NC_*`
+pins, and exits 1 on a mismatch. This exists because nine
 consecutive review rounds of `designs/led-matrix-controller` found the same
 thing and nothing else: a good fix applied to the artefact and carried into
 some but not all of the prose describing it. `stale.py` finds a value you
 changed; this finds one you *should* have changed and did not. An unparseable
 claim is reported as **unchecked** rather than passed — a number nobody
-verified must not read as a number that was verified.
+verified must not read as a number that was verified. **Every** skip is
+reported, and the summary line names what was checked rather than asserting
+that everything was: the first version of this tool dropped unreadable rows
+silently and then printed "every price matches", which is the failure it was
+written to prevent, inside the tool.
 
 **Retire a value in the commit message, not in the document.** An earlier
 version of this file said the opposite: that

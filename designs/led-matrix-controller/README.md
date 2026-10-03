@@ -1423,7 +1423,7 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMCJ40CA** | 3 | **Vrwm 40 V**, so it is genuinely off at the PDO's +5%; Vbr 49.1 V, R_d 0.66 Ω. Stays under the 60 V TPS54360B and SS36 to 16.5 A of surge and under the eFuse's 67 V to 27 A. The residual is **J1 at 48 V**, which no 37.8 V-standoff TVS can protect. See below |
+| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMCJ40CA** | 3 | **Vrwm 40 V**, so it is genuinely off at the PDO's +5%; Vbr 44.4-49.1 V, R_d 0.66 Ω. Stays under the 60 V TPS54360B and SS36 to 16.5 A of surge and under the eFuse's 67 V to 27 A. The residual is **J1 at 48 V**, which no 37.8 V-standoff TVS can protect. See below |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
@@ -1470,9 +1470,11 @@ starts 4 V higher. It also has **more** stock, which is not why it was chosen bu
 is worth knowing.
 
 **J1 is the part this does not fully rescue.** The CX90B-16P is rated **48 V
-AC/DC**, and 48 V is reached at 1.9 A of surge on the retired SMA part's 44.2 V V_BR and at
-−1.7 A on the SMC's 49.1 V — that is, the SMC does not conduct at all until the
-node is already past J1's rating. No 37.8 V-standoff avalanche TVS can protect a
+AC/DC**, and where the node reaches it depends on which breakdown corner the
+part lands at: at the SMCJ40CA's **low** corner, 44.4 V, 48 V arrives at
+**5.4 A** of surge; at its **high** corner, 49.1 V, the part does not conduct
+until the node is already past J1's rating. (The retired SMA part reached 48 V
+at 1.9 A, because its R_d is three times larger.) No 37.8 V-standoff avalanche TVS can protect a
 48 V connector, because its own breakdown has to sit above the bus and below
 nothing in particular. The event is 10/1000 µs on a connector with no
 semiconductor junction, so this is a durability question rather than a
@@ -1497,7 +1499,7 @@ Component area estimates at **~2445 mm2**, counting the passives individually
 rather than as an allowance — the itemised list is in the BOM. The three bus TVS
 moved from SMA to SMC with the 40 V part: 50.6 mm² against 26 mm² of maximum
 package envelope, so the **change** is about 25 mm² each and 74 mm² of the
-total, not the 111 mm² a full-area reading would give. The Ethernet
+total — the change, not the new package's full area. The Ethernet
 module made the board slightly *bigger*, 575 mm2 against the ~496 it replaced.
 At 45% utilisation (2-layer, relaxed) that is roughly
 **72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
@@ -2650,13 +2652,11 @@ See Netlist for what is in it and what the clean report does not mean.
     the failure modes are asymmetric: A/B swapped is non-destructive, power onto
     a data pole destroys the transceiver.
 
-9. **(closed) The overvoltage trip now protects the modules too.** This entry
-    said the window was mutually exclusive — above 37.8 V at the low extreme and
-    below 45 V at the high one — and it was, for the LM5069's ±10% comparator.
-    The TPS16630's OVP reference is **±2%**, so a 40.68 V nominal trip lands
+9. **The overvoltage trip protects the modules as well as the board.** The
+    TPS16630's OVP reference is **±2%**, so a 40.68 V nominal trip lands
     between **39.1 V and 42.3 V** with 1% resistors: 1.3 V over the maximum bus
-    and 2.7 V under the modules' absolute rating. Retuning the divider to
-    732k/255k/30.0k closed it.
+    and 2.7 V under the modules' absolute rating. The divider that achieves it
+    is 732k/255k/30.0k.
 
 ## Netlist
 
@@ -2731,9 +2731,12 @@ oversight.
 
 ### Hand-drawn after import
 
-Three things are not in the netlist and must be drawn on the canvas, because
-the importer resolves components only through `Supplier Part` and these have
-none:
+**Five symbols** — J2, J3 and TP1-TP3 — are not in the netlist and must be
+drawn on the canvas, because the importer resolves components only through
+`Supplier Part` and these have none. (A separate count, not to be confused with
+it: **three parts are hand-SOLDERED** onto a board that is otherwise
+JLCPCB-assembled — U3, J2 and J3 — and **three are do-not-fit**, R48, J4 and
+U3. U3 is in all three lists for three different reasons.)
 
 - **J2 and J3**, the picoMAX 3.5 headers. LCSC carries some WAGO parts but not
   the 2091 series — checked, not assumed. Giving them a placeholder C-number
@@ -2774,7 +2777,7 @@ eventually, a board.
 
 **1. Import.** Netlist Rebuild in EasyEDA Pro, select `netlist.json`.
 
-**2. Draw the five hand-fitted symbols** — J2, J3 and TP1-TP3 — onto nets that
+**2. Draw the five hand-drawn symbols** — J2, J3 and TP1-TP3 — onto nets that
 already exist. See *Hand-drawn after import*, and check `LED_RTN` against GND
 while doing it.
 

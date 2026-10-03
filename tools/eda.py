@@ -6,8 +6,8 @@ and nothing else resolves it: the importer places the library's own symbol, so
 a key that matches the datasheet but not the symbol wires nothing. For most
 parts the two agree and this tool is redundant. For connectors they routinely
 do not -- the CX90B-16P symbol numbers its signal contacts `A1 ... B12` after
-Hirose's drawing and its shield tabs `1 ... 4`, which no datasheet pin table
-states, because it is a property of the symbol rather than of the part.
+Hirose's drawing, its shield tabs `0` and `1` and its mid-plate tabs `2` and
+`3` -- none of which any datasheet pin table states, because it is a property of the symbol rather than of the part.
 
     ./tools/eda.py pins C3198004          # pin number -> name, as the symbol has it
     ./tools/eda.py pins C3198004 --kb     # emit a ready kb.py set-pins command

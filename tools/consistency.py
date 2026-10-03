@@ -41,8 +41,8 @@ def facts(net):
     """Everything about the netlist the prose might state."""
     pins = sum(len(c["pins"]) for c in net.values())
     all_nets = [n for c in net.values() for n in c["pins"].values()]
-    nc = [n for n in all_nets if n.upper().startswith("NC")]
-    real = {n for n in all_nets if not n.upper().startswith("NC")}
+    nc = [n for n in all_nets if n.upper().startswith("NC_")]
+    real = {n for n in all_nets if not n.upper().startswith("NC_")}
     desig = {c["props"]["Designator"]: c["props"]["Supplier Part"]
              for c in net.values()}
     kind = lambda p: sum(1 for d in desig if re.fullmatch(p, d))
@@ -50,6 +50,7 @@ def facts(net):
         "components": len(net),
         "pins": pins,
         "real nets": len(real),
+        "nets erc.py counts": len(real) + len(set(nc)),
         "NC pins": len(nc),
         "resistors": kind(r"R\d+"),
         "capacitors": kind(r"C\d+"),
@@ -62,6 +63,7 @@ CLAIMS = [
     (r"\*\*(\d+) components, [\d,]+ pins", "components"),
     (r"\*\*[\d,]+ components, (\d+) pins", "pins"),
     (r"pins, (\d+) real nets", "real nets"),
+    (r"`erc\.py` prints (\d+)", "nets erc.py counts"),
     (r"\*\*(?:Thirty|(\d+)) pins, and this list is all of them\*\*", "NC pins"),
     (r"\*\*Resistors\*\* — (\d+) parts", "resistors"),
     (r"\*\*Capacitors\*\* — (\d+) parts", "capacitors"),
@@ -72,25 +74,33 @@ WORDS = {"thirty": 30, "twenty": 20, "ten": 10}
 
 
 def check_counts(doc, f):
+    """EVERY occurrence of each claim, not the first.
+
+    The failure this tool exists for is a value corrected where it is derived
+    and left standing somewhere else, so stopping at the first match would miss
+    precisely the second copy.
+    """
     out = []
     for pattern, key in CLAIMS:
-        m = re.search(pattern, doc)
-        if not m:
+        seen = 0
+        for m in re.finditer(pattern, doc):
+            seen += 1
+            raw = m.group(1)
+            if raw is None:                   # the spelled-out alternative
+                word = m.group(0).split()[0].strip("*").lower()
+                got = WORDS.get(word)
+                if got is None:
+                    out.append(("unchecked", f"'{key}' written as a word this "
+                                             f"tool does not know: {m.group(0)!r}"))
+                    continue
+            else:
+                got = int(raw)
+            if got != f[key]:
+                out.append(("error", f"document says {got} {key} "
+                                     f"(occurrence {seen}), netlist has {f[key]}"))
+        if not seen:
             out.append(("unchecked", f"no claim matching /{pattern}/ for "
-                                      f"'{key}' (now {f[key]})"))
-            continue
-        raw = m.group(1)
-        if raw is None:                       # the spelled-out alternative
-            word = m.group(0).split()[0].strip("*").lower()
-            got = WORDS.get(word)
-            if got is None:
-                out.append(("unchecked", f"'{key}' written as a word this tool "
-                                         f"does not know: {m.group(0)!r}"))
-                continue
-        else:
-            got = int(raw)
-        if got != f[key]:
-            out.append(("error", f"document says {got} {key}, netlist has {f[key]}"))
+                                     f"'{key}' (now {f[key]})"))
     return out
 
 
@@ -134,30 +144,148 @@ def check_bom(doc, desig):
     return out
 
 
-PRICE_ROW = re.compile(r"^\|\s*([A-Z]+\d+(?:[,-][A-Z]*\d+)*)\s*\|.*\|\s*([\d.]+)\s*\|\s*$")
+def tables(doc):
+    """Yield (header cells, [row cells]) for every markdown table in the doc.
 
-
-def check_prices(doc):
-    out = []
+    Header-aware on purpose. The passive tables carry Ref/Value/LCSC/Role and
+    no Qty or price at all, so checking for those columns per row produced a
+    hundred "unchecked" lines about columns that are not supposed to exist --
+    noise that buries the few that matter.
+    """
+    header, rows = None, []
     for line in doc.splitlines():
         if not line.startswith("|"):
+            if header:
+                yield header, rows
+            header, rows = None, []
             continue
         cells = [x.strip() for x in line.strip("|").split("|")]
-        if len(cells) != 6 or not re.fullmatch(r"[\d.]+", cells[5]):
+        if set("".join(cells)) <= set("-: "):      # the separator row
             continue
-        c = CNUM.search(cells[2])
-        if not c:
+        if header is None:
+            header, rows = cells, []
+        else:
+            rows.append(cells)
+    if header:
+        yield header, rows
+
+
+def col(header, *names):
+    for i, h in enumerate(header):
+        if h.strip("* ").lower() in names:
+            return i
+    return None
+
+
+def check_rows(doc):
+    """Qty and price per BOM row, and every row it cannot read says so.
+
+    This used to drop an unreadable row on a bare `continue`, which made it
+    fail SILENTLY OPEN: adding one column to the table switched price checking
+    off for every row while the summary still said prices matched. That is the
+    exact failure the tool exists to catch, so a row that should be checkable
+    and is not now produces an `unchecked` line.
+    """
+    out, priced, qtyd = [], 0, 0
+    for header, rows in tables(doc):
+        iref = col(header, "ref")
+        ilcsc = col(header, "lcsc")
+        iqty = col(header, "qty")
+        icost = col(header, "$", "price")
+        if iref is None or ilcsc is None:
             continue
-        f = PARTS / f"{c.group(0)}.json"
-        if not f.exists():
-            continue
-        price = json.loads(f.read_text(encoding="utf-8")).get("priceUsd")
-        if price is None:
-            continue
-        want = f"{price:.4f}".rstrip("0").rstrip(".")
-        if cells[5] != want:
-            out.append(("error", f"{cells[0]}: price column says {cells[5]}, "
-                                 f"{c.group(0)}'s record says {want}"))
+        for cells in rows:
+            if len(cells) != len(header):
+                out.append(("unchecked", f"row {cells[0]!r} has {len(cells)} "
+                                         f"cells against {len(header)} headings"))
+                continue
+            ref = cells[iref].strip("* `")
+            if not re.fullmatch(r"[A-Z]+\d+(?:[,-][A-Z]*\d+)*", ref):
+                continue
+            # Exactly one C-number in the LCSC cell. Searching the whole row
+            # would let a stray code in the Part column mask a wrong one here;
+            # requiring the cell to BE a C-number skipped rows like
+            # "C134462, DO NOT FIT" that carry a real number plus a note.
+            found = CNUM.findall(cells[ilcsc])
+            code = found[0] if len(found) == 1 else cells[ilcsc].strip("* `")
+            refs = list(expand(ref))
+
+            if iqty is not None:
+                q = cells[iqty].strip("* ")
+                if not re.fullmatch(r"\d+", q):
+                    out.append(("unchecked", f"{ref}: Qty cell {q!r} is not a number"))
+                elif int(q) != len(refs):
+                    out.append(("error", f"{ref}: Qty says {q}, the reference "
+                                         f"range covers {len(refs)}"))
+                else:
+                    qtyd += 1
+
+            if icost is None:
+                continue
+            cost = cells[icost].strip("* ")
+            if not CNUM.fullmatch(code):
+                out.append(("unchecked", f"{ref}: LCSC cell {code!r} is not a "
+                                         f"C-number, so its price is unchecked"))
+                continue
+            f = PARTS / f"{code}.json"
+            if not f.exists():
+                out.append(("unchecked", f"{ref}: {code} has no kb record, so "
+                                         f"its price cell is unchecked"))
+                continue
+            price = json.loads(f.read_text(encoding="utf-8")).get("priceUsd")
+            if price is None:
+                out.append(("unchecked", f"{ref}: {code}'s record carries no "
+                                         f"priceUsd"))
+            elif not re.fullmatch(r"[\d.]+", cost):
+                out.append(("unchecked", f"{ref}: price cell {cost!r} is not a "
+                                         f"number ({code} is {price:.4f})"))
+            elif abs(float(cost) - price) > 5e-5:
+                out.append(("error", f"{ref}: price column says {cost}, "
+                                     f"{code}'s record says {price:.4f}"))
+            else:
+                priced += 1
+    return out, priced, qtyd
+
+
+OPEN_PIN_ROW = re.compile(r"^\|\s*((?:[A-Z]+\d+[./]\s*[\w,.\s/-]*?))\s*\|")
+
+
+def check_open_pins(doc, net):
+    """The "Deliberately open pins" table against the netlist's NC_* pins.
+
+    The README says this table "is all of them". The tool used to check only
+    the word "Thirty" against a count, which is not the same claim: deleting a
+    row left the count right and the table wrong.
+    """
+    want = {f"{c['props']['Designator']}.{pin}"
+            for c in net.values()
+            for pin, n in c["pins"].items() if n.upper().startswith("NC_")}
+    block = doc.split("### Deliberately open pins")
+    if len(block) != 2:
+        return [("unchecked", "no 'Deliberately open pins' section found, so "
+                              f"the {len(want)} open pins are unlisted")]
+    block = block[1].split("###")[0]
+    listed = set()
+    for ref in re.findall(r"\b([A-Z]+\d+)\s*\.\s*([A-Z]?\d+)", block):
+        listed.add(f"{ref[0]}.{ref[1]}")
+    # The table also writes ranges like "U9.11-17" and shared forms like
+    # "U10/U11 .12". Expand both rather than pretend they are not there.
+    for d, lo, hi in re.findall(r"\b([A-Z]+\d+)\.(\d+)-(\d+)\b", block):
+        for i in range(int(lo), int(hi) + 1):
+            listed.add(f"{d}.{i}")
+    for a, b, pins in re.findall(r"\b([A-Z]+\d+)/([A-Z]+\d+)\s*\.([\d,.\s]+)", block):
+        for n in re.findall(r"\d+", pins):
+            listed.add(f"{a}.{n}")
+            listed.add(f"{b}.{n}")
+    missing = sorted(want - listed)
+    extra = sorted(listed - want)
+    out = []
+    if missing:
+        out.append(("error", f"open-pin table omits {len(missing)}: "
+                             f"{', '.join(missing)}"))
+    if extra:
+        out.append(("error", f"open-pin table lists {len(extra)} pin(s) that are "
+                             f"not open in the netlist: {', '.join(extra)}"))
     return out
 
 
@@ -167,20 +295,28 @@ def main():
     ap.add_argument("design", help="a designs/<name>/ directory")
     args = ap.parse_args()
     design = pathlib.Path(args.design)
-    if not (design / "netlist.json").exists():
-        sys.exit(f"{design}/netlist.json not found")
+    for needed in ("netlist.json", "README.md"):
+        if not (design / needed).exists():
+            sys.exit(f"{design}/{needed} not found — this tool compares a "
+                     f"document against the netlist it describes, so it needs "
+                     f"both")
 
     net, doc = load(design)
     f, desig = facts(net)
-    findings = check_counts(doc, f) + check_bom(doc, desig) + check_prices(doc)
+    rows, priced, qtyd = check_rows(doc)
+    findings = (check_counts(doc, f) + check_bom(doc, desig) + rows
+                + check_open_pins(doc, net))
 
     for sev, msg in findings:
         print(f"  {'ERROR' if sev == 'error' else 'unchecked'}  {msg}")
     errors = sum(1 for s, _ in findings if s == "error")
     unchecked = len(findings) - errors
     print(f"\n{design}: {errors} mismatch(es), {unchecked} unchecked claim(s)")
-    if not findings:
-        print("  every stated count, C-number and price matches the netlist")
+    # Say what was checked, not that everything was. The previous wording
+    # printed "every price matches" over prices it had silently skipped.
+    print(f"  {len(CLAIMS)} count claim(s), {len(desig)} designator(s), "
+          f"{priced} price cell(s), {qtyd} Qty cell(s), and the "
+          f"open-pin table")
     return 1 if errors else 0
 
 
