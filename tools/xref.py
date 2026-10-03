@@ -24,19 +24,28 @@ import re
 import sys
 
 HEADING = re.compile(r"^#{2,6}\s+(.+)$", re.M)
-# "see X" / "see the X", allowing **emphasis** -- which the first version did
-# not, so it reported 22 of the 24 references that exist and a rename probe
-# passed when it should have failed. Lower-case targets count too: "see the
-# follower section" is a pointer like any other.
+# "see X" / "see the X", allowing **emphasis**, line wraps, Ω and an em dash
+# terminator -- every one of those truncated or dropped a real reference in an
+# earlier version. The honest way to know the capture is wide enough is not to
+# count: it is to rename every referenced heading in turn and check the tool
+# reports each one. tests/ does not do that; the probe is five lines and worth
+# re-running after any change here.
 # Two deliberate shapes, so a verb use of "see" is not mistaken for a pointer:
 # a Capitalised target, or "the <something> table/section". "parts in the
 # middle see amplified reflections" matches neither.
+# `\s` not a literal space, so a reference wrapped across a line is still seen;
+# Ω and the em dash are inside the class and the terminator set respectively,
+# because both appear in real references here and both used to end the match
+# early. The length ceiling is 80: "See Netlist for what is in it and what the
+# clean report does not mean" is 62 and was over the old 61.
 REF = re.compile(
-    r"[Ss]ee (?:the )?\*{0,2}("
-    r"[A-Z][A-Za-z0-9 ,'’-]{2,60}?"
-    r"|[a-z][a-z0-9 '’-]{2,40}? (?:table|section)"
-    r")\*{0,2}(?=[.,;:)\]|]|$)", re.M)
+    r"[Ss]ee\s+(?:the\s+)?\*{0,2}("
+    r"[A-Z][A-Za-zΩ0-9\s,'’-]{1,80}?"
+    r"|[a-z][a-zΩ0-9\s'’-]{1,60}?\s(?:table|section)"
+    r")\*{0,2}\s*(?=[.,;:)\]|—–]|$)")
 # Genuinely outside this file. Each needs a reason that is true.
+# Matched against the WHOLE target, like NOT_A_TARGET and for the same reason:
+# a first-word test here dropped "See KB partitioning scheme" silently.
 EXTERNAL = {
     "claude",        # CLAUDE.md, the repository's own instructions
     "kb",            # kb/, the knowledge base -- a directory, not a section
@@ -57,18 +66,43 @@ def norm(s):
     return s.strip().strip("*").rstrip(".").lower()
 
 
+def clauses(heading):
+    """A heading and its leading clauses.
+
+    "The follower does not reach the thresholds at 5 V, and the fix is two
+    parts" is referred to by its first clause, and "Ethernet module (U3) —
+    W5500 on a daughterboard" by its first two words. Both are naming the
+    heading, not a different thing, so both resolve -- but only at a break the
+    heading itself contains, never at an arbitrary word boundary. That is what
+    separates this from prefix matching: `Recovery` and `Recovery and debug`
+    stay distinguishable, because neither is a leading clause of the other.
+    """
+    out = {heading}
+    for sep in (",", ";", ":", " (", " — ", " – ", " - "):
+        if sep in heading:
+            out.add(heading.split(sep)[0].strip())
+    return {c for c in out if c}
+
+
 def resolves(target, heads):
-    """True if the target, or any leading phrase of it, names a heading."""
+    """True if some leading phrase of the target is EXACTLY a heading.
+
+    Prefix matching was the obvious generalisation and it is fail-open. This
+    document has `Recovery` and `Recovery and debug`, and `Status indication`
+    beside `Status LEDs: ...` -- so renaming one let its reference re-resolve
+    against the sibling, and five of the twenty-one referenced headings could
+    be renamed with the checker saying nothing. Two of those five were the
+    ones the edits in the same commit existed to protect.
+
+    Exact matching costs abbreviated references ("see Known" for "Known
+    electrical limits"), which is the right price: a pointer should name the
+    heading it means.
+    """
     words = target.split()
     for n in range(len(words), 0, -1):
         if words[n - 1] in STOP:
             continue                       # do not end a phrase on a stopword
-        phrase = " ".join(words[:n])
-        if phrase in heads:
-            return True
-        # A single distinctive word is enough: "see Known" points at
-        # "Known electrical limits" and nothing else starts that way.
-        if len(phrase) >= 4 and sum(h.startswith(phrase) for h in heads) == 1:
+        if " ".join(words[:n]) in heads:
             return True
     return False
 
@@ -76,16 +110,23 @@ def resolves(target, heads):
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__.strip())
-    doc = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
-    heads = {norm(m.group(1)) for m in HEADING.finditer(doc)}
+    raw = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+    heads = set()
+    for m in HEADING.finditer(raw):
+        heads |= clauses(norm(m.group(1)))
 
+    # Flatten whitespace before looking for references. With re.M, `$` ends a
+    # match at every line break, so a reference wrapped mid-phrase was
+    # truncated -- "See\nChannel switching and inrush" came out as "channel
+    # switching and" and reported as dangling.
+    doc = re.sub(r"\s+", " ", raw)
     refs = {}
     for m in REF.finditer(doc):
         t = norm(m.group(1))
         refs[t] = refs.get(t, 0) + 1
 
     bad = [(t, n) for t, n in sorted(refs.items())
-           if t.split()[0] not in EXTERNAL
+           if t not in EXTERNAL
            and t not in NOT_A_TARGET
            and not resolves(t, heads)]
     for t, n in bad:
