@@ -359,6 +359,22 @@ def selfcheck(net):
                     f"{lcsc}'s part number '{mpn}'")
         else:
             problems.append(f"{d}: {lcsc} has no kb record")
+
+    # The whole argument for naming open pins individually is that no two share
+    # a net. Verified once by hand is verified never: duplicate one name and the
+    # thirty-pins-on-one-node failure comes back silently, because erc.py skips
+    # NC_* nets wholesale and cannot see it either.
+    nc = {}
+    for comp in net.values():
+        d = comp["props"]["Designator"]
+        for pin, n in comp["pins"].items():
+            if n.upper().startswith("NC"):
+                nc.setdefault(n, []).append(f"{d}.{pin}")
+    for name, pins in sorted(nc.items()):
+        if len(pins) > 1:
+            problems.append(
+                f"{name}: shared by {', '.join(pins)} — open pins need one net "
+                f"each, or they are one node if the importer ignores the name")
     return problems
 
 
@@ -380,7 +396,7 @@ def main():
     out.write_text(json.dumps(net, indent=2) + "\n", encoding="utf-8")
     pins = sum(len(c["pins"]) for c in net.values())
     nets = {n for c in net.values() for n in c["pins"].values()
-            if not n.upper().startswith("NC")}
+            if not n.upper().startswith("NC_")}
     print(f"{out.relative_to(ROOT)}: {len(net)} components, {pins} pins, "
           f"{len(nets)} nets")
     return 1 if problems else 0

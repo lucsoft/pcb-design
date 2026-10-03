@@ -228,7 +228,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "datasheet section 3.2 table 3 Pin Definition (names, types) and the EasyEDA Pro symbol ESP32-C6-WROOM-1-N8 read with tools/eda.py (pin numbers). The datasheet stops at 29 pins because it calls the whole underside one EPAD; the symbol breaks that pad out as nine GND pins, 29 through 37. Pins 30-37 are recorded here so the netlist gives them a net - omitting them leaves eight pads unconnected, which no rule would catch."
+    "pins": "datasheet section 3.2 table 3 Pin Definition (names, types) and the EasyEDA Pro symbol ESP32-C6-WROOM-1-N8 read with tools/eda.py (pin numbers). The datasheet stops at 29 pins because it calls the whole underside one EPAD; the symbol breaks that pad out as nine GND pins, 29 through 37. Pins 30-37 are recorded here so the netlist gives them a net - omitting them leaves eight pads unconnected, which no rule would catch. vMax values are from the module datasheet's Recommended Operating Conditions, not from the pin table."
   },
   "notes": [
     "Datasheet p.3 peripheral list confirms Parallel IO (PARLIO), RMT TX/RX, SPI, I2S and GDMA. PARLIO with DMA is the right peripheral for N synchronised WS2812 lines; RMT TX has only a couple of channels on C6.",

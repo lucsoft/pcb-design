@@ -357,7 +357,7 @@ def _():
     # objected to exactly that, so the two rules contradicted each other and
     # one of them had to be wrong whichever way the pin was left.
     n = comp("gge1", "U1", "C1849461",
-             {"1": "VBUS", "9": "GND", "4": "NC", "18": "OUT1", "21": "GND"})
+             {"1": "VBUS", "9": "GND", "4": "NC_EFUSE_4", "18": "OUT1", "21": "GND"})
     found = rules(run(n))
     assert "K5-nc-connected" not in found
     # ...and a real net on an NC pin must still be caught.
@@ -407,7 +407,7 @@ def _():
         **comp("gge3", "R1", "C25744", {"1": "SIG", "2": "V3"}),
     }
     design = "rails:\n  GND: {type: ground}\n  V3: {voltage: 3.3}\nbuses: []\n"
-    on_nc = {**comp("gge1", "U1", "C24833806", {**base, "14": "NC"}), **rest}
+    on_nc = {**comp("gge1", "U1", "C24833806", {**base, "14": "NC_FLGIN"}), **rest}
     on_gnd = {**comp("gge1", "U1", "C24833806", {**base, "14": "GND"}), **rest}
     assert "R-flgin-tied" in rules(run(on_nc, design))
     assert "R-flgin-tied" not in rules(run(on_gnd, design))

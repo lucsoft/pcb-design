@@ -48,7 +48,7 @@ fatigue. Affected, and still to be revisited:
 | PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind an emitter follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **TPS16630** (C1849461) x2 | 60 V / 6 A eFuse with an integrated FET. Works from **4.5 V**, so the LED output follows the rails down instead of dying below a 12 V contract |
-| External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute, which the TVS reaches only at 27 A of surge; the 60 V TPS54360B and SS36 are reached at 16.5 A, and the TPS54360B and SS36 are 60 V, which sets the real limit at 1.03x. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
+| External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute, which the TVS reaches only at 27 A of surge; the 60 V TPS54360B and SS36 are reached at 16.5 A, which is what sets the real limit. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
@@ -1231,40 +1231,47 @@ inrush scales, and at the headline 20-module
 Active parts. Passives are listed below the table.
 
 **The `$` column is the unit price at LCSC's lowest quantity break**, taken from
-each part's knowledge-base record and so carrying that record's `retrieved`
-date. One basis for the whole column, because mixing tiers is how a BOM total
-becomes unreproducible — five cells here used to sit at different breaks, two of
-them at no published break at all. Real quantities are cheaper: the eFuse is
-$2.80 at one and $1.78 at a hundred.
+each part's knowledge-base record — so it carries that record's `retrieved`
+date, which `./tools/stock.py --refresh` updates and `./tools/consistency.py`
+checks the column against. One basis for the whole column, because mixing tiers
+is how a BOM total becomes unreproducible: five cells here used to sit at
+different breaks and three at no published break at all. Real quantities are
+much cheaper — the eFuse is $2.80 at one and $1.78 at a hundred — so this
+column is an upper bound, not an estimate of what a run costs.
+
+The one cell that is **not** on that basis is J2/J3's 0.77, which is **€0.77**
+from Reichelt: not an LCSC part, no quantity ladder. It is in the table because
+a build needs the number, and it is called out here because the column heading
+cannot carry two currencies.
 
 | Ref | Part | LCSC | Qty | Role | $ |
 |---|---|---|---|---|---|
-| U1 | HUSB238A-BB001-QN16R | C24833806 | 1 | USB PD sink, I2C mode | 0.6572 
-| U2 | ESP32-C6-WROOM-1-N8 | C5366877 | 1 | MCU, native USB | 4.2495 
+| U1 | HUSB238A-BB001-QN16R | C24833806 | 1 | USB PD sink, I2C mode | 0.6572 |
+| U2 | ESP32-C6-WROOM-1-N8 | C5366877 | 1 | MCU, native USB | 4.2495 |
 | U3 | W5500 module, WIZ850io-class | **C134462, DO NOT FIT** | 1 | 10/100 Ethernet, **soldered down**. The C-number is in the netlist so EasyEDA resolves the symbol and footprint — it must **not** reach a PCBA order, where it buys the $22.89 WIZnet original instead of the €12.30 JOY-IT clone in the sourcing table below. See Ethernet module | — |
-| U4 | TPS54360B | C524806 | 1 | bus to 5 V, ~100% duty | 0.7605 
-| U5 | SY8089A1AAC | C479074 | 1 | 5 V to 3.3 V | 0.0869 
-| U6 | INA226 | C49851 | 1 | low-side current sense | 0.7621 
-| U7,U8 | MAX3485 | C6395158 | 2 | differential line driver, one per channel | 0.3495 
+| U4 | TPS54360B | C524806 | 1 | bus to 5 V, ~100% duty | 0.7605 |
+| U5 | SY8089A1AAC | C479074 | 1 | 5 V to 3.3 V | 0.0869 |
+| U6 | INA226 | C49851 | 1 | low-side current sense | 0.7621 |
+| U7,U8 | MAX3485 | C6395158 | 2 | differential line driver, one per channel | 0.3495 |
 | U9 | 74AHCT541 | C84548 | 1 | status-chain level shift (oversized, see KB) | 0.224 |
-| U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.8002 
-| Q1,Q2 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see Enable | 0.0266 
-| Q3 | **MMBT5551** | C7420357 | 1 | **emitter** follower feeding the VBUS pin — V_BE 0.6-0.8 V where a BSS138 gate is 0.8-1.6 V, which is what lets 9-15 V contracts hold. 160 V V_CEO | 0.0122 
-| D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.0164 
-| D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.0629 
+| U10,U11 | TPS16630PWPR | C1849461 | 2 | 60 V / 6 A eFuse, integrated FET, one per channel | 2.8002 |
+| Q1,Q2 | BSS138 | C7420339 | 2 | FAULT interlock, **one per channel** — logic-level, see Enable | 0.0266 |
+| Q3 | **MMBT5551** | C7420357 | 1 | **emitter** follower feeding the VBUS pin — V_BE 0.6-0.8 V where a BSS138 gate is 0.8-1.6 V, which is what lets 9-15 V contracts hold. 160 V V_CEO | 0.0122 |
+| D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.0164 |
+| D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.0629 |
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
-| D7-D9 | **SMCJ40CA** | C19077610 | 3 | **40 V TVS**, which stands off the 37.8 V a compliant PDO may hold indefinitely where a 36 V part does not. Its 0.66 Ω dynamic resistance keeps the node under the 60 V TPS54360B and SS36 to **16.5 A** of surge. The residual is J1 at 48 V, which no 37.8 V-standoff TVS can protect — see ESD and surge protection | 0.1242 
-| D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.0428 
-| D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.0179 
-| D15,D16 | **MBRS3100T3G** | C12790 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. 100 V rather than the 60 V SS36 for **leakage**, not breakdown: these sit at 36 V reverse continuously, and the SS36 would run at 60% of its rating for 0.5 mA against this part's 50 µA | 0.3045 
-| L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.2279 
-| L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.0676 
+| D7-D9 | **SMCJ40CA** | C19077610 | 3 | **40 V TVS**, which stands off the 37.8 V a compliant PDO may hold indefinitely where a 36 V part does not. Its 0.66 Ω dynamic resistance keeps the node under the 60 V TPS54360B and SS36 to **16.5 A** of surge. The residual is J1 at 48 V, which no 37.8 V-standoff TVS can protect — see ESD and surge protection | 0.1242 |
+| D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.0428 |
+| D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.0179 |
+| D15,D16 | **MBRS3100T3G** | C12790 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. 100 V rather than the 60 V SS36 for **leakage**, not breakdown: these sit at 36 V reverse continuously, and the SS36 would run at 60% of its rating for 0.5 mA against this part's 50 µA | 0.3045 |
+| L1 | SPM6530T-100M | C112288 | 1 | 10 µH, TPS54360B output, **3.8 A Isat, 72 mΩ DCR** | 0.2279 |
+| L2 | ANR6028T2R2M | C7427146 | 1 | 2.2 uH, SY8089 output | 0.0676 |
 | R1,R2 | see Passives | — | — | the shunt and the bleeder are listed with the other passives below | — |
-| J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.9868 
+| J1 | CX90B-16P (Hirose) | C3198004 | 1 | USB-C, **5 A / 48 V AC/DC**, USB 2.0 | 0.9868 |
 | J2,J3 | Wago picoMAX 3.5 4-pole, angled | 2091-1424 | 2 | module output, see sourcing table | 0.77 |
-| LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.1112 
-| SW1,SW2 | TS-1088-AR02016 | C720477 | 2 | **BOOT** (GPIO9 to GND) and **EN** (reset) — recovery only; programming is over the ESP32-C6's native USB on J1 | 0.0528 
-| J4 | PZ254V-11-02P | C492401 | 1 | **fan header, do not fit by default** — 1x2 2.54 mm across the 5 V rail. See Cooling | 0.0188 
+| LED1-8 | SK6812-EC20 | C2909058 | 8 | status chain, 2 × 2 mm top-view | 0.1112 |
+| SW1,SW2 | TS-1088-AR02016 | C720477 | 2 | **BOOT** (GPIO9 to GND) and **EN** (reset) — recovery only; programming is over the ESP32-C6's native USB on J1 | 0.0528 |
+| J4 | PZ254V-11-02P | C492401 | 1 | **fan header, do not fit by default** — 1x2 2.54 mm across the 5 V rail. See Cooling | 0.0188 |
 | TP1-TP3 | — | — | 3 | UART0 TX / RX / GND, bare pads. A footprint, not a part: the console is a fallback for when USB enumeration itself is what is broken | — |
 
 **Not from LCSC/JLCPCB.** Two board items are hand-fitted — the Ethernet module
@@ -2654,8 +2661,8 @@ See Netlist for what is in it and what the clean report does not mean.
 ## Netlist
 
 `netlist.json` is generated by `netlist.py`, not written by hand, and both are
-committed. **127 components, 437 pins, 76 real nets** — `erc.py` prints 77
-because it counts the literal `NC` net alongside them. The ERC reports
+committed. **127 components, 437 pins, 76 real nets** — `erc.py` prints 106,
+because it counts the thirty single-pin `NC_*` nets alongside them. The ERC reports
 **0 errors** and one warning, the documented `P1-undervoltage` on U9.20.
 
 The generator exists for one reason: the importer requires the component keys
@@ -2665,6 +2672,11 @@ is deleting a line. The JSON is still the artefact that gets imported.
 
     nix-shell --run './designs/led-matrix-controller/netlist.py'
     nix-shell --run './tools/erc.py designs/led-matrix-controller/netlist.json'
+    nix-shell --run './tools/consistency.py designs/led-matrix-controller'
+
+The third one checks **this document** against the netlist: every count stated
+above, every BOM C-number and every price cell. It exists because the counts
+here are derivable and were repeatedly left behind when the netlist changed.
 
 **The pin keys come from the EasyEDA library, not from the datasheets.** This
 distinction had been written down as a chore and turned out to be the most
@@ -2688,13 +2700,21 @@ had been fixed by hand.
 
 ### Deliberately open pins
 
-Wired to a net literally named `NC`, which `erc.py` treats as "open on
-purpose" rather than "nobody got to it". The distinction matters: the second
-one is a bug and the checker has to be able to tell them apart.
+Each on **its own** net named `NC_<what it is>`, which `erc.py` treats as "open
+on purpose" rather than "nobody got to it". The distinction matters: the second
+is a bug and the checker has to tell them apart.
 
-**Thirty pins, and this list is all of them** — `grep '"NC"' netlist.json` is the
-check, because a table that silently omits one is worse than no table: the point
-of it is to let a reviewer tell a decision from an oversight.
+**One net per pin, never a shared `NC`.** A shared net puts all thirty on one
+node, which is inert only if the *importer* treats the name specially too — and
+nothing in this toolchain can verify that it does. Shared, this board would have
+tied seven enabled 74AHCT541 outputs to the TPS54360B's EN pin, both eFuse MODE
+pins and the status chain's last DOUT. `netlist.py` refuses to write a netlist
+in which two pins share an `NC_*` name.
+
+**Thirty pins, and this list is all of them** — `./tools/consistency.py` checks
+the count against the netlist, because a table that silently omits one is worse
+than no table: the point of it is to let a reviewer tell a decision from an
+oversight.
 
 | Pin | Why it is open |
 |---|---|

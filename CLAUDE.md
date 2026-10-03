@@ -319,6 +319,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets)
     │   ├── plot.py            chart helper: palette and house style
     │   ├── stale.py           find superseded values after a numeric change
+    │   ├── consistency.py     check a document against the netlist it describes
     │   ├── stock.py           check a BOM against live LCSC stock
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
     └── tests/test_erc.py      regression tests
@@ -368,7 +369,23 @@ disagreed with it.
 Prose has no type checker, so this is the substitute. It greps `designs/`,
 `kb/` and `rules/` and prints every hit with context. A hit is not automatically
 a bug -- the same digits appear legitimately elsewhere. Adjudicate each one;
-require zero unexplained hits.
+require zero unexplained hits. **Read the hits in full.** One sweep here was
+done through `cut -c1-240` and the stale values were past the cut, which put a
+false completeness claim into the commit message.
+
+**Numbers that describe the netlist should not be maintained by hand at all.**
+
+    ./tools/consistency.py designs/<name>
+
+It derives the component, pin, net, open-pin and passive counts from
+`netlist.json`, cross-checks every BOM row's C-number and price against the
+netlist and `kb/`, and exits 1 on a mismatch. This exists because nine
+consecutive review rounds of `designs/led-matrix-controller` found the same
+thing and nothing else: a good fix applied to the artefact and carried into
+some but not all of the prose describing it. `stale.py` finds a value you
+changed; this finds one you *should* have changed and did not. An unparseable
+claim is reported as **unchecked** rather than passed — a number nobody
+verified must not read as a number that was verified.
 
 **Retire a value in the commit message, not in the document.** An earlier
 version of this file said the opposite: that

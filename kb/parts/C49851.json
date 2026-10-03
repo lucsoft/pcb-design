@@ -90,7 +90,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "datasheet p.3 Pin Functions table (VSSOP-10)"
+    "pins": "datasheet p.3 Pin Functions table (VSSOP-10). vMax values are from the Absolute Maximum Ratings table, not from the pin table."
   },
   "notes": [
     "Common-mode and VBUS absolute max 40 V. On a 36 V bus that is only 1.11x margin, so it is NOT usable high-side here.",

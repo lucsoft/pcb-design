@@ -343,13 +343,14 @@ class Check:
                 self.add("K4-unconnected-pin", severity,
                          f"pin {num} ({name}, {ptype}) is not connected",
                          where=f"{comp.designator}.{num}",
-                         hint="connect it, or set it to a net named NC to "
-                              "record the decision" if severity == "warning" else
+                         hint="connect it, or give it its own net named "
+                              "NC_<what it is> to record the decision"
+                         if severity == "warning" else
                               "a floating supply pin will not work")
 
             for num, rec in kb_pins.items():
-                # The literal net NC is the project's way of writing "open on
-                # purpose" -- K4's own hint tells you to use it. Flagging it
+                # An NC_* net is the project's way of writing "open on
+                # purpose" -- K4's own hint tells you to use one. Flagging it
                 # here made the two rules contradict each other: connect the
                 # pin and K5 fires, leave it and K4 does.
                 if (rec.get("type") == "nc" and comp.pins.get(num)
@@ -655,10 +656,10 @@ class Check:
                                      f"{where} must not be tied to ground",
                                      where=where, hint=note)
                     elif req == "connected":
-                        # The literal net NC means "open on purpose", which is
+                        # An NC_* net means "open on purpose", which is
                         # exactly what this rule forbids -- so it must count as
                         # not connected here, the opposite of K4's treatment.
-                        # Without that, wiring a pin to NC silently defeated
+                        # Without that, an NC_* net silently defeated
                         # every `connected` rule on the board, including the one
                         # that keeps a 36 V bus off a 33 V-absolute pin.
                         if not net or is_nc(net):
