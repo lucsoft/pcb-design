@@ -4,8 +4,12 @@ Every rule `tools/erc.py` can report. Suppress one for a design by listing its
 id under `ignore:` in that design's `design.yaml` — and write down why, because
 a suppressed rule is a decision, not a cleanup.
 
-`design.yaml` also takes a **`dnf:`** list of designators that are placed so
-their pads exist and must not be fitted. `P3-rail-bridge` reads it. This is not
+`design.yaml` also takes **`dnf:`**, a mapping of designator to reason, for
+parts placed so their pads exist that must not be fitted. `P3-rail-bridge`
+reads it and prints the reason as its hint; `Q1-extended-parts` and
+`Q2-low-stock` skip those parts, because both are about what you order and a
+part nobody fits carries neither a feeder fee nor a stock risk; `K6-dnf-unknown`
+checks the entries name real designators. This is not
 an `ignore:` entry and must not be written as one: a suppression removes the
 finding, where `dnf:` keeps it visible at info severity and says *why*.
 
@@ -37,6 +41,7 @@ finding prints in brackets.
 | `K3-unknown-pin` | error | a pin number the part does not have |
 | `K4-unconnected-pin` | error for supply pins, warning otherwise | a declared pin left floating |
 | `K5-nc-connected` | warning | a not-connected pin wired to a real net. An `NC_*` net is not a real net — it is how K4 asks you to record "open on purpose" — so it does not fire on those |
+| `K6-dnf-unknown` | error | a `dnf:` entry in `design.yaml` naming a designator the netlist does not place. That list is the only machine-readable record that a part must not be fitted, so a typo in it is silent everywhere else |
 
 ## Connectivity
 

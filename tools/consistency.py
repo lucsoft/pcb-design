@@ -159,6 +159,17 @@ def check_values(doc):
         iref, ilcsc = col(header, "ref"), col(header, "lcsc")
         ival = col(header, "value")
         if iref is None or ilcsc is None or ival is None:
+            # Same silent-open shape check_rows was fixed for, and reintroduced
+            # here by the commit that fixed it there: renaming "Value" to "Val"
+            # switched the whole check off and the only trace was a zero in the
+            # summary.
+            if ilcsc is not None and any(CNUM.search(c) for row in rows for c in row):
+                missing = " and ".join(
+                    n for n, i in (("Ref", iref), ("Value", ival)) if i is None)
+                out.append(("unchecked",
+                            f"a table of {len(rows)} part row(s) has no "
+                            f"{missing} column — headings are {header!r}, so "
+                            f"no value in it is checked"))
             continue
         for cells in rows:
             if len(cells) != len(header):
@@ -184,6 +195,19 @@ def check_values(doc):
                 elif abs(want - got) > max(want, got) * 0.01:
                     out.append(("error", f"{ref}: value says {said!r}, "
                                          f"{found[0]}'s {key} is {params[key]}"))
+                else:
+                    checked += 1
+
+            # Voltage rating: the nearest sibling of the dielectric error this
+            # function was written for, and the more consequential one. A 25 V
+            # part on a 36 V bus fails short.
+            v_said = re.search(r"([\d.]+)\s*V\b", said)
+            v_rec = re.search(r"([\d.]+)\s*V", str(params.get("Voltage Rating", "")))
+            if v_said and v_rec:
+                if abs(float(v_said.group(1)) - float(v_rec.group(1))) > 1e-6:
+                    out.append(("error", f"{ref}: value says {v_said.group(1)} V, "
+                                         f"{found[0]} is rated "
+                                         f"{params['Voltage Rating']}"))
                 else:
                     checked += 1
 

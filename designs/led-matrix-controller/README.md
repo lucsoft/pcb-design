@@ -1910,7 +1910,7 @@ two obvious ones took. Downgrading `provenance.pins` to
 the record would have duplicated it. Instead a *pin* may carry its own `source`,
 and `erc.py`'s `unverified()` prefers it over the record-level field when the rule
 is about that pin. **Pin 7** — the symbol's number for the pad silkscreened
-J2-6 — carries one; the other eleven stay at full severity. Verified rather
+MJ2-6 — carries one; the other eleven stay at full severity. Verified rather
 than assumed: `unverified()` returns True for pin 7 and False for pin 3 and for
 the record as a whole.
 
@@ -1993,7 +1993,7 @@ design is built around had no entry.
 | Q3 follower base pull-up (R44) | **3.24 kΩ** to VBUS | same source, but **not** the vendor's 10 kΩ: see the PD front end. Nothing here is a pull-*up* on the FAULT interlocks — that is Q1/Q2 sharing one 10 kΩ pull-**down** (R15) on `PD_FAULT`, because FAULT/OUT2 is push-pull and a pull-up would hold both SHDN pins low and the channels off |
 | Follower bypass link | 0 Ω, **do not fit** at 36 V | same source — it exists for ≤28 V builds |
 | EN_HVDCP/OUT1 (pin 7) | **910 kΩ to GND** | p.11 Table 7: GND via 900 kΩ = BC1.2 only, and 910 kΩ is the nearest stocked value — E24, since E96's neighbour is 909 kΩ. Floating would enable HVDCP detection, which is pointless with D+/D− unconnected |
-| FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V) that cannot float. p.5 gives it **two** functions — disabling the GATE driver *and* raising an INT_N interrupt on a valid high voltage — and either can be configured alone. Neither is wanted here; p.5 Table 1 makes HIGH the assert level, so GND is the inactive state. **The vendor leaves this pin open in all three application figures**, so tying it low is a deliberate deviation, taken because an unterminated CMOS input is not a state |
+| FLGIN (pin 14) | **tie to GND** | p.7: a digital input (VIH 2 V / VIL 0.8 V) that cannot float. p.5 gives it **two** functions — disabling the GATE driver *and* raising an INT_N interrupt on a valid high voltage — and either can be configured alone. Neither is wanted here, and GND is the inactive state by **inference, not by citation**: p.5 Table 1 speaks of detecting "a valid high voltage", which is a condition on the *bus* rather than a level on the pin, and the datasheet gives FLGIN no polarity anywhere. The inference is that Hynetek suffixes every active-low pin `_N` and this one carries none. **The vendor leaves this pin open in all three application figures**, so tying it low is a deliberate deviation, taken because an unterminated CMOS input is not a state |
 
 Pin 17 is the exposed pad and the **only** GND connection.
 
@@ -2415,7 +2415,7 @@ undetectable. None of these is all three.
 | **h_FE = 60** at 800 µA | the datasheet's 80 min is at I_C = 1.0 mA **and V_CE = 5.0 V**. This follower runs at V_CE ≈ 0.84 V on the 12 V contract — quasi-saturation, where β droops hardest — so the row brackets the current and not the voltage | the 12 V margin shrinks: 0.22 V at β 40, 0.15 V at β 20, zero near β 9 | measurement. The 60 is conservative but it is not "already settled", because no published row covers this operating point |
 | **HUSB238A FAULT/OUT2 default** | not stated. p.5 says the pin "can be configured as" either | the hardware interlock does not exist until I²C init | **design, not measurement.** The SHDN pull-downs already hold both channels off in that window, so the answer changes nothing. One register read confirms it |
 | **Rd survives the powered-but-disabled window** (see Cold-start sequence, which depends on it) | not stated. p.11 says that with EN_N high "the whole system is disabled"; p.14 guarantees Rd only "even in the un-powered state". Between those two the board sits powered with EN_N held high by its internal pull-up for the whole MCU boot — see Cold-start step 3 — and no line covers it | the source detaches after tCCDebounce, VBUS drops, the rails collapse and the board power-cycles in a loop. This is the one assumption here that could stop it booting at all | **bench, and cheap**: plug into a PD source and watch CC with firmware never pulling EN_N low. If it fails, the fix is a pull-down on `PD_EN_N` so the chip enables before the MCU does — a part this board has room for |
-| **C134462 J2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
+| **C134462 MJ2-6 is MISO** | elimination: the only SPI signal left, on the only unaccounted pad. Not stated anywhere | SPI does not work | continuity check on the physical module, before soldering it down |
 | **Figure 13 applies to the HTSSOP-20** | TI took it on a VQFN device on an EVM board | the ramp's thermal margin is smaller than plotted | 6.5-7.7 J available against 2.14 J needed at the design point is 3-3.6×, which a package change does not eat. The spread is the reading uncertainty on a light-grey trace over a log grid. Thermal measurement on the first board |
 | **MAX3485 line current ~12 mA** each | estimated. The datasheet gives neither a loaded I_CC nor a V_OD at 120 Ω | the 3.3 V rail budget and the 0.06 W thermal row move | measurement, and the rail has 0.4 W of slack |
 | **0.09 W/cm² free-air** | rule of thumb, for a 40 °C rise from 25 °C ambient | thermal headroom is not 1.19× | **J4**, the fan header — see Cooling. The *footprint* exists before the question is answered; nothing is fitted by default |
@@ -2693,12 +2693,12 @@ as obviously right:
 
 | Part | The datasheet says | The symbol says |
 |---|---|---|
-| WIZ850io (C134462) | two headers, `J1-1 … J2-6` | 1-12, with **J2 running 12→7** — all six names agree on that direction and none on the other |
+| WIZ850io (C134462) | two headers, `MJ1-1 … MJ2-6` | 1-12, with **MJ2 running 12→7** — all six names agree on that direction and none on the other |
 | CX90B-16P (C3198004) | 16 contacts `A1 … B12` | the same 16 names, plus shield tabs **0 and 1** and mid-plate tabs **2 and 3** |
 | TS-1088-AR02016 (C720477) | four legs in two common pairs | **two** pads, each spanning both legs of one side |
 | ESP32-C6-WROOM-1 (C5366877) | 29 pins, the underside one `EPAD` | 37 — the pad is broken out as **nine** GND pins, 29-37 |
 
-A netlist keyed from the datasheet would have placed a pin numbered `J2-1` that
+A netlist keyed from the datasheet would have placed a pin numbered `MJ2-1` that
 resolves to nothing, wired pads 3 and 4 of a two-pad switch, and left eight
 ground pads of the MCU module with no net. None of that is visible on the
 canvas afterwards. `./tools/eda.py verify <file>` now checks a whole BOM against

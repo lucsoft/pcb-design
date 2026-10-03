@@ -198,7 +198,7 @@
       ],
       "requires": "connected",
       "severity": "error",
-      "note": "datasheet p.7: FLGIN is a digital input (VIH 2 V / VIL 0.8 V at 3.3 V) and cannot float. p.5 gives it TWO functions - disabling the GATE driver and raising an INT_N interrupt on a valid high voltage - and it may be configured for the interrupt alone. Both are unwanted here (GATE is unconnected), and p.5 Table 1 makes HIGH the assert level, so GND is the inactive state. Note the vendor leaves FLGIN OPEN in all three application figures; tying it low is a deliberate deviation, taken because an unterminated CMOS input is not a state."
+      "note": "datasheet p.7: FLGIN is a digital input (VIH 2 V / VIL 0.8 V at 3.3 V) and cannot float. p.5 gives it TWO functions - disabling the GATE driver and raising an INT_N interrupt on a valid high voltage - and it may be configured for the interrupt alone. Both are unwanted here (GATE is unconnected), and GND is taken as the inactive state by INFERENCE, not by citation: p.5 Table 1 says the pin detects 'a valid high voltage', which is a condition on the BUS and not the pin's logic level, and the datasheet states no polarity for FLGIN anywhere. The inference is that this vendor suffixes every active-low pin _N and FLGIN carries none. Note the vendor leaves FLGIN OPEN in all three application figures; tying it low is a deliberate deviation, taken because an unterminated CMOS input is not a state."
     },
     {
       "id": "en-hvdcp-tied",

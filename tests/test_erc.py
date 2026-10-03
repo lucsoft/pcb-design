@@ -510,6 +510,53 @@ def _():
     assert "P3-rail-bridge" not in rules(run(real, design))
 
 
+@case("K6 catches a dnf: entry naming no placed part")
+def _():
+    # dnf: is the only machine-readable record that a part must not be fitted,
+    # and nothing validated it. A typo was silent everywhere.
+    design = ("rails:\n  GND: {type: ground}\n  V: {voltage: 5.0}\nbuses: []\n"
+              "dnf:\n  R1: a real one\n  U999: a typo\n")
+    n = {
+        **comp("gge1", "R1", "C25744", {"1": "V", "2": "GND"}),
+        **comp("gge2", "C1", "C131394", {"1": "V", "2": "GND"}),
+    }
+    found = [f for f in run(n, design) if f["rule"] == "K6-dnf-unknown"]
+    assert len(found) == 1 and found[0]["where"] == "U999", found
+
+
+@case("a dnf: entry's reason reaches the finding")
+def _():
+    # Three documents promised this and a bare list could not deliver it:
+    # YAML comments are discarded by the loader.
+    design = ("rails:\n  GND: {type: ground}\n"
+              "  HIGH: {voltage: 36.0, voltageMax: 37.8}\n"
+              "  LOW: {voltage: 26.3, voltageMax: 27.75}\nbuses: []\n"
+              "dnf:\n  R1: destroys U1 if fitted at 36 V\n")
+    n = {
+        **comp("gge1", "R1", "C17168", {"1": "HIGH", "2": "LOW"}),
+        **comp("gge2", "C1", "C131394", {"1": "HIGH", "2": "GND"}),
+        **comp("gge3", "C2", "C131394", {"1": "LOW", "2": "GND"}),
+    }
+    f = [x for x in run(n, design) if x["rule"] == "P3-rail-bridge"]
+    assert len(f) == 1 and f[0]["severity"] == "info", f
+    assert "destroys U1" in f[0]["hint"], f[0]["hint"]
+
+
+@case("P3 says so when the record states no resistance at all")
+def _():
+    # Missing data and "not a link" are different facts. Returning the same
+    # answer for both let a routine `kb.py add` refresh delete the check.
+    erc = _erc()
+    chk = erc.Check.__new__(erc.Check)
+    bare = erc.Component(key="g", designator="R1", lcsc="C17168", props={},
+                         pins={"1": "A", "2": "B"}, kb={"parameters": {}})
+    assert chk.resistance_of(bare) == (None, None)
+    zero = erc.Component(key="g", designator="R1", lcsc="C17168", props={},
+                         pins={"1": "A", "2": "B"},
+                         kb={"parameters": {"Resistance": "0Ω ±1%"}})
+    assert chk.resistance_of(zero)[0] is True
+
+
 def main() -> int:
     passed = failed = 0
     for name, fn in CASES:

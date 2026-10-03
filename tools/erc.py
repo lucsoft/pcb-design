@@ -110,7 +110,7 @@ class Design:
     rails: dict = field(default_factory=dict)   # net -> {voltage, type}
     buses: list = field(default_factory=list)
     ignore: set = field(default_factory=set)    # rule ids to suppress
-    dnf: set = field(default_factory=set)       # designators not to be fitted
+    dnf: dict = field(default_factory=dict)     # designator -> why not fitted
 
     @classmethod
     def load(cls, path: Path) -> "Design":
@@ -124,7 +124,13 @@ class Design:
             rails=data.get("rails", {}) or {},
             buses=data.get("buses", []) or [],
             ignore=set(data.get("ignore", []) or []),
-            dnf={str(d).strip() for d in (data.get("dnf", []) or [])},
+            # A mapping, because three documents promised the finding would
+            # carry the reason and a bare list cannot: YAML comments are
+            # discarded by the loader. A plain list is still accepted, with an
+            # empty reason, so an older design still parses.
+            dnf=({str(k).strip(): str(v) for k, v in data["dnf"].items()}
+                 if isinstance(data.get("dnf"), dict)
+                 else {str(d).strip(): "" for d in (data.get("dnf") or [])}),
         )
 
     def rail_voltage(self, net: str) -> float | None:
@@ -674,20 +680,43 @@ class Check:
 
     # "0", "0R", "0Ω", "0.0 ohm" and the IEC form "0R0", where the unit letter
     # stands in for the decimal point. Deliberately NOT "0R47" or "0.47Ω".
-    ZERO_OHM = re.compile(r"^\s*0+(?:[.,]0+)?\s*(?:R|Ω|ohm)?\s*0*\s*$", re.I)
+    ZERO_OHM = re.compile(r"^\s*0+(?:[.,]0+)?\s*(?:R|Ω|ohm)?\s*0*\s*(?:$|[±+\s])", re.I)
 
-    def is_zero_ohm(self, comp) -> bool:
-        """A link, decided from the knowledge base rather than from `value`.
+    def resistance_of(self, comp):
+        """(is_zero, raw) -- or (None, None) when the record says nothing.
 
-        `value` is cosmetic -- CLAUDE.md says the importer ignores it -- so
-        keying on it meant the check could be switched off by editing a string
-        nobody validates. It also missed `0R0`, the IEC way of writing zero,
-        and `jumper`, while firing on `0.47R`. The kb record carries
-        `parameters.Resistance`, which came from LCSC with the part.
+        Three answers, not two. Returning False for "no Resistance field" and
+        for "not zero" made the rule fail SILENTLY OPEN: `kb.py add` overwrites
+        `parameters` from LCSC on every refresh, so a scrape that drops or
+        decorates the field would delete the only check on this board's one
+        destructive assembly error, and the report would get *cleaner*.
         """
         params = (comp.kb or {}).get("parameters") or {}
-        res = str(params.get("Resistance", ""))
-        return bool(res) and bool(self.ZERO_OHM.match(res))
+        raw = str(params.get("Resistance", "")).strip()
+        if not raw:
+            return None, None
+        # Tolerate a suffix: LCSC writes "0Ω" today but "0Ω ±1%" is the same
+        # part, and an anchored match would read the decoration as "not zero".
+        return bool(self.ZERO_OHM.match(raw)), raw
+
+    def check_dnf(self):
+        """Every `dnf:` entry must name a part that is actually placed.
+
+        Nothing validated this list, and it is now the only machine-readable
+        record that a part must not be fitted. A typo was completely silent --
+        and so was listing a fitted, load-bearing part by mistake, which would
+        tell a reader the opposite of the truth about it.
+        """
+        placed = {c.designator for c in self.components.values()}
+        for d in sorted(self.design.dnf):
+            if d not in placed:
+                self.add("K6-dnf-unknown", "error",
+                         f"design.yaml lists '{d}' as do-not-fit and the "
+                         f"netlist places no such designator",
+                         where=d,
+                         hint="a typo here is silent everywhere else — this is "
+                              "the only machine-readable record that a part "
+                              "must not be fitted")
 
     def check_rail_bridges(self):
         """A zero-ohm link joining two rails whose declared maxima disagree.
@@ -706,7 +735,7 @@ class Check:
         the VARIANT that fits the link.
         """
         for comp in self.components.values():
-            if len(comp.pins) != 2 or not self.is_zero_ohm(comp):
+            if len(comp.pins) != 2:
                 continue
             nets = [n for n in comp.pins.values() if n]
             if len(nets) != 2 or nets[0] == nets[1]:
@@ -716,16 +745,32 @@ class Check:
                 continue
             if abs(highs[0] - highs[1]) < 1e-9:
                 continue
+            zero, raw = self.resistance_of(comp)
+            if zero is None:
+                # Two different rails on a two-terminal part whose resistance
+                # the record does not state. Say so rather than pass.
+                if comp.category in {"resistor", "inductor"}:
+                    self.add("P3-rail-bridge", "warning",
+                             f"{comp.designator} joins '{nets[0]}' and "
+                             f"'{nets[1]}', declared at {highs[0]} V and "
+                             f"{highs[1]} V, and its record states no "
+                             f"resistance — so whether it is a link is unknown",
+                             where=comp.designator,
+                             hint="re-run kb.py add, or record the resistance "
+                                  "by hand; a 0 R link here would be an error")
+                continue
+            if not zero:
+                continue
             hi, lo = max(highs), min(highs)
             listed = comp.designator in self.design.dnf
+            why = self.design.dnf.get(comp.designator, "")
             self.add("P3-rail-bridge", "info" if listed else "error",
                      f"{comp.designator} is a 0 R link joining '{nets[0]}' and "
                      f"'{nets[1]}', declared at {highs[0]} V and {highs[1]} V"
-                     + (" — listed do-not-fit" if listed else ""),
+                     + (" — do not fit" if listed else ""),
                      where=comp.designator,
-                     hint=(f"fitted, it puts {hi} V on a rail declared to reach "
-                           f"{lo} V. design.yaml lists it under dnf:, so this is "
-                           f"a record of that decision, not a complaint"
+                     hint=(why or f"fitted, it puts {hi} V on a rail declared to "
+                                  f"reach {lo} V; design.yaml lists it under dnf:"
                            if listed else
                            f"fitting it puts {hi} V on a rail declared to reach "
                            f"{lo} V. If it is meant to be fitted, the rails are "
@@ -733,9 +778,17 @@ class Check:
                            f"design.yaml"))
 
     def check_sourcing(self):
-        extended = []
+        # Both of these are about what you ORDER, so neither applies to a part
+        # design.yaml says is not fitted. Q1 was counting the fan header's
+        # feeder fee on a header nobody fits, which is the one cost-facing
+        # number on the board being wrong by one part.
+        extended, skipped = [], []
         for comp in self.components.values():
             kb = comp.kb or {}
+            if comp.designator in self.design.dnf:
+                if kb.get("tier") == "extended":
+                    skipped.append(comp.designator)
+                continue
             if kb.get("tier") == "extended":
                 extended.append(f"{comp.designator} ({comp.lcsc})")
             stock = kb.get("stock")
@@ -745,8 +798,11 @@ class Check:
                          where=comp.designator,
                          hint="pick an alternative before this goes out of stock")
         if extended:
+            note = (f" ({len(skipped)} more are do-not-fit and carry no fee: "
+                    f"{', '.join(sorted(skipped))})" if skipped else "")
             self.add("Q1-extended-parts", "info",
-                     f"{len(extended)} extended-tier part(s): {', '.join(extended)}",
+                     f"{len(extended)} extended-tier part(s): "
+                     f"{', '.join(extended)}{note}",
                      hint="JLCPCB charges a one-off feeder fee per extended part; "
                           "basic-tier equivalents avoid it")
 
@@ -760,6 +816,7 @@ class Check:
         self.check_decoupling()
         self.check_buses()
         self.check_part_rules()
+        self.check_dnf()
         self.check_rail_bridges()
         self.check_sourcing()
         self.findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.rule, f.where))

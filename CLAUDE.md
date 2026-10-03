@@ -234,7 +234,8 @@ than working around it in the netlist. Write `rule@where` rather than a bare
 whole board, which is how a check that was doing real work quietly stops.
 
 A part that is placed so its pad exists and must **not be fitted** goes in
-`design.yaml`'s `dnf:` list. The netlist format has no field for it — `value`
+`design.yaml`'s `dnf:` mapping, designator to reason — the reason is printed as
+the finding's hint, so write it for whoever reads the ERC output. The netlist format has no field for it — `value`
 is cosmetic and the importer ignores it — so this is the only machine-readable
 form. Do not write it as an `ignore:` entry instead: a suppression deletes the
 finding, where `dnf:` keeps it reported at info severity with the reason beside

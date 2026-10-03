@@ -116,14 +116,14 @@ ignore:
 # rule would have recorded the opposite of the truth, and would have been
 # identical on the variant that DOES fit the link.
 dnf:
-  # 0 R follower bypass. Fitted at 36 V it puts the bus onto the rail feeding a
-  # pin rated 33 V absolute and destroys U1. It exists for a <=28 V build, where
-  # Q3 and D1 come out; that variant drops R48 from this list.
-  - R48
-  # Fan header. Fitted only if the thermal model turns out optimistic, and then
-  # at <=50 mA - see Cooling.
-  - J4
-  # The C-number resolves the symbol and footprint and must not reach a PCBA
-  # order, where it buys the $22.89 WIZnet original instead of the EUR 12.30
-  # clone that drops into the same footprint. Hand-soldered.
-  - U3
+  R48: >-
+    0 R follower bypass. Fitted at 36 V it puts the bus onto the rail feeding a
+    pin rated 33 V absolute and destroys U1. It exists for a <=28 V build, where
+    Q3 and D1 come out; that variant drops R48 from this list.
+  J4: >-
+    Fan header. Fitted only if the thermal model turns out optimistic, and then
+    at <=50 mA - see Cooling.
+  U3: >-
+    The C-number resolves the symbol and footprint and must not reach a PCBA
+    order, where it buys the $22.89 WIZnet original instead of the EUR 12.30
+    clone that drops into the same footprint. Hand-soldered.
