@@ -30,13 +30,13 @@
       "number": "1",
       "name": "A1",
       "type": "passive",
-      "vMax": 58.0
+      "vMax": 36.0
     },
     {
       "number": "2",
       "name": "A2",
       "type": "passive",
-      "vMax": 58.0
+      "vMax": 36.0
     }
   ],
   "provenance": {
@@ -46,7 +46,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal TVS bidirectional, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
+    "pins": "two-terminal BIDIRECTIONAL TVS in SMA(DO-214AC); pin numbers A1/A2 from the EasyEDA Pro symbol via tools/eda.py. No cathode band and no polarity: either pin may sit on the signal. vMax is the REVERSE STAND-OFF voltage Vrwm = 36 V, not the 58.1 V clamping voltage - Vc is what the part PRODUCES during a surge, and recording it as a limit told the checker the part was happy at 58 V. Above Vrwm the leakage is unspecified."
   },
   "designVerdict": "SELECTED - D7-D9, the only fast overvoltage protection on the bus.",
   "notes": [

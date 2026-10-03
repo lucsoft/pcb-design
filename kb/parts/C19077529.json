@@ -30,13 +30,13 @@
       "number": "1",
       "name": "A1",
       "type": "passive",
-      "vMax": 12.0
+      "vMax": 7.0
     },
     {
       "number": "2",
       "name": "A2",
       "type": "passive",
-      "vMax": 12.0
+      "vMax": 7.0
     }
   ],
   "provenance": {
@@ -46,7 +46,7 @@
     "stock": "lcsc-api",
     "priceUsd": "lcsc-api",
     "category": "lcsc-api",
-    "pins": "two-terminal TVS bidirectional, DO-214AC/SOD outline: pin 1 = cathode-band end, pin 2 = opposite. Polarity from the package drawing, not inferred from function"
+    "pins": "two-terminal BIDIRECTIONAL TVS in SMA(DO-214AC); pin numbers A1/A2 from the EasyEDA Pro symbol via tools/eda.py. No polarity. vMax is Vrwm = 7 V, the continuous limit, not the 12 V clamping voltage the part produces during a surge."
   },
   "designVerdict": "SELECTED as D10-D13, the A/B pair TVS. Replaces SMAJ15CA (C7466491), which clamped above the transceiver rating.",
   "notes": [

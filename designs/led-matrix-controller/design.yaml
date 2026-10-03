@@ -98,9 +98,26 @@ ignore:
   # 28 V. Scoped to this rail: P2 still guards BUS_5V and BUS_3V3.
   - P2-no-decoupling@PD_VBUS_SENSE
 
-  # TP1/TP2 are bare pads for the UART0 console, not components - a footprint
+  # TP1-TP3 are bare pads for the UART0 console (TX, RX, GND), not components -
+  # a footprint
   # with no LCSC part, so the importer cannot place them and the net has one
   # pin until they are drawn by hand. Named rather than dropped so the import
   # carries a net to attach the pad to; see 'Hand-drawn after import'.
   - C1-single-pin-net@UART_TX
   - C1-single-pin-net@UART_RX
+
+  # D7/D8/D9, the SMAJ36CA bus TVS. Their Vrwm is 36 V and a compliant fixed
+  # PDO may sit at 37.8 V indefinitely, so P1 is RIGHT and the finding is the
+  # one 'ESD and surge protection' already calls unresolved: above Vrwm the
+  # leakage is unspecified and strongly temperature-dependent, which means
+  # standby draw and self-heating on three parts.
+  #
+  # It is suppressed rather than fixed because the fix is not a part swap. A
+  # 40 V-standoff part clears 37.8 V and clamps at 64.5 V, over the 60 V
+  # TPS54360B and SS36 sharing the node; the lever is a 100 V-class buck, not
+  # another TVS. Scoped to the three pins, so P1 still guards every other part
+  # on the same 37.8 V bus - which is what caught this in the first place,
+  # once the records stopped recording the CLAMPING voltage as vMax.
+  - P1-overvoltage@D7.1
+  - P1-overvoltage@D8.1
+  - P1-overvoltage@D9.1

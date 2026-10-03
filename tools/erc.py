@@ -489,10 +489,13 @@ class Check:
         if len(comp.pins) != 2:
             return None
         params = (comp.kb or {}).get("parameters") or {}
-        for key, val in params.items():
-            if "voltage" not in key.lower():
-                continue
-            m = self.RATING.search(str(val))
+        # Exact key first. Scanning for any key containing "voltage" in dict
+        # order is hostage to LCSC's ordering: a stock refresh inserting
+        # "Withstand Voltage" ahead of "Voltage Rating" would silently change
+        # which number the checker believes, with no diff a reader would
+        # recognise as a ratings change.
+        for key in ("Voltage Rating", "Rated Voltage", "Voltage - Rated"):
+            m = self.RATING.search(str(params.get(key, "")))
             if m:
                 return float(m.group(1))
         return None
@@ -507,13 +510,22 @@ class Check:
                 if not rec:
                     continue
                 vmax = rec.get("vMax")
+                from_params = False
                 if vmax is None:
                     vmax = self.rated_voltage(comp)
+                    from_params = vmax is not None
                 vhigh = self.design.rail_voltage_max(net)
                 if vmax is not None and vhigh is not None and vhigh > float(vmax) + 1e-9:
-                    sev = "warning" if self.unverified(comp, "pins", pin) else "error"
+                    # A rating read out of `parameters` is never error severity.
+                    # That field is scraped from LCSC and `kb.py add` overwrites
+                    # it wholesale on every refresh, so its confidence was never
+                    # asserted by anyone -- and provenance.pins, which decides
+                    # severity for a real pin vMax, says nothing about it.
+                    sev = ("warning"
+                           if from_params or self.unverified(comp, "pins", pin)
+                           else "error")
                     self.add("P1-overvoltage", sev,
-                             f"{comp.designator}.{pin} ({rec.get('name', pin)}) is "
+                             f"{comp.designator}.{pin} ({rec.get('name') or pin}) is "
                              f"rated {vmax} V max but '{net}' reaches {vhigh} V"
                              + ("" if vhigh == v else f" (nominal {v} V)"),
                              where=f"{comp.designator}.{pin}",

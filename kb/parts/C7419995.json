@@ -41,7 +41,7 @@
     "category": "manual",
     "pins": "two-terminal shunt, symmetric package outline - no polarity"
   },
-  "designVerdict": "SELECTED as R1 only - the low-side shunt. The LM5069 current-sense role is gone.",
+  "designVerdict": "RETIRED. Was R1, the low-side shunt; replaced by C393074 (5 mOhm) because 10 mOhm put the INA226's +-81.92 mV range at 8.19 A, under this board's own 8.0 A flash peak and well under the 11.1 A the two eFuses can pass.",
   "notes": [
     "10 mOhm, 1% (F suffix), 2512, 9.8k stock, $0.058.",
     "RETIRED as R1 in favour of C393074 (5 mOhm). The sizing note below takes the 5 A CONTRACT as the full-scale current, but the shared return carries the full-white flash peak of 8.0 A and the two eFuses can pass 11.1 A before either limits. At 10 mOhm the INA226's +-81.92 mV range ends at 8.19 A, so normal operation sat at 98% of full scale and the whole fault band was off the top. The reading saturates there rather than going blind - an ALERT threshold set below full scale still fires - but the software limiter reasons in watts from this number, and it could not have told 9 A from 15 A.",

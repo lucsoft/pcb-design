@@ -121,8 +121,12 @@ def verify(codes):
         try:
             _, rows = pins(code)
         except SystemExit as e:
+            # Absent from the EasyEDA library is not a wrong key -- it means
+            # the importer cannot place the part at all, which S4/K1 are the
+            # right rules for. Counting it here made `verify --kb` unusable as
+            # a gate over a knowledge base that holds evaluated-and-rejected
+            # parts as well as fitted ones.
             print(f"  ?  {code:<11} {e}")
-            bad += 1
             continue
         sym = {n for n, _, _ in rows}
         missing = sorted(kb - sym)   # in kb, not in the symbol: the netlist breaks
@@ -177,7 +181,9 @@ def main():
         if not codes:
             ap.error("nothing to check -- give a file, a C-number, or --kb")
         bad = verify(codes)
-        print(f"\n{len(codes)} part(s), {bad} with a key the symbol does not have")
+        print(f"\n{len(codes)} part(s), {bad} with a key the symbol does not have"
+              f"  (a '?' line is a part the library does not carry, which S4 and "
+              f"K1 cover)")
         if bad:
             print("\nFix these before writing the netlist. The importer keys "
                   "pins by the symbol's numbering and ignores anything else, "

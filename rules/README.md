@@ -54,7 +54,7 @@ finding prints in brackets.
 
 | id | severity | catches |
 |----|----------|---------|
-| `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax`. Compared against the rail's `voltageMax` when `design.yaml` declares one, otherwise its nominal `voltage` — a bus stated only at nominal passes a pin that the source's +5% tolerance breaks. For a **two-terminal passive**, which has no per-pin `vMax` because the rating belongs to the part, it falls back to the working voltage in the record's `parameters` |
+| `P1-overvoltage` | error (warning if pin data is unverified) | rail voltage above a pin's `vMax`. Compared against the rail's `voltageMax` when `design.yaml` declares one, otherwise its nominal `voltage` — a bus stated only at nominal passes a pin that the source's +5% tolerance breaks. For a **two-terminal passive**, which has no per-pin `vMax` because the rating belongs to the part, it falls back to the working voltage in the record's `parameters` — always at **warning** severity, because that field is scraped from LCSC and `kb.py add` overwrites it on every refresh, so nobody asserted its confidence |
 | `P1-undervoltage` | warning | rail below a pin's `vMin`. Compared against the rail's `voltageMin` when `design.yaml` declares one, otherwise its nominal `voltage` — a rail stated only at nominal hides the sag that crosses the floor |
 | `P2-no-decoupling` | error | a supply rail with no capacitor to ground |
 | `P2-thin-decoupling` | warning | fewer capacitors than supplied **parts** on a rail. Counted per part, not per pad: a part taking four pins off one bus wants one capacitor, not four |

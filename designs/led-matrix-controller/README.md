@@ -1158,7 +1158,11 @@ transistors left on this net are the two FAULT interlocks.
   which would give the per-channel sensing the shared shunt cannot — unused for
   now because there are no spare ADC pins.
 - **The low-side shunt wants Kelvin connection.** R1 is 5 mΩ carrying the full
-  5 A, so 0.125 W, and its sense traces are not a routing afterthought. (The eFuse
+  return current, so 0.125 W at the 5 A the limiter holds it to and 0.62 W at the
+  11.1 A the two eFuses can pass — the **range** is sized for the second figure
+  and the **dissipation** quoted at the first, because one is a fault lasting
+  milliseconds and the other is continuous. Its sense traces are not a routing
+  afterthought. (The eFuse
   has no sense resistor — this is the INA226's shunt, one part in the shared
   return, not a per-channel pair.)
 - **Second-source risk is lower than it was.** C1849461 is TI silicon at 1141
@@ -1406,7 +1410,7 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V**. Clamps under the eFuse's 67 V absolute, by 1.15x; the 60 V parts it does *not* clear are the TPS54360B, the SS36 and **J1 itself**, rated 48 V. **Vrwm is 36 V against a bus that may sit at 37.8 V indefinitely** — leakage above Vrwm is unspecified, so this is not a part that is comfortably off. See below |
+| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V**. Clamps under the eFuse's 67 V absolute, by 1.15x; the parts it does *not* clear are the TPS54360B and the SS36 at 60 V, and **J1 itself at 48 V**, which is the worst of the three. **Vrwm is 36 V against a bus that may sit at 37.8 V indefinitely** — leakage above Vrwm is unspecified, so this is not a part that is comfortably off. See below |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
@@ -1436,9 +1440,17 @@ means standby draw and self-heating on three parts.
 
 **The 58.1 V against 60 V squeeze did not go away with the FET — it moved.** The
 channel switch is 67 V absolute at 1.15x, but the clamp sits on the
-*unswitched* bus, where the **TPS54360B** (60 V absolute input) and the **SS36**
-catch diode (60 V) share the node. For those two it is still **1.03x**, measured
-at 10/1000 µs, and an 8/20 µs surge drives the clamp higher. Changing the FET
+*unswitched* bus, where the **TPS54360B** (60 V absolute input), the **SS36**
+catch diode (60 V) and **J1** share the node. For the first two it is still
+**1.03x**, measured at 10/1000 µs, and an 8/20 µs surge drives the clamp higher.
+
+**J1 is worse than either, and this section used to omit it.** The CX90B-16P is
+rated **48 V AC/DC**, so a 58.1 V clamp event puts it at **0.83x** — the only
+part on the node actually over its rating. It is a 10/1000 µs event on a
+connector with no semiconductor junction, which is why this is a durability
+question rather than a destruction one, but it belongs in the list and the
+honest reading is that the clamp level is chosen against the silicon and the
+connector is along for the ride. Changing the FET
 fixed the part that was no longer the constraint. **Unresolved**, and the lever
 is a lower-clamping TVS or a 100 V-class buck, not another FET.
 
@@ -2287,12 +2299,15 @@ At the 72 x 74 mm envelope the board is 53.3 cm2.
 
 The rows sum to 4.02 W against **4.80 W** of capacity at 0.09 W/cm² over
 53.3 cm², so **1.19x headroom** — down from 1.29x. The eFuse is most of that
-change but not all of it: of the 0.31 W added, **0.31 W** is the eFuse's 45 mΩ
+change but not all of it, and two of the five terms pull the other way: of the
+0.31 W added, **+0.31 W** is the eFuse's 45 mΩ
 max against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
 lower-DCR inductor, **+0.04 W** is the PD follower (the 27 V clamp draws less than
 the 20 V one did, but the NPN's 3.24 kΩ base pull-up draws considerably more than
-the 10 kΩ it replaced), and **0.12 W** is the status-LED row, which the 3.71 W figure simply
-did not count. On the eFuse alone the headroom would be 1.19x. And that is
+the 10 kΩ it replaced), **−0.125 W** is halving R1 to 5 mΩ, and **+0.12 W** is the status-LED row, which the 3.71 W figure simply
+did not count. The other four net to −0.005 W, so the eFuse alone would give
+the same 1.19x — a coincidence of this revision, not a reason to stop counting
+them. And that is
 at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
