@@ -48,7 +48,7 @@
     "category": "lcsc-api",
     "pins": "two-terminal BIDIRECTIONAL TVS in SMA(DO-214AC); pin numbers A1/A2 from the EasyEDA Pro symbol via tools/eda.py. No cathode band and no polarity: either pin may sit on the signal. vMax is the REVERSE STAND-OFF voltage Vrwm = 36 V, not the 58.1 V clamping voltage - Vc is what the part PRODUCES during a surge, and recording it as a limit told the checker the part was happy at 58 V. Above Vrwm the leakage is unspecified."
   },
-  "designVerdict": "SELECTED - D7-D9, the only fast overvoltage protection on the bus.",
+  "designVerdict": "RETIRED as D7-D9. Its Vrwm of 36 V sits UNDER the 37.8 V a compliant fixed PDO may hold indefinitely, where leakage is unspecified; and its 2.01 Ohm dynamic resistance crosses 60 V at only 7.8 A of surge. Replaced by SMCJ40CA (C19077610), which stands off the bus and reaches 60 V at 16.5 A. The headline 58.1 V vs 64.5 V favoured this part and is the wrong comparison: each is quoted at its own rated surge, 6.9 A for a 400 W SMA against 23.3 A for a 1.5 kW SMC.",
   "notes": [
     "Carries the OVP role that the HUSB238A loses above 28 V to its clamp topology. The 470k/27k ADC divider is the slow software check beside it, at tau = 2.55 ms.",
     "Vrwm 36 V against a 37.8 V maximum PDO (+5%) is the uncomfortable part: the standoff is at or just under the normal operating maximum, so leakage at the top of the PDO tolerance is not characterised. SMAJ40CA (C19077552) stands off further but clamps at ~64 V; SMAJ33CA clamps lower but cannot stay off at 36 V. Open, and recorded as such in the README.",

@@ -58,7 +58,13 @@ COMPONENTS = [
 
     ("C33", "C153036", "FS32X225K101EGG", "2.2uF 100V", {"1": "VBUS", "2": "GND"}),
     ("R2", "C17902", "1206W4F1002T5E", "10k 1206", {"1": "VBUS", "2": "GND"}),
-    ("D7", "C19077551", "SMAJ36CA", "TVS 36V", {"1": "VBUS", "2": "GND"}),
+    # SMCJ40CA, not SMAJ36CA. A 36 V standoff against a bus a compliant fixed
+    # PDO may hold at 37.8 V indefinitely leaves the leakage unspecified; 40 V
+    # clears it. The larger die also has a third the dynamic resistance, so it
+    # stays under the 60 V parts' rating to 16.5 A where the SMA part crossed
+    # at 7.8 A -- the headline 64.5 V vs 58.1 V compares them at their own
+    # different rated surges and is the wrong comparison.
+    ("D7", "C19077610", "SMCJ40CA", "TVS 40V", {"1": "VBUS", "2": "GND"}),
 
     # U1 pin 17 is the exposed pad and the ONLY ground connection.
     # pin 1/2 (D+/D-) stay open: the pair belongs to the MCU's native USB and
@@ -222,7 +228,7 @@ COMPONENTS = [
     # Cathode on the output. SS11.1: interrupting the current drives OUT
     # negative against a -0.3 V absolute maximum.
     ("D15", "C12790", "MBRS3100T3G", "schottky 100V", {"1": "CH1_36V", "2": "GND"}),
-    ("D8", "C19077551", "SMAJ36CA", "TVS 36V", {"1": "CH1_36V", "2": "LED_RTN"}),
+    ("D8", "C19077610", "SMCJ40CA", "TVS 40V", {"1": "CH1_36V", "2": "LED_RTN"}),
     ("R11", "C2906864", "FRC0402F1001TS", "1k", {"1": "CH1_EN", "2": "CH1_SHDN"}),
     ("R13", "C25744", "0402WGF1002TCE", "10k", {"1": "CH1_SHDN", "2": "GND"}),
     ("Q1", "C7420339", "BSS138", "interlock ch1", {
@@ -249,7 +255,7 @@ COMPONENTS = [
     ("C4", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "VBUS", "2": "GND"}),
     ("C35", "C513710", "CC0805KKX7R0BB224", "220nF 100V", {"1": "CH2_36V", "2": "GND"}),
     ("D16", "C12790", "MBRS3100T3G", "schottky 100V", {"1": "CH2_36V", "2": "GND"}),
-    ("D9", "C19077551", "SMAJ36CA", "TVS 36V", {"1": "CH2_36V", "2": "LED_RTN"}),
+    ("D9", "C19077610", "SMCJ40CA", "TVS 40V", {"1": "CH2_36V", "2": "LED_RTN"}),
     ("R12", "C2906864", "FRC0402F1001TS", "1k", {"1": "CH2_EN", "2": "CH2_SHDN"}),
     ("R14", "C25744", "0402WGF1002TCE", "10k", {"1": "CH2_SHDN", "2": "GND"}),
     ("Q2", "C7420339", "BSS138", "interlock ch2", {

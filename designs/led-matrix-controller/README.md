@@ -48,7 +48,7 @@ fatigue. Affected, and still to be revisited:
 | PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind an emitter follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **TPS16630** (C1849461) x2 | 60 V / 6 A eFuse with an integrated FET. Works from **4.5 V**, so the LED output follows the rails down instead of dying below a 12 V contract |
-| External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute (1.15x the 58.1 V TVS clamp), and the TPS54360B and SS36 are 60 V, which sets the real limit at 1.03x. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
+| External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute, which the TVS reaches only at 27 A of surge, and the TPS54360B and SS36 are 60 V, which sets the real limit at 1.03x. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
 | Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
 | Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
@@ -266,15 +266,13 @@ a latch pin — exactly what the addressable chain costs — and it would replac
 74AHCT541, which exists only because SK6812 wants 5 V logic. The plain option is
 genuinely buildable: YLED0805R (C19171391) at 127k stock and 0.8 ¢.
 
-Two things decide it, and they pull opposite ways. **Part count favours
-addressable**, and that was wrong — it counted nine against seventeen by ignoring
-the chosen option's own support parts. The real counts are **19 or 20 against
-18**: eight SK6812s, the 74AHCT541, eight decoupling capacitors the datasheet
-calls essential, two series resistors and the buffer's own decoupling, against
-eight LEDs, a 74HC595, eight current-limiting resistors and one decoupling. It is
-a wash, with a marginal edge to the shift register. The decision rests entirely
-on colour, which is sound and load-bearing. On
-a small run that outweighs 96 ¢. **And colour has become load-bearing.** The bar
+**Part count is a wash, counting each option's own support parts.** The real
+counts are **19 or 20 against 18**: eight SK6812s, the 74AHCT541, eight
+decoupling capacitors the datasheet calls essential, two series resistors and
+the buffer's own decoupling, against eight LEDs, a 74HC595, eight
+current-limiting resistors and one decoupling — a marginal edge to the shift
+register. **So the decision rests entirely on colour**, and on a small run that
+outweighs 96 ¢. **And colour has become load-bearing.** The bar
 reads watts across 180 W, so on a 36 W contract one LED lights whether the wall
 is dark or the supply is small; without colour there is no way to tell those
 apart. That did not matter while 36 V was the only normal case — since the UVLO
@@ -386,7 +384,7 @@ worth stating because the earlier wording argued the opposite way.
 
 **And "61% brightness" is not 61% of the current, continuously.** The WS2812
 dims by duty-cycling its constant-current sinks at roughly **400 Hz**, so at 61%
-a channel draws its *full-white* 3.98 A for 61% of each 2.5 ms period and nothing
+a channel draws its *full-white* 4.0 A for 61% of each 2.5 ms period and nothing
 for the rest. What reaches the bus is set by a current divider, and it is a **phasor** divider
 — adding the resistance to the reactance as scalars gives the wrong
 fraction. The channel's 3.3 mF bank is **0.121 Ω** at
@@ -591,7 +589,7 @@ rail's own sag is counted.
 |---|---|---|
 | ESP32-C6, TX peak | 382 | datasheet Table 13, 802.11b at 20.5 dBm, 100% duty — pessimistic as a continuous figure |
 | Ethernet module | 152 | 0.50 W at 3.3 V |
-| 2x MAX3485 | ~29 | 2 mA I_CC each **plus ~12 mA each of line current** — a driver with DE asserted pulls load current 100% of the time |
+| 2x MAX3485 | ~28 | 2 mA I_CC each **plus ~12 mA each of line current** — a driver with DE asserted pulls load current 100% of the time |
 | HUSB238A VDD | 4.5 | active sink |
 | INA226 + pull-ups | ~6 | |
 | **total** | **~574 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
@@ -739,7 +737,7 @@ At the top end the swap helps as well: the pin lands at 24.85-27.75 V against th
 22.4 V threshold and the 29.4 V recommended maximum, with more room at both ends
 than the MOSFET gave, because V_BE is smaller than V_GS. Worked at the binding
 corner — a +5% bus against the lowest emitter the spread allows, 25.65 − 0.80 =
-24.85 V — V_CE is **12.95 V** in normal operation and **33.25 V** during a 58.1 V
+24.85 V — V_CE is **12.95 V** in normal operation and **39.65 V** during a 64.5 V
 TVS clamp, against the part's **160 V**
 V_CEO — where the BSS138's 50 V was only 1.5× that event.
 
@@ -771,8 +769,8 @@ The cost is real and worth stating plainly: **100 mW** of board heat against
 36 V contract, where 9 V stands across it — 28% of its 62.5 mW rating to 40%. At the corner this document works
 everywhere else, a +5% bus against the Zener's low bin, R44 sees 37.8 − 25.65 =
 12.15 V and **45.6 mW, 73%** of the rating at 70 °C, above which a thick-film
-0402 derates further. The 50 V limit is never approached. During a 58.1 V TVS
-clamp R44 sees 32.45 V and **325 mW, 5.2x rating** — survivable because the
+0402 derates further. The 50 V limit is never approached. During a 64.5 V TVS
+clamp R44 sees 38.85 V and **466 mW, 7.5x rating** — survivable because the
 event is microseconds and the part's thermal mass is not, but it is the same
 corner Q3's V_CE is worked at and it belongs here too. Lowering a resistor with a
 fixed voltage across it necessarily heats it more. 3.24 kΩ is where the margin stops depending on an unpublished
@@ -811,7 +809,7 @@ once:
 | VBUS pin current **330 µA typ / 800 µA max** | 4.5 mA |
 
 The requirement drops by 1.35 V and the current by **5.6x**, and 3.91 V now
-clears it by 0.74 V. That alone would do — but it is not what decides, because
+clears it by 0.76 V. That alone would do — but it is not what decides, because
 two *threshold* figures sit above the minimum and the follower misses both. Sequencing makes this safe: nothing has to happen until
 firmware pulls EN_N low, and by then the 5 V and 3.3 V rails are both up, because
 they are fed from the bus directly.
@@ -828,11 +826,11 @@ well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 | | Follower alone | With D14 |
 |---|---|---|
 | Pin at a 4.75 V bus | 3.91 – 4.11 V | **4.19 V** typ, **4.11 V** at the R_DS corner |
-| Against the 3.15 V minimum | +0.74 V | +1.04 V |
+| Against the 3.15 V minimum | +0.76 V | +1.04 V |
 | Against the 4.0 V thresholds | **−0.09 V at the low corner** | +0.19 V typ, **+0.11 V** at the R_DS corner |
 
 So D14 is not rescuing a part that fails its supply minimum — the follower clears
-that by 0.74 V since VDD was tied to 3V3. It is buying the margin on the two 4.0 V
+that by 0.76 V since VDD was tied to 3V3. It is buying the margin on the two 4.0 V
 *threshold* figures, which the follower alone misses at its low corner.
 
 **Two residuals at the bottom of vSafe5V, and they are tighter than they look.**
@@ -890,7 +888,7 @@ OVP genuinely cannot fire, because VBUS_OV is 120% of the requested voltage —
 also why 48 V is I²C-only while GPIO mode stops at 28 V.
 
 Accepted, because it is inherent to the topology rather than a mistake — but it
-changes what protects the bus. The **SMAJ36CA TVS is now the only fast
+changes what protects the bus. The **SMCJ40CA TVS is now the only fast
 overvoltage protection**, with the 470 k/27 k ADC divider as a slow software
 check. Those two were added for surge and brownout; they are now carrying OVP as
 well.
@@ -1214,8 +1212,9 @@ Two boundaries worth knowing rather than discovering:
   channel, because t_start scaled with capacitance. Under dV/dt control the ramp
   is **165 ms as programmed** — though in practice the thermal regulation loop
 runs the ramp rather than C_dVdT, see Channel switching and inrush; only the
-inrush scales, to 1.44 A per channel
-  at 20 modules. The binding constraint is power again.
+inrush scales, and at the headline 20-module
+  wall that is 0.72 A per channel — 10 modules and 3.3 mF each. The binding
+  constraint is power again.
 
 - **Frame rate past ~24 modules degrades too**, if the capacitance problem were
   solved: 24 -> 76 fps, 30 -> 61 fps (at the floor), 40 -> 46 fps (below it).
@@ -1247,7 +1246,7 @@ Active parts. Passives are listed below the table.
 | D1 | **BZT52C27** | C173421 | 1 | clamps the Q3 follower base at 25.65-28.35 V — see the PD front end; a 20 V part here drops every 36 V contract | 0.021 |
 | D2 | SS36 | C2903825 | 1 | TPS54360B catch diode (required, p.26) | 0.063 |
 | D3-D6 | H5VL10B | C7420372 | 4 | ESD on USB-C D+/D- and CC1/CC2 | 0.0065 |
-| D7-D9 | SMAJ36CA | C19077551 | 3 | 36 V TVS, clamps at 58.1 V — the eFuse is 67 V absolute (1.15x), but the 60 V bus parts are only **1.03x** | 0.037 |
+| D7-D9 | **SMCJ40CA** | C19077610 | 3 | **40 V TVS**, which stands off the 37.8 V a compliant PDO may hold indefinitely where a 36 V part does not. Its 0.66 Ω dynamic resistance keeps the node under the 60 V TPS54360B and SS36 to **16.5 A** of surge. The residual is J1 at 48 V, which no 37.8 V-standoff TVS can protect — see ESD and surge protection | 0.124 |
 | D10-D13 | SMAJ7.0CA | C19077529 | 4 | 7 V TVS on the A/B pair, 2 per output — clamps at **12 V**, under the MAX3485's ±15 V | 0.043 |
 | D14 | RB751V-40 | C7502691 | 1 | 5V rail → HUSB238A VBUS pin at vSafe5V | 0.018 |
 | D15,D16 | **MBRS3100T3G** | C12790 | 2 | **cathode on each channel output, anode to GND** — §11.1 wants a Schottky there to absorb the negative spike the output inductance generates when the eFuse interrupts. 100 V rather than the 60 V SS36 for **leakage**, not breakdown: these sit at 36 V reverse continuously, and the SS36 would run at 60% of its rating for 0.5 mA against this part's 50 µA | 0.21 |
@@ -1410,7 +1409,7 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMAJ36CA** | 3 | Vrwm 36 V, Vbr 40.0-44.2 V, **Vc 58.1 V**. Clamps under the eFuse's 67 V absolute, by 1.15x; the parts it does *not* clear are the TPS54360B and the SS36 at 60 V, and **J1 itself at 48 V**, which is the worst of the three. **Vrwm is 36 V against a bus that may sit at 37.8 V indefinitely** — leakage above Vrwm is unspecified, so this is not a part that is comfortably off. See below |
+| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMCJ40CA** | 3 | **Vrwm 40 V**, so it is genuinely off at the PDO's +5%; Vbr 49.1 V, R_d 0.66 Ω. Stays under the 60 V TPS54360B and SS36 to 16.5 A of surge and under the eFuse's 67 V to 27 A. The residual is **J1 at 48 V**, which no 37.8 V-standoff TVS can protect. See below |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
@@ -1427,32 +1426,44 @@ the cable side is galvanically isolated, and Bob Smith termination is inside the
 jack rather than something to add. Shield-to-GND bonding is the module's
 arrangement, not ours.
 
-**SMAJ36CA** clamps at **58.1 V**, under the TPS16630's **67 V** absolute
-maximum (1.15x). It is easy to conclude that no part both stays off at 36 V and
-clamps below 60 V, and to lean on a body diode to excuse a 64 V clamp instead;
-both halves of that are wrong, and the catalogue settles it in one search.
+**The standoff has to clear 37.8 V, and comparing headline clamping voltages is
+how this was got wrong.** A compliant PD fixed PDO is ±5%, so a source may sit at
+**37.8 V indefinitely**. Against a 36 V standoff that is *above* Vrwm, where
+leakage is unspecified and strongly temperature-dependent — µA at 25 °C,
+potentially mA at 85 °C — meaning standby draw and self-heating on three parts.
+A 40 V standoff clears it outright, and `P1-overvoltage` fires on a 36 V part
+here precisely because the knowledge base records Vrwm rather than Vc.
 
-But it is not comfortable either. A compliant PD fixed PDO is **±5%**, so a
-source may sit at **37.8 V indefinitely** against Vrwm = 36 V. Checking only
-Vbr(min) = 40 V was the wrong criterion: above Vrwm the leakage is unspecified
-and strongly temperature-dependent — µA at 25 °C, potentially mA at 85 °C — which
-means standby draw and self-heating on three parts.
+The objection to a 40 V part was its headline **64.5 V** clamp against the 36 V
+part's 58.1 V. That comparison is invalid: **each figure is quoted at that
+part's own rated surge** — 6.9 A for a 400 W SMA, 23.3 A for a 1.5 kW SMC. What
+decides the board is the clamp at the current the node can actually deliver, and
+that follows the dynamic resistance R_d = (Vc − Vbr) / Ipp:
 
-**The 58.1 V against 60 V squeeze did not go away with the FET — it moved.** The
-channel switch is 67 V absolute at 1.15x, but the clamp sits on the
-*unswitched* bus, where the **TPS54360B** (60 V absolute input), the **SS36**
-catch diode (60 V) and **J1** share the node. For the first two it is still
-**1.03x**, measured at 10/1000 µs, and an 8/20 µs surge drives the clamp higher.
+| | SMAJ36CA (SMA, 400 W) | **SMCJ40CA (SMC, 1.5 kW)** |
+|---|---|---|
+| Vrwm | 36 V — **under the 37.8 V bus** | **40 V** |
+| R_d | 2.01 Ω | **0.66 Ω** |
+| clamp at 10 A | 64.3 V | **55.7 V** |
+| reaches 60 V at | 7.8 A | **16.5 A** |
+| reaches the eFuse's 67 V at | 11.3 A | **27.1 A** |
 
-**J1 is worse than either, and this section used to omit it.** The CX90B-16P is
-rated **48 V AC/DC**, so a 58.1 V clamp event puts it at **0.83x** — the only
-part on the node actually over its rating. It is a 10/1000 µs event on a
-connector with no semiconductor junction, which is why this is a durability
-question rather than a destruction one, but it belongs in the list and the
-honest reading is that the clamp level is chosen against the silicon and the
-connector is along for the ride. Changing the FET
-fixed the part that was no longer the constraint. **Unresolved**, and the lever
-is a lower-clamping TVS or a 100 V-class buck, not another FET.
+**Fitted: SMCJ40CA (C19077610).** It is the better part on every axis that
+decides this board — it stands off the bus, and it stays under the 60 V
+TPS54360B and SS36 to **16.5 A** where the SMA part crossed at 7.8 A. It costs
+0.12 against 0.04, a larger SMC footprint on three placements, and a V_BR that
+starts 4 V higher. It also has **more** stock, which is not why it was chosen but
+is worth knowing.
+
+**J1 is the part this does not fully rescue.** The CX90B-16P is rated **48 V
+AC/DC**, and 48 V is reached at 0 A of surge on the SMA part's 44.2 V V_BR and at
+−1.7 A on the SMC's 49.1 V — that is, the SMC does not conduct at all until the
+node is already past J1's rating. No 37.8 V-standoff avalanche TVS can protect a
+48 V connector, because its own breakdown has to sit above the bus and below
+nothing in particular. The event is 10/1000 µs on a connector with no
+semiconductor junction, so this is a durability question rather than a
+destruction one — but it is the residual, and it is the connector rather than
+the silicon.
 
 **The body diode does not protect against input-side surges**, and with the
 N-channel switch it points the other way than this section used to assume. Its
@@ -1466,10 +1477,12 @@ finding in Known electrical limits.
 ## Mechanical envelope
 
 **Target: no larger than an iPhone 16 (71.6 x 147.6 mm), ideally 2/3 the
-height — so 71.6 x 98 mm, 7045 mm2.**
+height — so 71.6 x 98 mm, 7017 mm2.**
 
-Component area estimates at **~2370 mm2**, counting the passives individually
-rather than as an allowance — the itemised list is in the BOM. The Ethernet
+Component area estimates at **~2480 mm2**, counting the passives individually
+rather than as an allowance — the itemised list is in the BOM. The three bus TVS
+moved from SMA to SMC with the 40 V part, which is about 37 mm² each in land
+pattern and 111 mm² of the total. The Ethernet
 module made the board slightly *bigger*, 575 mm2 against the ~496 it replaced.
 At 45% utilisation (2-layer, relaxed) that is roughly
 **72 x 74 mm**; at 60% (4-layer, dense) about 72 x 55 mm. The target is still met
@@ -1709,8 +1722,10 @@ the price of the part — thermal headroom goes from 1.29x to **1.19x**.
 **The ramp is the device's own problem now, by design.** There is no SOA
 calculation to do and no power limit to set: the part regulates its own junction
 temperature through the ramp, and TI characterises it powering up into **15 mF**
-(Figure 16), against the 3.3 mF per channel here. The energy is ½CV² = **2.14 J**
-either way; what changed is that the datasheet takes responsibility for it.
+(Figure 16, at V_IN = 24 V), against the 3.3 mF per channel here. The energy is
+½CV², and the two are **not** equal: TI's case is **4.32 J** against **2.14 J**
+here, so this design sits 2.0x inside the demonstrated one. What changed is that
+the datasheet takes responsibility for it.
 
 The **PowerPAD carries that heat** and must be soldered to a pour — see Layout
 constraints.
@@ -1781,7 +1796,7 @@ any of them does not work. Cited so they can be checked rather than trusted.
 | Part | Value | Source |
 |---|---|---|
 | BOOT cap, BOOT→SW | 100 nF X7R ≥10 V | p.27 §8.2.2.7 "must be connected for proper operation" |
-| RT/CLK to GND | **100 kΩ 1% → 964 kHz** | p.14 §7.3.9 — the pin **cannot float**. The equation gives 963.7 kHz; "1 MHz" elsewhere is that rounded |
+| RT/CLK to GND | **100 kΩ 1% → 964 kHz** | p.14 §7.3.9 — the pin **cannot float**. The equation gives 963.3 kHz; "1 MHz" elsewhere is that rounded |
 | Feedback divider | 53.6 kΩ / 10.2 kΩ 1% (VREF 0.8 V) | p.28 §8.2.2.9 |
 | COMP network | ~4.7 kΩ + 33 nF series, 150 pF parallel | p.13 §7.3.5, eq. 44-51 |
 | CIN | ≥3 µF **effective after DC-bias derating**, 100 V X7R | p.26 §8.2.2.6 |
@@ -2334,15 +2349,16 @@ preference:
 | **all eight, one colour, 25%** | **0.12 W** | **the budgeted case** |
 
 The budget carries **0.12 W**, giving a board total of **4.02 W against 4.80 W —
-1.19× headroom**. Budgeting the 70% tricolour case instead costs 1.01 W, which
-puts the board at 5.03 W and 1.05× *over* — but that case is a floodlight,
+1.19× headroom**. Budgeting the 70% tricolour case instead **replaces** that row
+rather than adding to it — 4.02 − 0.12 + 1.01 = **4.91 W**, or **1.02× over
+capacity**. That case is a floodlight,
 not a status display, and nothing about indicating six power levels and two fault
 states needs white at 70%.
 
 **What makes this safe is that firmware cannot be allowed to produce the
 uncapped case**, since it would be a single API call away. The cap belongs in the
 LED driver, not in the display logic that calls it. The board survives 1.01 W
-briefly — it is 1.05× of a steady-state figure, not an absolute maximum — but not
+briefly — it is 1.02× of a steady-state figure, not an absolute maximum — but not
 as an operating point, and certainly not at the 45 °C ambient this section
 already calls over budget.
 
@@ -2464,7 +2480,7 @@ real figure is worse and 2.43 A per channel is a floor, not a ceiling.
 **Thermal ambient is unstated.** The 0.08-0.1 W/cm² and the **1.19x** headroom
 assume a 40 °C rise from **25 °C** ambient. Inside an enclosure on a soundwall
 that is optimistic: at 45 °C ambient the allowed rise halves, capacity falls to
-roughly 2.4 W, and the board is at **0.58x** — over budget, not merely tight.
+roughly 2.4 W, and the board is at **0.60x** — over budget, not merely tight.
 This is the largest unquantified risk left in the thermal section.
 
 **The channel body diodes back-feed the USB-C receptacle.** An N-channel
@@ -2511,11 +2527,13 @@ therefore not reliably obtainable**, and the protection list has been corrected
 to say so. Closing this needs either a tighter-tolerance controller or a lower
 flash peak, i.e. fewer modules per channel.
 
-**The TVS and the eFuse's OVP now overlap, which is better than the ordering the
-previous part had.** The SMAJ36CA's V_BR is **40.0-44.2 V** and the TPS16630's OVP
-cut-off lands between **39.1 V and 42.3 V** with 1% resistors. So the eFuse often
-trips first — at its low corner it is a full 0.9 V below the TVS's breakdown
-minimum — rather than always after it.
+**The eFuse's OVP now trips before the TVS conducts at all, which is the
+ordering you want.** The SMCJ40CA's V_BR is **44.4-49.1 V** and the TPS16630's
+OVP cut-off lands between **39.1 V and 42.3 V** with 1% resistors. The whole OVP
+band sits below the whole breakdown band, so the eFuse always sheds the load
+before the clamp starts dissipating — where the previous 36 V part's 40.0-44.2 V
+breakdown overlapped the OVP window and the order depended on which corner each
+landed at.
 
 **It is still not a clean ordering, and OVP could not fully fix it anyway.** OVP
 sheds the **channels**, while the TVS, the rails and the PD front end all sit
@@ -2609,7 +2627,7 @@ See Netlist for what is in it and what the clean report does not mean.
    for their own reasons.
 
 7. **No overvoltage protection above 28 V**, inherent to the HUSB238A topology.
-    The SMAJ36CA and the ADC divider carry it.
+    The SMCJ40CA and the ADC divider carry it.
 
 8. **Connector orientation is handled mechanically** — picoMAX is polarised and
     each module sits in a hard shell. The residual risk is a mis-wired cable, and
@@ -2771,11 +2789,10 @@ Kept so they are not re-opened:
   28% of rating, so the connector stopped being a binding constraint.
   (Supersedes the Wurth WR-PHD 2.54 mm at 3 A, and the Micro-Fit alternative.)
 - **Catch diode** — SS36 (C2903825), 3.0 A / 60 V. On the **controller** it is
-  the TPS54360B's catch diode at **0.60 A** average (20% of rating) for the
-  0.7 A rail load used everywhere else in this document; an 0.86 A figure
-  appeared here from a 1.0 A load assumption that nothing else uses. The 1.86 A /
-  62% figure is the **module's** diode and does not belong in the controller's
-  list.
+  the TPS54360B's catch diode at **0.60 A** average (20% of rating), for the
+  0.7 A rail load used everywhere else in this document. The 1.86 A / 62%
+  figure belongs to the **module's** diode, not the controller's — two live
+  parts, one part number, which is why that one is named here.
 - **Rails** — TPS54360B to 5 V, SY8089 to 3.3 V. Chosen for ~100% duty
   pass-through so a 5 V bus still works. See Rail architecture.
 - **Bus voltage and budget** — 36 V / 180 W, the highest EPR PDO the modules

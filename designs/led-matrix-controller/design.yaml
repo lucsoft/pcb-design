@@ -106,18 +106,3 @@ ignore:
   - C1-single-pin-net@UART_TX
   - C1-single-pin-net@UART_RX
 
-  # D7/D8/D9, the SMAJ36CA bus TVS. Their Vrwm is 36 V and a compliant fixed
-  # PDO may sit at 37.8 V indefinitely, so P1 is RIGHT and the finding is the
-  # one 'ESD and surge protection' already calls unresolved: above Vrwm the
-  # leakage is unspecified and strongly temperature-dependent, which means
-  # standby draw and self-heating on three parts.
-  #
-  # It is suppressed rather than fixed because the fix is not a part swap. A
-  # 40 V-standoff part clears 37.8 V and clamps at 64.5 V, over the 60 V
-  # TPS54360B and SS36 sharing the node; the lever is a 100 V-class buck, not
-  # another TVS. Scoped to the three pins, so P1 still guards every other part
-  # on the same 37.8 V bus - which is what caught this in the first place,
-  # once the records stopped recording the CLAMPING voltage as vMax.
-  - P1-overvoltage@D7.1
-  - P1-overvoltage@D8.1
-  - P1-overvoltage@D9.1

@@ -494,7 +494,11 @@ class Check:
         # "Withstand Voltage" ahead of "Voltage Rating" would silently change
         # which number the checker believes, with no diff a reader would
         # recognise as a ratings change.
-        for key in ("Voltage Rating", "Rated Voltage", "Voltage - Rated"):
+        # The exact keys the knowledge base actually uses, counted rather than
+        # guessed: "Voltage Rating" 44 times, the other two once each. Two of
+        # the names this list first carried appeared zero times, which is the
+        # kind of thing a plausible-looking tuple hides.
+        for key in ("Voltage Rating", "Voltage Rating (Max)", "Voltage - Max"):
             m = self.RATING.search(str(params.get(key, "")))
             if m:
                 return float(m.group(1))

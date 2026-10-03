@@ -104,9 +104,9 @@
   "gge8": {
     "props": {
       "Designator": "D7",
-      "device_name": "SMAJ36CA",
-      "value": "TVS 36V",
-      "Supplier Part": "C19077551"
+      "device_name": "SMCJ40CA",
+      "value": "TVS 40V",
+      "Supplier Part": "C19077610"
     },
     "pins": {
       "1": "VBUS",
@@ -1060,9 +1060,9 @@
   "gge78": {
     "props": {
       "Designator": "D8",
-      "device_name": "SMAJ36CA",
-      "value": "TVS 36V",
-      "Supplier Part": "C19077551"
+      "device_name": "SMCJ40CA",
+      "value": "TVS 40V",
+      "Supplier Part": "C19077610"
     },
     "pins": {
       "1": "CH1_36V",
@@ -1248,9 +1248,9 @@
   "gge92": {
     "props": {
       "Designator": "D9",
-      "device_name": "SMAJ36CA",
-      "value": "TVS 36V",
-      "Supplier Part": "C19077551"
+      "device_name": "SMCJ40CA",
+      "value": "TVS 40V",
+      "Supplier Part": "C19077610"
     },
     "pins": {
       "1": "CH2_36V",

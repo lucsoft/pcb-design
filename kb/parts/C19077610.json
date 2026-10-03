@@ -1,0 +1,51 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C19077610",
+  "@type": "Component",
+  "lcscId": "C19077610",
+  "mpn": "SMCJ40CA",
+  "manufacturer": "R+O",
+  "description": "64.5VC Clamp 23.3A@10/1000us Ipp TVS DIODE SMC(DO-214AB)",
+  "category": "diode",
+  "package": "SMC(DO-214AB)",
+  "stock": 20190,
+  "priceUsd": 0.1242,
+  "parameters": {
+    "Clamping Voltage": "64.5V",
+    "Operating Temperature": "-55℃~+150℃",
+    "Peak Pulse Current (Ipp)": "23.3A@10/1000us",
+    "Peak Pulse Power Dissipation (Ppp)": "1.5kW@10/1000us",
+    "Number of Channels": "1",
+    "Voltage - Breakdown": "49.1V",
+    "type": "TVS",
+    "Reverse Leakage Current (Ir)": "1uA",
+    "Polarity": "Bidirectional",
+    "Reverse Stand-Off Voltage (Vrwm)": "40V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/63434cf44d11833c6d7a145dda2ad39c.pdf",
+  "retrieved": "2026-10-03",
+  "tier": null,
+  "pins": [
+    {
+      "number": "1",
+      "name": "A1",
+      "type": "passive",
+      "vMax": 40.0
+    },
+    {
+      "number": "2",
+      "name": "A2",
+      "type": "passive",
+      "vMax": 40.0
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "two-terminal BIDIRECTIONAL TVS in SMC(DO-214AB); pin numbers A1/A2 from the EasyEDA Pro symbol via tools/eda.py. No cathode band and no polarity. vMax is Vrwm = 40 V, the continuous limit - NOT the 64.5 V clamping voltage, which is what the part produces at its own 23.3 A rated surge."
+  }
+}
