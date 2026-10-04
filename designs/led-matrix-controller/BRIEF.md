@@ -1,3 +1,12 @@
+---
+type: Brief
+title: "LED matrix controller: original brief"
+description: Verbatim requirement snippets from the conversation that started the design.
+tags: [led-matrix, requirements]
+status: stable
+generated: { by: human:lucsoft, at: 2026-10-01T22:49:49+02:00 }
+---
+
 Project: Driver Controller for LED Matrix Module System. Allowing for Ethernet controlling or directly via USB.
 
 snippets from chat:

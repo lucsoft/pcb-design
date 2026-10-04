@@ -1,3 +1,29 @@
+---
+type: Design Record
+title: LED matrix controller
+description: USB PD EPR controller driving chained LED matrix modules over a high-voltage bus, with an ESP32-C6 reachable over Ethernet or USB.
+tags: [led-matrix, usb-pd, esp32-c6, w5500, efuse]
+status: stable
+generated: { by: human:lucsoft, at: 2026-10-03T08:32:59+02:00 }
+verified:
+  - { by: process:erc, at: 2026-10-04T10:33:16Z }
+  - { by: process:consistency, at: 2026-10-04T10:33:16Z }
+stale_after: 2027-01-02T00:00:00Z
+sources:
+  - id: brief
+    resource: /designs/led-matrix-controller/BRIEF.md
+    title: The requirements this design answers
+  - id: netlist
+    resource: /designs/led-matrix-controller/netlist.json
+    title: The EasyEDA import artefact every count in this document derives from
+  - id: design-yaml
+    resource: /designs/led-matrix-controller/design.yaml
+    title: Rails, buses and suppressed rules
+  - id: kb
+    resource: every part record under /kb/parts/ this design cites
+    title: Component knowledge base, one record per LCSC part
+---
+
 # LED matrix controller — status
 
 Design brief in `BRIEF.md`. Nothing laid out yet. Requirements are settled and

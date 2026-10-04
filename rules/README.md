@@ -1,3 +1,16 @@
+---
+type: Rule Catalogue
+title: ERC rule catalogue
+description: Every rule tools/erc.py can report, every severity each one emits, and what the checker does not cover.
+tags: [erc, rules]
+status: stable
+generated: { by: human:lucsoft, at: 2026-10-03T08:32:59+02:00 }
+sources:
+  - id: erc-impl
+    resource: /tools/erc.py
+    title: The checker this catalogue documents
+---
+
 # ERC rule catalogue
 
 Every rule `tools/erc.py` can report. Suppress one for a design by listing its

@@ -1,3 +1,16 @@
+---
+type: Reference
+title: Assemblies
+description: A board treated as one part, with an operating envelope derived from its components rather than read off a datasheet.
+tags: [knowledge-base, assemblies]
+status: stable
+generated: { by: human:lucsoft, at: 2026-10-01T22:49:49+02:00 }
+sources:
+  - id: module-v3
+    resource: /kb/modules/led-matrix-module-v3.json
+    title: The assembly record this directory describes
+---
+
 # Assemblies
 
 `kb/parts/` holds facts about single components, each traceable to one

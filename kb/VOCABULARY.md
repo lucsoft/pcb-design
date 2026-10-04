@@ -1,3 +1,16 @@
+---
+type: Vocabulary
+title: Knowledge base vocabulary
+description: Pin types, provenance levels and part rules used by every record under kb/parts/.
+tags: [knowledge-base, provenance, pin-types]
+status: stable
+generated: { by: human:lucsoft, at: 2026-10-01T22:49:49+02:00 }
+sources:
+  - id: context
+    resource: /kb/context.jsonld
+    title: The JSON-LD context these terms resolve through
+---
+
 # Knowledge base vocabulary
 
 Every part in `kb/parts/` is a JSON-LD document keyed by its LCSC C-number.

@@ -1,3 +1,12 @@
+---
+type: Playbook
+title: PCB design workflow
+description: Turning a board idea into an EasyEDA-importable schematic built from verified LCSC parts.
+tags: [workflow, erc, lcsc, easyeda, provenance]
+status: stable
+generated: { by: human:lucsoft, at: 2026-10-03T08:18:20+02:00 }
+---
+
 # PCB design workflow
 
 Turning a board idea into a schematic that imports into EasyEDA Pro, built
@@ -306,18 +315,22 @@ Neither one is evidence the board works. That takes a physical board.
     .
     ├── shell.nix              dev shell (python+matplotlib, node, poppler, jq)
     ├── .mcp.json              JLCPCB/LCSC MCP registration
+    ├── index.md               OKF bundle root; declares okf_version
     ├── kb/
+    │   ├── index.md           OKF directory listing
     │   ├── context.jsonld     JSON-LD vocabulary, extends schema.org
     │   ├── VOCABULARY.md      pin types, provenance levels, part rules
     │   ├── parts/C*.json      one document per LCSC part
     │   ├── modules/           assemblies: envelopes derived from their parts
     │   └── datasheets/        cached PDFs and extracted text
-    ├── designs/<name>/
-    │   ├── README.md          decisions, rationale, open questions
-    │   ├── design.yaml        rails, buses, suppressed rules
-    │   ├── netlist.json       the EasyEDA import artefact
-    │   ├── figures.py         regenerates the figures
-    │   └── figures/           generated SVG+PNG, light and dark
+    ├── designs/
+    │   ├── index.md           OKF directory listing
+    │   └── <name>/
+    │       ├── README.md      decisions, rationale, open questions
+    │       ├── design.yaml    rails, buses, suppressed rules
+    │       ├── netlist.json   the EasyEDA import artefact
+    │       ├── figures.py     regenerates the figures
+    │       └── figures/       generated SVG+PNG, light and dark
     ├── rules/README.md        ERC rule catalogue and its limits
     ├── tools/
     │   ├── kb.py              knowledge base: add, set-pins, check, list
@@ -330,8 +343,9 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── consistency.py     check a document against the netlist it describes
     │   ├── xref.py            check a document's "see X" pointers resolve
     │   ├── stock.py           check a BOM against live LCSC stock
+    │   ├── okf.py             check the docs against OKF v0.2 conformance
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
-    └── tests/test_erc.py      regression tests
+    └── tests/                 regression tests: erc, xref, okf
 
 ## Conventions
 
@@ -351,6 +365,83 @@ rather than mils.
 This is not cosmetic. AWG in a German project means every reader converts in
 their head before they can sanity-check a number, and conversions are where
 mistakes hide.
+
+## Documentation format
+
+The prose in this repository is an **Open Knowledge Format (OKF) v0.2**
+bundle — markdown with YAML frontmatter, specified by
+`GoogleCloudPlatform/knowledge-catalog` in `okf/SPEC.md`. The point is not
+tidiness: §5 gives frontmatter fields for provenance, verification and
+staleness, which is the discipline this project already enforced by hand in
+`kb/parts/` and had no way to express about its *documents*.
+
+    ./tools/okf.py                  # the repository root is the bundle
+    ./tools/okf.py --strict         # warnings fail too
+    ./tools/okf.py --json           # machine-readable, for CI
+    python3 tests/test_okf.py
+
+Exit status is 1 on any error, so it gates a build the way `erc.py` does.
+
+**Only `.md` files are in scope.** `kb/parts/*.json` and `kb/modules/*.json`
+are JSON-LD, not markdown, and OKF says nothing about them — `kb.py check`
+and `kb/context.jsonld` remain what validates those. Adopting OKF did not
+and must not turn the machine-read knowledge base into prose.
+
+Every non-reserved `.md` opens with frontmatter whose only required key is
+`type`. Beyond that this bundle uses:
+
+| Field | What it carries here |
+|---|---|
+| `title`, `description` | what `index.md` entries are generated from |
+| `status` | `draft` / `stable` / `deprecated`; absent means `stable` |
+| `generated` | `{ by: <actor>, at: <datetime> }` — who produced the content |
+| `verified` | a list of `{ by, at }` confirmations, independent of `generated` |
+| `sources` | what the document derives from, each with a `resource` |
+| `stale_after` | an absolute instant after which the content needs re-reading |
+
+**`verified` is a claim, not decoration.** §5.3 derives the highest trust
+tier — *human-reviewed* — from a `human:` actor and nothing else, so writing
+one in because a document looks finished is the documentation equivalent of
+inventing an LCSC part number. Record a machine confirmation as
+`process:erc` or `process:consistency` when that tool has actually been run
+and is green; leave `verified` off entirely when nobody has checked. Absence
+is a meaningful state in OKF and must stay an honest one.
+
+**`stale_after` is for content that decays on a clock, not for everything.**
+A design record carrying a BOM gets one, because `stock` and `priceUsd` go
+stale and `stock.py` is the thing that re-confirms them; the convention here
+is three months from the `retrieved` date in `kb/`. A vocabulary or a rule
+catalogue gets none — it is wrong when the code changes, not when a date
+passes. Moving `stale_after` forward without re-reading the content is how
+the field stops meaning anything.
+
+`index.md` and `log.md` are reserved (§3.1). This bundle has `index.md` at
+the root, in `kb/` and in `designs/`, and the root one carries
+`okf_version: "0.2"` — §8 makes that the only frontmatter key permitted in
+any index. There is no `log.md` anywhere, deliberately: git already records
+what changed and why, and a hand-maintained duplicate of it in prose is the
+same mistake as retiring a value in a document instead of a commit message.
+
+The rules, and every severity each one emits:
+
+| id | severity | fires when |
+|---|---|---|
+| `O1-no-frontmatter` | error | a concept document has no parseable frontmatter block, or opens one it never closes (§11.1) |
+| `O2-no-type` | error | frontmatter carries no non-empty `type` (§11.2) |
+| `O3-index-structure` | error, warning, info | an `index.md` carries frontmatter it may not, declares an unknown `okf_version`, or has no section heading (§8) |
+| `O4-log-structure` | error | a `log.md` date heading is not ISO `YYYY-MM-DD`, or it carries frontmatter (§9) |
+| `O5-actor-format` | warning | `generated.by` or `verified[].by` is not `human:<id>`, `process:<id>` or `<producer>/<version>` (§7) |
+| `O6-timestamp-format` | warning | a timestamp has no explicit UTC offset, or is a bare date (§5) |
+| `O7-source-no-resource` | error, warning | a `sources` entry has no `resource`, or `sources` is not a list (§5.1) |
+| `O8-status-unknown` | warning | `status` is not one of the three in §5.4 |
+| `O9-stale` | warning | `now >= stale_after` (§5.5) |
+| `O10-footnote-unmatched` | info | a footnote label matches no `sources[].id`, in a document that declares some (§5.1) |
+
+What it deliberately does **not** report, because §11 forbids a consumer
+from rejecting a bundle over them: unknown `type` values, unknown extra
+frontmatter keys, missing optional families, broken cross-links, and a
+directory with no `index.md`. A checker that flagged those would be
+non-conformant itself, and would fire constantly on correct documents.
 
 ## Version control
 
@@ -633,7 +724,8 @@ likely still working — and `ds.py fetch --url` always accepts a URL directly.
 3. Add a row to the table in `rules/README.md`, listing **every** severity the
    rule can emit. A rule that reports at three and documents one tells a reader
    the fail-closed branch does not exist.
-4. Re-run the suite **and `erc.py designs/demo-ldo`**.
+4. Re-run the suite **and `erc.py designs/demo-ldo`**. A rule that
+   touches a document rather than a netlist re-runs `okf.py` too.
 
 **Two probes, not one.** A *rename probe* (break the thing and require a
 report) exercises the matching; an *inverse probe* (inject a shape the tool has
@@ -661,7 +753,8 @@ same.
 
 Rule ids are prefixed by area — `S` structural, `K` knowledge base,
 `C` connectivity, `E` electrical, `P` power, `B` bus, `Q` sourcing,
-`R-` part-specific.
+`R-` part-specific, `O` OKF conformance. The `O` rules are catalogued under
+Documentation format; `rules/README.md` is the ERC catalogue and stays that.
 
 ### Keeping severities honest
 
