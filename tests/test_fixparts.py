@@ -41,7 +41,7 @@ def make(path, parts, with_device=True):
         h["ticket"] = t
         recs.append((h, b))
 
-    add({"type": "DOCHEAD"}, {"docType": "SCHEMATIC", "uuid": "sch"})
+    add({"type": "DOCHEAD"}, {"docType": "SCH_PAGE", "uuid": "sch"})
     for i, (d, lcsc, inst) in enumerate(parts):
         add({"type": "COMPONENT", "id": f"c{i}"},
             {"partId": f"P{i}.1", "x": i * 300, "y": -100})
@@ -68,7 +68,12 @@ def make(path, parts, with_device=True):
             add({"type": "META", "id": f"meta{i}"},
                 {"title": f"P{i}", "attributes": {
                 "Supplier Part": lcsc, "JLCPCB Part Class": "Extended Part",
-                "Footprint": f"fpuuid{i}", "Value": f"DEVICE{i}"}})
+                "Footprint": f"fpuuid{i}", "Value": f"DEVICE{i}",
+                # keys the instance has no attribute for at all -- what
+                # --complete has to create, and the two that must not be
+                # created however complete the copy gets
+                "Description": f"DESC{i}", "RDS(on)": "30.44m",
+                "Name": "={Manufacturer Part}", "Designator": "U?"}})
 
     lines = [f"{json.dumps(h, separators=(',', ':'))}||"
              f"{json.dumps(b, separators=(',', ':'))}|" for h, b in recs]
@@ -148,6 +153,36 @@ def main():
         check("the template's fields are left alone too",
               b["cls2"]["value"] == "" and b["fp2"]["value"] is None,
               f'{b["cls2"]} {b["fp2"]}')
+
+    # --- --complete: create what the instance lacks -----------------------
+    comp = tmp / "complete.epro2"
+    rc, log = run(src, "--complete", "-o", comp)
+    check("--complete succeeds", rc == 0, log)
+    if comp.exists():
+        a2, b2 = read(src), read(comp)
+        check("every original record survives unchanged",
+              all(k in b2 for k in a2) and
+              all(a2[k] == b2[k] for k in a2
+                  if not (b2[k].get("key") in ("Supplier Part", "JLCPCB Part Class",
+                                               "Footprint"))),
+              "an original record was altered")
+        made = {k: v for k, v in b2.items() if k not in a2}
+        check("records were added, not replaced", len(made) > 0 and len(b2) > len(a2))
+        keys = {v.get("key") for v in made.values()}
+        check("Name is never created from the device's formula",
+              "Name" not in keys, str(keys))
+        check("Designator is never created from the device's template",
+              "Designator" not in keys, str(keys))
+        check("the template component gets nothing",
+              not any(v.get("parentId") == "c2" for v in made.values()))
+
+        # determinism: the ids are hashes, so a second run must be identical
+        comp2 = tmp / "complete2.epro2"
+        run(src, "--complete", "-o", comp2)
+        import hashlib
+        h1 = hashlib.sha256(zipfile.ZipFile(comp).read("doc.epru")).hexdigest()
+        h2 = hashlib.sha256(zipfile.ZipFile(comp2).read("doc.epru")).hexdigest()
+        check("two --complete runs are byte-identical", h1 == h2)
 
     # --- break probe: nothing to copy from --------------------------------
     bare = tmp / "bare.epro2"

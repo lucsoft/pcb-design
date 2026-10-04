@@ -383,9 +383,27 @@ measured and was wrong.
 Getting to green is `Assign LCSC Part` → `Use Recommended Device` →
 `Replace`. EasyEDA recommends running it **before exporting the BOM**.
 
-So a part reading Undetermined is not a missing or wrong C-number, and no
-tool here can fix it: the missing data is the LCSC parametric record, which
-lives on JLCPCB's servers.
+So a part reading Undetermined is not a missing or wrong C-number.
+
+**And "Use Recommended Device" fetches nothing.** Comparing the DEVICE METAs
+before and after a Replace: all 54 byte-identical. It created 103 `ATTR`
+records, all on the three *instances*, all values copied from the device
+documents already embedded in the file. The data was never on a server.
+
+    ./tools/fixparts.py <export.epro2> --complete -o out.epro2
+
+does the same copy for every placement — each attribute its device has and
+it has not — without the network and without the `Name` damage. On this
+board, 357 attributes across 119 components. New records are appended beside
+the component's existing ones inside `SCH_PAGE`, ids are a hash of
+parent + key so two runs are byte-identical, and the output is deleted
+unless every original record survives unaltered and in order with exactly
+the expected number of additions.
+
+Whether that flips the panel to *Exact Match* is unknown and only a
+re-import answers it: the status may well be computed server-side, in which
+case the file can be as complete as EasyEDA's own Replace leaves it and
+still read yellow.
 
 **"Assign LCSC Part" fetches that record, and overwrites `Name` doing it.** Running it on three components changed those three and
 nothing else in a 9573-record file: it wrote the full LCSC parametric set

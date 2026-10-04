@@ -49,6 +49,7 @@ minute.
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import sys
 import zipfile
@@ -72,6 +73,42 @@ COPY_KEYS = ("LCSC Part Name", "JLCPCB Part Class", "Supplier Footprint",
 # already points at. "Should be" is not a standard this project accepts for a
 # field that decides which copper lands, so it is opt-out.
 FOOTPRINT_KEY = "Footprint"
+
+
+
+# Keys never copied from a device onto an instance, whatever else is. Each is
+# either per-instance, or the device holds it in a form that is wrong on a
+# placement:
+#
+#   Designator   the device holds the template -- "C?", "U?"
+#   Name         the device holds the formula `={Manufacturer Part}`, and the
+#                instance holds the netlist's `value`. Copying it is exactly
+#                the damage EasyEDA's own Replace does -- `eFuse ch1` becomes
+#                the formula -- and the main reason to do this here instead.
+#   Symbol, Device, Unique ID, Group ID, Channel ID, Reuse Block
+#                structural links the instance has already or must not gain
+NEVER_COPY = {"Designator", "Name", "Symbol", "Device", "Unique ID",
+              "Group ID", "Channel ID", "Reuse Block"}
+
+
+def attr_payload(key, value, parent):
+    """The shape EasyEDA writes for an attribute with no position.
+
+    Copied from the 103 records its own Replace produced, not invented: every
+    field present, all null but the three that carry meaning.
+    """
+    return {"x": None, "y": None, "rotation": None, "color": None,
+            "fontFamily": None, "fontSize": None, "fontWeight": None,
+            "italic": None, "underline": None, "align": None,
+            "value": value, "keyVisible": None, "valueVisible": None,
+            "key": key, "fillColor": None, "parentId": parent,
+            "zIndex": None}
+
+
+def new_id(parent, key):
+    """A stable 16-hex id, so two runs of this tool produce one file."""
+    import hashlib
+    return hashlib.sha256(f"{parent}/{key}".encode()).hexdigest()[:16]
 
 
 def load(path: Path):
@@ -115,6 +152,10 @@ def main() -> int:
     ap.add_argument("export", type=Path)
     ap.add_argument("-o", "--out", type=Path)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--complete", action="store_true",
+                    help="also CREATE the attributes an instance lacks, "
+                         "copying them from its device -- what EasyEDA's "
+                         "'Use Recommended Device' does, minus the Name damage")
     ap.add_argument("--no-footprint", action="store_true",
                     help="leave the Footprint uuid alone (see the note on "
                          "library update tracking)")
@@ -196,13 +237,56 @@ def main() -> int:
         print(f"  ... and {len(fixes) - 10} more")
     for d, why in skipped:
         print(f"  SKIP   {d}: {why}")
-    import collections as _c
-    byk = _c.Counter(k for _, k in filled)
+    byk = collections.Counter(k for _, k in filled)
     for k, v in byk.most_common():
         print(f"  fill   {k:20s} on {v} instance(s) that had it empty")
     print(f"\n  {len(fixes)} C-number(s) corrected, {len(filled)} empty field(s) "
           f"filled, {templates} library template(s) left alone, "
           f"{len(skipped)} skipped")
+
+    # --- create what the instance does not have at all -------------------
+    created = []
+    if a.complete:
+        # Where each component's attributes end, so new ones land beside the
+        # old inside the SCH_PAGE document rather than after some DEVICE head.
+        last_line, have = {}, collections.defaultdict(set)
+        for i, (h, b, doc, _) in enumerate(rows):
+            if (h and h["type"] == "ATTR" and b.get("parentId") in desig
+                    and doc and doc[0] in ("SCH_PAGE", "SCH")):
+                last_line[b["parentId"]] = i
+                have[b["parentId"]].add(b.get("key"))
+        ticket = max((h["ticket"] for h, _, _, _ in rows
+                      if h and isinstance(h.get("ticket"), int)), default=0)
+
+        insert = collections.defaultdict(list)
+        for cid, line in sorted(last_line.items()):
+            if desig[cid].endswith("?"):
+                continue
+            attrs = devattrs.get(ref.get(cid))
+            if not attrs:
+                continue
+            for key in sorted(set(attrs) - have[cid] - NEVER_COPY - {FOOTPRINT_KEY}
+                              if a.no_footprint
+                              else set(attrs) - have[cid] - NEVER_COPY):
+                val = attrs[key]
+                if val in (None, ""):
+                    continue
+                ticket += 1
+                hdr = {"type": "ATTR", "ticket": ticket, "id": new_id(cid, key)}
+                insert[line].append(
+                    f"{json.dumps(hdr, separators=(',', ':'))}||"
+                    f"{json.dumps(attr_payload(key, val, cid), separators=(',', ':'))}|")
+                created.append((desig[cid], key))
+
+        merged = []
+        for i, line in enumerate(out_lines):
+            merged.append(line)
+            merged.extend(insert.get(i, ()))
+        out_lines = merged
+
+        bydes = collections.Counter(d for d, _ in created)
+        print(f"  create {len(created)} attribute(s) on {len(bydes)} component(s), "
+              f"copied from their device")
 
     if a.dry_run:
         print("  --dry-run: nothing written\n")
@@ -217,12 +301,24 @@ def main() -> int:
 
     # --- prove nothing else moved ----------------------------------------
     _, back = load(a.out)
-    if len(back) != len(rows):
+    if len(back) != len(rows) + len(created):
         a.out.unlink(missing_ok=True)
-        print(f"  error: line count changed — {a.out} deleted\n", file=sys.stderr)
+        print(f"  error: {len(back)} lines out, expected "
+              f"{len(rows)} + {len(created)} — {a.out} deleted\n", file=sys.stderr)
         return 1
+    # Compare the originals against the output with the additions removed, so
+    # an insertion cannot hide an edit by shifting the sequence.
+    added = {h["id"] for h, _, _, _ in back
+             if h and h.get("id") and h["id"] not in
+             {g["id"] for g, _, _, _ in rows if g and g.get("id")}}
+    if len(added) != len(created):
+        a.out.unlink(missing_ok=True)
+        print(f"  error: {len(added)} new record(s), expected {len(created)} — "
+              f"{a.out} deleted\n", file=sys.stderr)
+        return 1
+    kept = [r for r in back if not (r[0] and r[0].get("id") in added)]
     drift = []
-    for (h1, b1, _, _), (h2, b2, _, _) in zip(rows, back):
+    for (h1, b1, _, _), (h2, b2, _, _) in zip(rows, kept):
         if h1 is None or h2 is None:
             if h1 is not h2 and (h1 is None) != (h2 is None):
                 drift.append("a record appeared or vanished")
@@ -244,7 +340,8 @@ def main() -> int:
         print(f"\n  {len(drift)} unintended change(s); {a.out} deleted\n")
         return 1
 
-    print(f"  nothing else differs: same records, same order, same coordinates")
+    print(f"  nothing else differs: same records, same order, same coordinates"
+          f"{', plus the new attributes' if created else ''}")
     print(f"  wrote {a.out}")
     print(f"\n  EasyEDA's own BOM export is the only thing that settles whether")
     print(f"  it reads the instance or the device. Export it and look.\n")
