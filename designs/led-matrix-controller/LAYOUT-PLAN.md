@@ -103,13 +103,28 @@ which is a lookup in `netlist.json` and nothing else. R9 happens to be
 correct already; R13 is at 90 with GND on pin 2, so its ground pin is at the
 top and it is one of the 36.
 
-Still unverified: `ROT[180]`, which no export has exercised, and
-`isMirror`, which `arrange.py` does not guard at all and which the committed
-reference exports contain. Also the `Pin Number` attribute — **`PIN` record
-ids are not unique** across the 251 in a file, so reading a pin's number
-from its attributes gives nonsense. The net is the reliable route: match a
-pin's absolute position to the net on its stub, then to the pin number in
-`netlist.json`. That is how the table above was established.
+**All four rotations and mirroring are now measured.** R11 turned twice
+gave `ROT[180]`; Q1 flipped on X gave the mirror convention. One file
+carries 0, 90, 180, 270 and two mirrored parts, and **441 of 441 pins land
+on their stub**. Mirroring is **negating x**.
+
+One question the test could not answer, and the answer is "the data does not
+say": **whether the negation happens before or after the rotation.** The two
+mirrored parts were a symmetric two-pin resistor and an asymmetric part at
+rotation 0, and both commute — the orders differ only for a symbol that is
+asymmetric under negate-x *and* turned to 90 or 270. `schwire.py` therefore
+accepts mirroring at 0 and 180, accepts it at 90 and 270 when the symbol is
+symmetric (where the orders provably agree), and refuses the remaining case
+by name rather than picking one.
+
+`arrange.py` needs no mirror guard: it only translates, and a translation is
+indifferent to orientation.
+
+Also found: **`PIN` record ids are not unique** — 251 records with
+duplicates — so reading a pin's number from its attributes returns nonsense;
+the first attempt gave R9 fourteen different pin numbers. The reliable route
+is position → the net on its stub → the pin number in `netlist.json`, which
+is how the rotation table above was established.
 
 ## Stage 1 — Rail-role rows, no new geometry
 

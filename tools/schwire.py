@@ -106,16 +106,37 @@ def pin_positions(rows):
         if (not h or h["type"] != "COMPONENT" or not b.get("partId")
                 or h["id"] not in desig or desig[h["id"]].endswith("?")):
             continue
-        if b.get("isMirror"):
-            raise SystemExit(f"error: {desig[h['id']]} is mirrored, and the "
-                             f"sign convention for that has never been "
-                             f"observed here — refusing to guess pin positions")
         r = (b.get("rotation") or 0) % 360
         if r not in ROT:
             raise SystemExit(f"error: {desig[h['id']]} is rotated {r}°, "
                              f"which is not one of 0/90/180/270")
-        for p in sympins.get(symref.get(h["id"]), []):
-            dx, dy = ROT[r](p.get("x", 0), p.get("y", 0))
+        mirror = bool(b.get("isMirror"))
+        sp = sympins.get(symref.get(h["id"]), [])
+        local = sorted((q.get("x", 0), q.get("y", 0)) for q in sp)
+        symmetric = local == sorted((-x, y) for x, y in local)
+        if mirror and r in (90, 270) and not symmetric:
+            # Mirroring is negating x -- measured, by flipping Q1 in the
+            # editor and requiring all 441 pins to still hit their stubs.
+            # What that did NOT settle is whether the negation happens
+            # before or after the rotation, because the two mirrored parts
+            # available were a symmetric 2-pin resistor and an asymmetric
+            # part at rotation 0, and both commute. The orders differ only
+            # for a part that is asymmetric under negate-x AND turned to 90
+            # or 270, which is exactly this case and which nothing has
+            # observed. A symbol that IS symmetric under negate-x is let
+            # through: there the two orders provably agree, so refusing it
+            # would be caution with no question behind it.
+            raise SystemExit(
+                f"error: {desig[h['id']]} is mirrored and rotated {r}°. "
+                f"Mirroring is negating x, but whether that happens before "
+                f"or after the rotation is unobserved, and this is the one "
+                f"case where the two differ. Rotate it to 0 or 180 by hand "
+                f"and export, or un-mirror it.")
+        for p in sp:
+            px, py = p.get("x", 0), p.get("y", 0)
+            if mirror:
+                px = -px
+            dx, dy = ROT[r](px, py)
             gx, gy = grid(b["x"] + dx, b["y"] + dy)
             out.append((desig[h["id"]], gx, gy))
     return out

@@ -192,6 +192,49 @@ def main():
     check("a fractional anchor still matches its stub",
           rc == 0 and "NOSTUB" not in log, log)
 
+    # --- mirroring --------------------------------------------------------
+    # Measured by flipping Q1 in the editor: mirror is negating x, and all
+    # 441 pins still hit their stubs. What that did NOT settle is whether
+    # the negation happens before or after the rotation, because the only
+    # mirrored parts available were a symmetric resistor and an asymmetric
+    # part at rotation 0 -- both commute. The orders differ only for a part
+    # that is asymmetric under negate-x AND turned to 90 or 270.
+    def mirrored(path, parts, rot, flip=True):
+        build(path, parts)
+        d = zipfile.ZipFile(path).read("doc.epru").decode("utf-8")
+        d = d.replace('"rotation":0,"isMirror":false',
+                      f'"rotation":{rot},"isMirror":{str(flip).lower()}', 1)
+        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr("project2.json", json.dumps({"title": "t"}))
+            z.writestr("doc.epru", d)
+
+    asym = [("U1", 0, 0, [(0, 20, "SIG"), (-20, 0, "GND"), (0, -20, "OTHER")]),
+            ("R1", 200, 0, [(0, 0, "SIG"), (0, -40, "GND")])]
+    an = tmp / "asym.json"
+    netlist(an, asym)
+
+    m0 = tmp / "m0.epro2"
+    mirrored(m0, asym, 0)
+    rc, log = run(m0, an, "--dry-run")
+    check("mirrored at rotation 0 is accepted", "is mirrored and rotated" not in log, log)
+
+    m90 = tmp / "m90.epro2"
+    mirrored(m90, asym, 90)
+    rc, log = run(m90, an, "--dry-run")
+    check("mirrored AND rotated 90, asymmetric, is refused",
+          rc != 0 and "is mirrored and rotated 90" in log, log)
+
+    # the same combination on a symmetric symbol is provably safe
+    sym = [("R1", 0, 0, [(20, 0, "SIG"), (-20, 0, "GND")]),
+           ("R2", 200, 0, [(20, 0, "SIG"), (-20, 0, "GND")])]
+    sn = tmp / "sym.json"
+    netlist(sn, sym)
+    ms = tmp / "msym.epro2"
+    mirrored(ms, sym, 90)
+    rc, log = run(ms, sn, "--dry-run")
+    check("...but a symmetric symbol in that combination is let through",
+          "is mirrored and rotated" not in log, log)
+
     # --- a pin that does not land on a stub must stop the run -------------
     bad = tmp / "bad.epro2"
     build(bad, parts)
