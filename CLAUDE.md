@@ -353,9 +353,11 @@ got. That is also why `Footprint` is the one field `fixparts.py` copies under
 `--no-footprint`: it is a uuid naming a library document rather than display
 text, and it decides which copper lands.
 
-**The feature is called Device Standardization**, in the schematic's left
-panel, and it sorts every component into *Undetermined*, *Allocation number*
-or *Exact Match*. EasyEDA's own documentation describes the colours — red for
+**The feature is called Device Standardization.** It is the sixth and last
+entry in the **schematic** editor's left panel — after Page, Commonly
+Library, Object, Component and Net — and not in the PCB editor. A collapsed
+panel sits at the editor's edge and reopens by clicking that edge. It sorts
+every component into *Undetermined*, *Allocation number* or *Exact Match*. EasyEDA's own documentation describes the colours — red for
 a mismatch, **yellow for "has a vendor number but lacks other vendor
 information"**, green for complete — and does not document the criteria
 behind them. Users have asked on the forum why a component with a correct
