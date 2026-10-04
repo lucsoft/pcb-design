@@ -353,6 +353,23 @@ got. That is also why `Footprint` is the one field `fixparts.py` copies under
 `--no-footprint`: it is a uuid naming a library document rather than display
 text, and it decides which copper lands.
 
+**EasyEDA's "auto assign" fetches the catalogue record, and overwrites
+`Name` doing it.** Running it on three components changed those three and
+nothing else in a 9573-record file: it wrote the full LCSC parametric set
+(`RDS(on) 30.44mΩ`, `Trigger Current 600mA~6A`, `Propagation Delay
+8.5ns@5V,50pF`), the 3D model — all identical field-for-field to what the
+`jlcpcb` MCP returns for the same C-number — and it **replaced `Name` with
+the device template's `={Manufacturer Part}`**. `Name` is where the netlist's
+`value` landed, so `eFuse ch1` became the formula. Auto-assigning the whole
+board would wipe every human-readable value off the schematic.
+
+It changed **no** `Supplier Part`. A part reading as "undetermined" is not a
+missing C-number; it is EasyEDA not having fetched that part's catalogue
+record yet. That data lives on JLCPCB's servers, so no tool here can supply
+it honestly — writing parametric specs into the file from the LCSC API would
+be inventing library data, and would not flip EasyEDA's own notion of
+determined anyway.
+
 What no amount of reading from outside settles is whether EasyEDA honours the
 instance or the device when both exist. **Export the BOM from EasyEDA and
 look** — that is the only thing that does.
