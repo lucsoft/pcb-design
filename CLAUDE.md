@@ -320,6 +320,24 @@ than failing: "this file carries no device data" is a third answer, not a
 synonym for "every part is wrong", and the noise from collapsing them is how
 a real `WRONGPART` line gets scrolled past.
 
+**The decoy is visible in EasyEDA's property panel**, which is where anyone
+checking a part by hand will look — U2 reads `ESP32-C6-WROOM-1-N8.1` where it
+should read `C5366877`. Worse, an instance attribute is the normal way to
+*override* a device one, so a BOM or PCBA export honouring the override would
+carry a supplier part that resolves to nothing.
+
+    ./tools/fixparts.py <export.epro2> -o fixed.epro2
+
+copies the device's C-number onto every placement, and **only** that: same
+records, same order, same coordinates, no other key — checked after writing,
+with the output deleted if anything else differs. Library templates inside
+the DEVICE documents (designator ending in `?`) are left alone; correcting
+one would be editing the part definition rather than this board's use of it.
+
+What no amount of reading from outside settles is whether EasyEDA honours the
+instance or the device when both exist. **Export the BOM from EasyEDA and
+look** — that is the only thing that does.
+
 EasyEDA's DRC does not substitute for this. It checks geometry, not intent;
 a clean DRC says nothing about whether the board is connected correctly.
 
@@ -428,6 +446,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── erc.py             electrical rule check
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets, diff)
     │   ├── arrange.py         group an imported schematic into functional blocks
+    │   ├── fixparts.py        put the real LCSC number on each instance
     │   ├── plot.py            chart helper: palette and house style
     │   ├── stale.py           find superseded values after a numeric change
     │   ├── consistency.py     check a document against the netlist it describes
