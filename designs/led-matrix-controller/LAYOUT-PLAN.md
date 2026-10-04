@@ -56,23 +56,29 @@ The grouping into twelve bands comes from **two** sources, not one: the
 `design.yaml`'s `blocks:` mapping covers the 16 the generator builds in a
 loop.
 
-## Stage 0 — Establish that rotation works at all
+## Stage 0 — Done. Rotation works, with two corrections
 
-**Nothing in this repository has ever exercised a rotated component.** All
-129 are at rotation 0 and none is mirrored, in every export. The transform
-"anchor plus symbol-local offset rotated by the component's rotation" was
-validated at 441 of 441 — against the identity rotation and nothing else.
-`ROT[90]`, `ROT[180]` and `ROT[270]` in `tools/schwire.py` are unverified
-code, and `tools/arrange.py` has no `isMirror` guard at all.
+R9 was rotated by hand in EasyEDA and the file exported. The transform
+holds: **441 of 441 pin positions land on their stub**, R9's included, and
+`epro.py diff` is still identical. `ROT` is validated against something
+other than the identity for the first time.
 
-So before any stage that rotates anything:
+Two things the test found that no amount of reading would have:
 
-1. Rotate one component 90° by hand in EasyEDA. A two-pin passive.
-2. Export.
-3. Require the transform to still put that component's pins on its stubs.
+**The editor stores the opposite sense.** Rotating "90°" in the UI wrote
+`"rotation": 270`. Stage 2 must derive the stored value from where it wants
+the pin to end up, not from the number a human would say.
 
-Ten minutes, and it converts an assumption into a fact. **If it fails,
-stages 2 and 3 do not happen** and stage 1 still stands on its own.
+**EasyEDA writes fractional anchors.** R9 came back at
+`y: -1374.9999999999998`, so its computed pin missed the stub by 2 × 10⁻¹³
+and `schwire.py` refused the whole file. Fail-closed and useless. Every
+coordinate now goes through a `grid()` snap before it is compared or
+emitted, with a regression probe for a fractional anchor. An exact tuple
+match against a float is a check that works until a human touches the file.
+
+What is still unverified: `ROT[90]` and `ROT[180]` specifically — R9
+exercised 270 — and `isMirror`, which `arrange.py` still does not guard at
+all and which four committed `.epro2` contain.
 
 ## Stage 1 — Rail-role rows, no new geometry
 

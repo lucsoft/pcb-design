@@ -174,6 +174,24 @@ def main():
     check("a net with more pins than --max-pins is left alone",
           "more than 1 pins" in log, log)
 
+    # --- a fractional anchor, as EasyEDA's own rotation writes ------------
+    # Rotating R9 by hand in the editor put its anchor at
+    # y = -1374.9999999999998, and the pin derived from it missed its stub
+    # by 2e-13. The tool refused -- fail-closed, and useless on any file a
+    # human has touched.
+    frac = tmp / "frac.epro2"
+    build(frac, parts)
+    data = zipfile.ZipFile(frac).read("doc.epru").decode("utf-8")
+    data = data.replace('"x":100,"y":0,"rotation":0',
+                        '"x":100,"y":-0.0000000000002,"rotation":0', 1)
+    with zipfile.ZipFile(frac, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("project2.json", json.dumps({"title": "t"}))
+        z.writestr("doc.epru", data)
+    fo = tmp / "fracout.epro2"
+    rc, log = run(frac, nl, "-o", fo)
+    check("a fractional anchor still matches its stub",
+          rc == 0 and "NOSTUB" not in log, log)
+
     # --- a pin that does not land on a stub must stop the run -------------
     bad = tmp / "bad.epro2"
     build(bad, parts)

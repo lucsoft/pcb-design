@@ -46,6 +46,19 @@ ROT = {0: lambda x, y: (x, y), 90: lambda x, y: (-y, x),
        180: lambda x, y: (-x, -y), 270: lambda x, y: (y, -x)}
 
 
+def grid(x, y):
+    """Snap a coordinate pair to whole units.
+
+    EasyEDA's own rotation writes fractional anchors: rotating R9 by hand
+    put it at y = -1374.9999999999998, and the pin derived from it missed
+    its stub by 2e-13. The tool refused, correctly and uselessly. Every
+    comparison and every emitted coordinate goes through here, because an
+    exact tuple match against a float is a check that works until someone
+    touches the file in the editor.
+    """
+    return (int(round(x)), int(round(y)))
+
+
 def load(path: Path):
     z = zipfile.ZipFile(path)
     eprus = [n for n in z.namelist() if n.endswith(".epru")]
@@ -103,7 +116,8 @@ def pin_positions(rows):
                              f"which is not one of 0/90/180/270")
         for p in sympins.get(symref.get(h["id"]), []):
             dx, dy = ROT[r](p.get("x", 0), p.get("y", 0))
-            out.append((desig[h["id"]], b["x"] + dx, b["y"] + dy))
+            gx, gy = grid(b["x"] + dx, b["y"] + dy)
+            out.append((desig[h["id"]], gx, gy))
     return out
 
 
@@ -116,7 +130,8 @@ def stub_nets(rows):
     for h, b, _, _ in rows:
         if h and h["type"] == "LINE" and b.get("lineGroup") in netof:
             n = netof[b["lineGroup"]]
-            for pt in ((b["startX"], b["startY"]), (b["endX"], b["endY"])):
+            for pt in (grid(b["startX"], b["startY"]),
+                       grid(b["endX"], b["endY"])):
                 at.setdefault(pt, set()).add(n)
     return at
 
@@ -130,7 +145,7 @@ def _join(a, b, shape):
         return [(x1, y1, x2, y1), (x2, y1, x2, y2)]
     if shape == "v":                       # down, then across
         return [(x1, y1, x1, y2), (x1, y2, x2, y2)]
-    mx = (x1 + x2) // 2                    # across, down, across
+    mx = int(round((x1 + x2) / 2))         # across, down, across
     return [(x1, y1, mx, y1), (mx, y1, mx, y2), (mx, y2, x2, y2)]
 
 
