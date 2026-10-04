@@ -353,11 +353,15 @@ got. That is also why `Footprint` is the one field `fixparts.py` copies under
 `--no-footprint`: it is a uuid naming a library document rather than display
 text, and it decides which copper lands.
 
-**The feature is called Device Standardization.** It is the sixth and last
-entry in the **schematic** editor's left panel — after Page, Commonly
-Library, Object, Component and Net — and not in the PCB editor. A collapsed
-panel sits at the editor's edge and reopens by clicking that edge. It sorts
-every component into *Undetermined*, *Allocation number* or *Exact Match*. EasyEDA's own documentation describes the colours — red for
+**The feature is called Device Standardization**, and it sorts every
+component into *Undetermined*, *Allocation number* or *Exact Match*.
+
+It lives in the **bottom** panel (shortcut `S`, or View → Open Panel), and it
+works **per combined designator** — one row per device, not per placement, so
+54 groups here rather than 129 components. EasyEDA's own documentation puts
+it in the *left* panel as the sixth entry after Page, Commonly Library,
+Object, Component and Net; that did not match editor 3.2.149 in front of a
+user. Trust the application over prodocs on UI placement. EasyEDA's own documentation describes the colours — red for
 a mismatch, **yellow for "has a vendor number but lacks other vendor
 information"**, green for complete — and does not document the criteria
 behind them. Users have asked on the forum why a component with a correct
@@ -366,11 +370,18 @@ LCSC number still reads Undetermined and have not been answered; one reported
 the Supplier Part, It is recommended to use Device Standardization"*, with
 every part assigned.
 
-The yellow definition is the one that matters here and it matches what the
-file shows exactly: a C-number present, the rest of the vendor record absent.
+**The classification is not derivable from the export.** The obvious reading
+of the yellow flag — C-number present, vendor record absent — fits the
+*instances*, which carry 16 to 17 non-empty attributes against their devices'
+25 to 36. It does not survive the check at device level, which is where the
+panel groups: all 54 devices here are rich, 25 attributes at the thinnest,
+and none of them splits 12 from 42. So the status is computed against LCSC's
+catalogue server-side and no amount of reading the file will reproduce it.
+Measure before explaining; this explanation was offered once before it was
+measured and was wrong.
+
 Getting to green is `Assign LCSC Part` → `Use Recommended Device` →
-`Replace`, which the left panel can do in batch. EasyEDA recommends running
-it **before exporting the BOM**.
+`Replace`. EasyEDA recommends running it **before exporting the BOM**.
 
 So a part reading Undetermined is not a missing or wrong C-number, and no
 tool here can fix it: the missing data is the LCSC parametric record, which
