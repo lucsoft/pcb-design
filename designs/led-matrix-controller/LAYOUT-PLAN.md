@@ -65,9 +65,26 @@ other than the identity for the first time.
 
 Two things the test found that no amount of reading would have:
 
-**The editor stores the opposite sense.** Rotating "90°" in the UI wrote
-`"rotation": 270`. Stage 2 must derive the stored value from where it wants
-the pin to end up, not from the number a human would say.
+**The stored angle is counter-clockwise; the toolbar button is clockwise.**
+One press of the clockwise button wrote `"rotation": 270`, which is the same
+thing — CCW 270 = CW 90 — so the file follows the ordinary mathematical
+convention and nothing is inverted. Verified against R9: stored 270 puts
+pin 1 twenty units **below** the anchor, and that is where the export has
+it.
+
+The table stage 2 needs, for a two-pin part whose pins are local (+20, 0)
+and (−20, 0):
+
+| stored | pin 1 ends | use when |
+|---|---|---|
+| 0 | right | signal + signal |
+| 90 | **up** | **pin 1 is the supply pin** |
+| 180 | left | — |
+| 270 | **down** | **pin 1 is the ground pin** |
+
+So "supply up" is stored **90** when the supply is on pin 1 and **270** when
+it is on pin 2 — which is why it has to be computed from the symbol's pin
+order rather than written as a constant.
 
 **EasyEDA writes fractional anchors.** R9 came back at
 `y: -1374.9999999999998`, so its computed pin missed the stub by 2 × 10⁻¹³
