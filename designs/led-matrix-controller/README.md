@@ -6,8 +6,8 @@ tags: [led-matrix, usb-pd, esp32-c6, w5500, efuse]
 status: stable
 generated: { by: human:lucsoft, at: 2026-10-03T08:32:59+02:00 }
 verified:
-  - { by: process:erc, at: 2026-10-04T10:33:16Z }
-  - { by: process:consistency, at: 2026-10-04T10:33:16Z }
+  - { by: process:erc, at: 2026-10-04T14:56:52Z }
+  - { by: process:consistency, at: 2026-10-04T14:56:52Z }
 stale_after: 2027-01-02T00:00:00Z
 sources:
   - id: brief
@@ -32,7 +32,10 @@ verification, converter-board dependencies and accepted trade-offs.
 
 ## What the board is for
 
-Negotiates USB PD, supplies a chained set of LED matrix modules over a
+The system is **LED Matrix System**. Its modules come in three generations —
+V1, V2 and **V3, the current one** — and this board is its controller.
+
+Negotiates USB PD, supplies a chained set of V3 modules over a
 high-voltage bus, and runs an ESP32-C6 that drives the chain over Ethernet
 (W5500) or USB. Brightness is capped in software to whatever PD actually
 negotiated, so modules can be added freely within the power budget — the eFuse's
@@ -2953,8 +2956,9 @@ Kept so they are not re-opened:
 - **Bus voltage and budget** — 36 V / 180 W, the highest EPR PDO the modules
   survive.
 - **Channel count** — two, verified against three and four. See Why two channels.
-- **Module BOM** — extracted from the .epro2 with `tools/epro.py`. The project is
-  titled V2 but is V3.
+- **Module BOM** — extracted from the .epro2 with `tools/epro.py`. The system is
+  **LED Matrix System**; its modules are V1, V2 and **V3, the current one**. The
+  EasyEDA project still reads "V2" for legacy reasons and holds V3.
 - **No hold-up capacitor.** Three designs for one all failed, and it was causing
   three separate defects at once: the 5 V cold start through its series Schottky,
   an unfillable BOM line, and almost the whole Type-C bypass-capacitance overrun.
@@ -3020,13 +3024,25 @@ Kept so they are not re-opened:
 
 ## Reference design
 
-`reference/*.epro2` holds the existing LED matrix module project (EasyEDA Pro
-3.2.149). **The project is titled "V2" but is actually V3** — V2 used a
-different converter and had no decoupling capacitors.
+`reference/*.epro2` holds the existing module project (EasyEDA Pro 3.2.149).
 
-Read it with `tools/epro.py`:
+**The system is called LED Matrix System, and its modules are V1, V2 and V3.**
+**V3 is the current one and the one this controller drives.** The EasyEDA
+project still carries "V2" in its title for legacy reasons — it holds V3. V2
+used a different converter and had no decoupling capacitors.
 
-    ./tools/epro.py bom "reference/ProPrj_LED Matrix V2_2026-10-01 (2).epro2"
+| file | document | holds |
+|---|---|---|
+| `ProPrj_LED Matrix V2_2026-10-01*.epro2` | PCB | the module board, three exports of one project |
+| `Module V3 schematic_2026-10-04.epro2` | schematic | the **V3 module**, hand-drawn and wired |
+
+The schematic export is the one to read for how the module is actually
+connected; the three PCB exports carry copper and no schematic net.
+
+Read them with `tools/epro.py`:
+
+    ./tools/epro.py bom  "reference/ProPrj_LED Matrix V2_2026-10-01 (2).epro2"
+    ./tools/epro.py nets "reference/Module V3 schematic_2026-10-04.epro2"
 
 That yields the real BOM with LCSC numbers. **Only the 36 WS2812D-F8 and the 36
 per-LED 100nF capacitors were actually confirmed this way** — see below for why

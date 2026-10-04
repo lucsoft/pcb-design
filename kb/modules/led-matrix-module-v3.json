@@ -3,7 +3,7 @@
   "@id": "pcb:LedMatrixModuleV3",
   "@type": "Assembly",
   "name": "LED matrix module V3",
-  "description": "6x6 WS2812D-F8 behind an XL1509-5.0E1 buck, one 100nF per LED. Chained. NOTE: the EasyEDA project is titled 'V2' but is actually V3 - V2 used a different converter and had no decoupling capacitors.",
+  "description": "6x6 WS2812D-F8 behind an XL1509-5.0E1 buck, one 100nF per LED. Chained. The system is LED Matrix System and its modules are V1, V2 and V3; this is V3, the current one. The EasyEDA project still reads 'V2' for legacy reasons - the V2 module used a different converter and had no decoupling capacitors.",
   "retrieved": "2026-10-01",
   "composedOf": [
     {
