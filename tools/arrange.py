@@ -214,30 +214,93 @@ class Grid:
 # layout
 
 
-def plan(blocks: dict[str, str], order: list[str], per_row: int
-         ) -> dict[str, tuple[int, int]]:
-    """designator -> (col, row) in the new grid, blocks stacked top to bottom.
+def extents(lines, grid, of_record, owner):
+    """Per component: its bounding box relative to its cell origin.
 
-    Row 0 is the bottom in this coordinate space (y grows upward from a
-    negative origin), so the list is laid out bottom-up to keep the first
-    block of the netlist at the top of the sheet, where a reader starts.
+    Packing by anchor would be packing by a point, and the symbols differ by
+    an order of magnitude -- U1 is 260 x 210 where a 0402 is 100 x 30. The
+    box is what actually has to fit, and it includes the net labels, which on
+    a passive are most of its footprint.
+    """
+    box = {}
+    for i, (h, b, _) in enumerate(lines):
+        c = of_record.get(i)
+        d = owner.get(c)
+        if d is None:
+            continue
+        ox, oy = grid.origin(*c)
+        for ax, ay in (("x", "y"), ("startX", "startY"), ("endX", "endY")):
+            if isinstance(b.get(ax), (int, float)) and isinstance(b.get(ay), (int, float)):
+                x, y = b[ax] - ox, b[ay] - oy
+                e = box.setdefault(d, [x, y, x, y])
+                e[0] = min(e[0], x); e[1] = min(e[1], y)
+                e[2] = max(e[2], x); e[3] = max(e[3], y)
+    return {d: tuple(v) for d, v in box.items()}
+
+
+def pack(blocks, order, box, width, gap_x, gap_y, gap_block):
+    """designator -> (dx, dy) offset for its anchor, packed by real size.
+
+    The *input* grid has to be uniform, because that is what lets a record be
+    attributed to exactly one component. The output does not: a rigid
+    translation is rigid wherever it lands. So rows here are as tall as their
+    tallest member rather than as tall as the biggest component on the board,
+    which is the difference between a 200-unit row for a 30-unit resistor and
+    a 70-unit one.
     """
     members = collections.defaultdict(list)
     for d, b in blocks.items():
         members[b].append(d)
 
-    rows_for = {}
-    for b in order:
-        rows_for[b] = max(1, math.ceil(len(members[b]) / per_row))
-    total = sum(rows_for[b] for b in order) + len(order) - 1
+    placed, y = {}, 0.0
+    for name in order:
+        ds = sorted(members[name], key=_desig_key)
+        row, x, row_h = [], 0.0, 0.0
+        rows = []
+        for d in ds:
+            x0, y0, x1, y1 = box[d]
+            w = x1 - x0
+            if row and x + w > width:
+                rows.append((row, row_h))
+                row, x, row_h = [], 0.0, 0.0
+            row.append((d, x))
+            x += w + gap_x
+            row_h = max(row_h, y1 - y0)
+        if row:
+            rows.append((row, row_h))
+        for r, h in rows:
+            y -= h + gap_y
+            for d, rx in r:
+                x0, y0, x1, y1 = box[d]
+                # Place the box's top-left at (rx, y + h); the anchor offset
+                # follows from where the box sits relative to it.
+                placed[d] = (rx - x0, (y + h) - y1)
+        y -= gap_block
+    return placed
 
-    out, row_top = {}, total - 1
-    for b in order:
-        ds = sorted(members[b], key=_desig_key)
-        for i, d in enumerate(ds):
-            out[d] = (i % per_row, row_top - i // per_row)
-        row_top -= rows_for[b] + 1          # one empty row between blocks
-    return out
+
+def collisions(placed, box, pad=10):
+    """Pairs whose boxes overlap once placed.
+
+    This is the check that makes tightening the layout safe, and nothing else
+    covers it. `epro.py diff` reads the net *names* declared on each wire, so
+    it cannot see two components pushed close enough that a stub endpoint
+    lands on a neighbour's pin -- which in a geometric schematic is a new
+    connection, created silently, with every declared name unchanged.
+    """
+    items = []
+    for d, (dx, dy) in placed.items():
+        x0, y0, x1, y1 = box[d]
+        items.append((d, x0 + dx - pad, y0 + dy - pad, x1 + dx + pad, y1 + dy + pad))
+    items.sort(key=lambda i: i[1])
+    bad = []
+    for i, a in enumerate(items):
+        for b in items[i + 1:]:
+            if b[1] >= a[3]:
+                break
+            if a[2] < b[4] and b[2] < a[4]:
+                bad.append((a[0], b[0]))
+    return bad
 
 
 def _desig_key(d: str):
@@ -363,37 +426,62 @@ def assign_cells(lines, grid):
     return of_record, owner, comp_cell, wire_cells, desig, clash
 
 
-def local_geometry(lines, grid, of_record, owner):
-    """Per component: every coordinate it owns, relative to its cell origin.
+def anchors_of(lines, of_record, owner):
+    """designator -> the x/y of its COMPONENT record in these lines."""
+    out = {}
+    for i, (h, b, _) in enumerate(lines):
+        if h is not None and h["type"] == "COMPONENT":
+            d = owner.get(of_record.get(i))
+            if d is not None and isinstance(b.get("x"), (int, float)):
+                out[d] = (b["x"], b["y"])
+    return out
 
-    This is the fingerprint a rigid translation must leave untouched, and the
-    net diff cannot see a break in it: moving a symbol and leaving its wire
-    behind keeps every NET attribute in the file and still opens the circuit,
-    because connection is coincidence of coordinates and nothing records the
-    pair.
+
+def anchor_geometry(lines, of_record, owner):
+    """Per component: every coordinate it owns, relative to its own anchor.
+
+    Relative to the *anchor*, not to a grid cell, because the output is
+    deliberately not on a grid: rows are packed to the height of their
+    tallest member. An earlier version re-derived a grid from the written
+    file to fingerprint it, which reported all 129 components as drifted the
+    moment the layout stopped being uniform -- a false alarm, but one that
+    would have been indistinguishable from the real thing.
+
+    This is the invariant the net diff cannot check. Move a symbol and leave
+    its wire behind and every NET attribute is still in the file, still
+    naming the right net, while the circuit is open.
     """
+    anchors = anchors_of(lines, of_record, owner)
     out = collections.defaultdict(list)
     for i, (h, b, _) in enumerate(lines):
-        c = of_record.get(i)
-        d = owner.get(c)
-        if d is None:
+        d = owner.get(of_record.get(i))
+        if d is None or d not in anchors:
             continue
-        ox, oy = grid.origin(*c)
+        ax0, ay0 = anchors[d]
         for ax, ay in (("x", "y"), ("startX", "startY"), ("endX", "endY")):
             if isinstance(b.get(ax), (int, float)) and isinstance(b.get(ay), (int, float)):
-                out[d].append((h["type"], ax, b[ax] - ox, b[ay] - oy))
+                out[d].append((h["type"], ax, b[ax] - ax0, b[ay] - ay0))
     return {d: sorted(v) for d, v in out.items()}
 
 
-def fingerprint(path):
-    """Read a written archive back and fingerprint it the same way."""
-    _, lines = read_records(path)
-    _, desig, canvas, _ = canvas_index(lines)
-    anchors = [(b["x"], b["y"]) for h, b, _ in lines
-               if h and h["type"] == "COMPONENT" and h["id"] in canvas]
-    grid = Grid(anchors)
-    of_record, owner, *_ = assign_cells(lines, grid)
-    return local_geometry(lines, grid, of_record, owner)
+def reread(path, lines, of_record, owner):
+    """Fingerprint a written archive, reusing the input's attribution.
+
+    The rewrite preserves line order and count exactly, so record i in the
+    output is record i in the input. Attributing the output independently
+    would mean inferring a grid from a file that no longer has one.
+    """
+    _, back = read_records(path)
+    if len(back) != len(lines):
+        raise SystemExit(f"error: {path.name} has {len(back)} lines, input had "
+                         f"{len(lines)} — the rewrite did not preserve order")
+    for (h1, _, _), (h2, _, _) in zip(lines, back):
+        if (h1 is None) != (h2 is None) or (
+                h1 is not None and (h1.get("id"), h1.get("type")) !=
+                (h2.get("id"), h2.get("type"))):
+            raise SystemExit(f"error: {path.name} record sequence differs from "
+                             f"the input — refusing to compare")
+    return anchor_geometry(back, of_record, owner)
 
 
 def main() -> int:
@@ -405,8 +493,12 @@ def main() -> int:
     ap.add_argument("-o", "--out", type=Path, help="where to write the result")
     ap.add_argument("--dry-run", action="store_true",
                     help="check and report the plan, write nothing")
-    ap.add_argument("--per-row", type=int, default=8,
-                    help="components per row within a block (default 8)")
+    ap.add_argument("--width", type=int, default=2400,
+                    help="canvas units to wrap a block's row at (default 2400)")
+    ap.add_argument("--gap", type=int, default=40,
+                    help="units between neighbours (default 40)")
+    ap.add_argument("--block-gap", type=int, default=120,
+                    help="extra units between blocks (default 120)")
     a = ap.parse_args()
 
     if not a.dry_run and not a.out:
@@ -488,18 +580,41 @@ def main() -> int:
         if b not in seen:
             order.append(b); seen.add(b)
 
-    target = plan(blocks, order, a.per_row)
+    box = extents(lines, grid, of_record, owner)
+    missing_box = sorted(set(blocks) - set(box))
+    if missing_box:
+        print(f"  error: no geometry found for {', '.join(missing_box[:8])}",
+              file=sys.stderr)
+        return 1
+
+    placed = pack(blocks, order, box, a.width, a.gap, a.gap, a.block_gap)
     counts = collections.Counter(blocks.values())
     print(f"\n  {len(order)} blocks:")
     for b in order:
         print(f"    {b:38s} {counts[b]:3d}")
 
+    clashes = collisions(placed, box)
+    if clashes:
+        for x, y in clashes[:8]:
+            print(f"  OVERLAP {x} and {y} would overlap once placed")
+        print(f"\n  {len(clashes)} overlapping pair(s) — raise --gap or "
+              f"--width. Two symbols pushed together can put a wire end on a "
+              f"neighbour's pin, which is a new connection that the net diff "
+              f"cannot see.\n")
+        return 1
+
+    xs = [box[d][0] + placed[d][0] for d in placed] + \
+         [box[d][2] + placed[d][0] for d in placed]
+    ys = [box[d][1] + placed[d][1] for d in placed] + \
+         [box[d][3] + placed[d][1] for d in placed]
+    print(f"\n  sheet {int(max(xs) - min(xs))} x {int(max(ys) - min(ys))} units"
+          f"  (was {grid.w * 15} x {grid.h * 9})")
+
     cell_for = {d: c for c, d in owner.items()}
     deltas = {}
-    for d, (col, row) in target.items():
-        nx, ny = grid.origin(col, row)
+    for d, (dx, dy) in placed.items():
         ox, oy = grid.origin(*cell_for[d])
-        deltas[cell_for[d]] = (nx - ox, ny - oy)
+        deltas[cell_for[d]] = (int(round(dx - ox)), int(round(dy - oy)))
 
     moved = sum(1 for dx, dy in deltas.values() if dx or dy)
     print(f"\n  {moved} of {len(deltas)} components move")
@@ -508,7 +623,7 @@ def main() -> int:
         print("  --dry-run: nothing written\n")
         return 0
 
-    before = local_geometry(lines, grid, of_record, owner)
+    before = anchor_geometry(lines, of_record, owner)
 
     # --- rewrite -----------------------------------------------------------
     out_lines, touched = [], 0
@@ -534,7 +649,7 @@ def main() -> int:
     print(f"  {touched} records translated")
 
     # --- the proof ---------------------------------------------------------
-    after = fingerprint(a.out)
+    after = reread(a.out, lines, of_record, owner)
     drift = [d for d in before if before[d] != after.get(d)]
     gone = sorted(set(before) - set(after))
     if drift or gone:

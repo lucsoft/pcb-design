@@ -310,7 +310,10 @@ gives each pin its own short wire stub carrying the net name. That is
 electrically complete and unreadable.
 
     ./tools/arrange.py <export.epro2> <netlist.json> --dry-run
-    ./tools/arrange.py <export.epro2> <netlist.json> -o grouped.epro2
+    ./tools/arrange.py <export.epro2> <netlist.json> --width 3200 -o grouped.epro2
+
+`--width` wraps a block's row, `--gap` sets the clearance between neighbours
+and `--block-gap` the space between blocks.
 
 Blocks come from the `# ---- Name ----` section comments in `netlist.py`, plus
 a `blocks:` mapping in `design.yaml` for anything the generator builds in a
@@ -337,6 +340,20 @@ first version of this tool translated anything with an `x` and a `y`, which
 dragged 1040 library records along with J1 and would have moved pins inside
 their symbols board-wide, with the net diff still clean. Classify canvas
 records by a positive allowlist, never by "has coordinates".
+
+**Rows are packed to their own height, not to the grid's.** The *input* grid
+has to be uniform — that is what attributes a record to exactly one component
+— but the output does not, and holding it uniform wastes most of the sheet.
+Component extents here run from 100 x 30 for a passive to 260 x 210 for the
+HUSB238A, so a uniform row is five times the height its median member needs.
+Packing by real bounding box, labels included, took this board from
+2400 x 6800 units to 3050 x 3000.
+
+That tightening is only safe because of the overlap check. Two symbols pushed
+close enough that a stub endpoint lands on a neighbour's pin **are connected**
+in a geometric schematic, and `epro.py diff` reads the net *names* declared on
+each wire, so it reports the file identical. The tool refuses to write when
+any two padded bounding boxes intersect.
 
 It does **not** draw wires, and replacing the stubs with real polylines is a
 different and much harder problem: generating geometry, where an endpoint off

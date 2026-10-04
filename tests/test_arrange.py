@@ -204,6 +204,22 @@ def main():
     check("a wire crossing a cell is refused", rc == 1 and "SPANS" in log, log)
     check("...and nothing is written", not (d / "out.epro2").exists())
 
+    # --- break probe: a layout tight enough for symbols to touch ----------
+    # The collision check is the only thing standing between a tighter sheet
+    # and a silent short. Pushed together far enough, a stub endpoint lands
+    # on a neighbour's pin, which in a geometric schematic IS a connection --
+    # and every declared net name stays exactly as it was, so `epro.py diff`
+    # reports the file identical.
+    d = tmp / "tight"; d.mkdir()
+    build(d / "in.epro2", comps)
+    write_design(d, comps, sections)
+    rc, log = run(d / "in.epro2", d / "netlist.json",
+                  "-o", d / "out.epro2", "--gap", "0")
+    check("a layout with no gap is refused", rc == 1 and "OVERLAP" in log, log)
+    check("...and nothing is written", not (d / "out.epro2").exists())
+    check("...while the default gap is accepted",
+          run(d / "in.epro2", d / "netlist.json", "-o", d / "ok.epro2")[0] == 0)
+
     # --- break probe: a designator in no block ----------------------------
     d = tmp / "unassigned"; d.mkdir()
     build(d / "in.epro2", comps)
