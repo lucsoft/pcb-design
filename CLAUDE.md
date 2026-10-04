@@ -545,6 +545,29 @@ and reviewed. Python randomises string hashing per process and therefore set
 iteration order, so "it came out the same twice" proves nothing; the suite
 forces three different `PYTHONHASHSEED` values and requires one digest.
 
+**One schematic unit is 10 mil = 0.254 mm**, measured off the pin pitch:
+pins sit on a 10-unit grid and a schematic pin pitch is 100 mil. That is the
+conversion for picking a sheet size, and the difference between guessing A0
+and knowing A1 fits.
+
+| `--width` / `--gap` / `--block-gap` | units | mm |
+|---|---|---|
+| 3200 / 40 / 120 | 3050 × 3000 | 775 × 762 — **A0 only** |
+| 3200 / 20 / 60 | 2670 × 2120 | 678 × 538 — A1 |
+| 4000 / 20 / 40 | 2670 × 1900 | **678 × 483 — A1 with room** |
+
+`--gap 16` is refused by the overlap check, so that is the floor. Width
+saturates: past about 3200 no block has the members to fill a wider row, and
+4000 and 5000 give the same sheet.
+
+**It cannot re-run on its own output.** The cell model needs a uniform input
+grid, and packing deliberately destroys one — a second pass reports every
+wire as crossing a cell and refuses, which is the right answer to the wrong
+question. To change the layout, go back to the original import and redo the
+chain: `arrange.py` then `fixparts.py --complete`. That reproduces the
+standardization work from the device documents, so nothing done by hand in
+between is lost.
+
 It does **not** draw wires, and replacing the stubs with real polylines is a
 different and much harder problem: generating geometry, where an endpoint off
 by one unit is an open circuit that renders as a connection.
