@@ -67,3 +67,44 @@ machine-checkable instead of something to re-read each time:
 ```
 
 Supported `requires` values are listed in `rules/README.md`.
+
+## Per-pin overrides
+
+Two keys sit on a pin rather than on the record, and both exist because the
+record-level answer is wrong for some pins:
+
+- `contact` — the designation printed on the part or given in its datasheet,
+  where that differs from the number the **EasyEDA symbol** uses. The netlist
+  keys `pins` by the symbol's number; assembly reads the silkscreen. The
+  WIZ850io numbers its header 1–12 and silkscreens it `J1-1 … J2-6`, in
+  opposite directions on the J2 side, so recording only one of the two makes
+  either the netlist or the build wrong.
+- `source` — provenance for *this* pin, overriding `provenance.pins`.
+  `tools/erc.py` prefers it, which is what lets one inferred pin sit in an
+  otherwise datasheet-backed map without dragging the other eleven down to
+  warning severity.
+
+Both go through `kb.py set-pins`:
+
+    --pin "1:GND:power_in:contact=J1-1:source=datasheet p.4 Fig 2"
+
+## The context
+
+`kb/context.jsonld` defines every term a record may use. A key it does not
+define is **dropped by a JSON-LD reader** and by nothing else: the file keeps
+it, `jq` keeps it, every tool here keeps it, and only the claim that this
+knowledge base is valid linked data quietly stops being true.
+
+`tools/kb.py check` reports any key the context does not cover. Two kinds of
+term stop it descending, because their contents are data rather than
+vocabulary:
+
+- `"@container": "@index"` — the keys are the index, as in `parameters`,
+  where LCSC names the fields.
+- `"@type": "@json"` — the value survives verbatim as a JSON literal. The
+  assembly sections in `kb/modules/` use this: `envelope`, `systemLimits`,
+  `thermalLimit` and the rest hold worked derivations whose shape is argued
+  in prose, not modelled as vocabulary.
+
+Reaching for `@json` to silence a finding on a field that *is* vocabulary is
+how the check stops working. Define the term instead.

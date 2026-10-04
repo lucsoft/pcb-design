@@ -6,16 +6,15 @@
     "pcb": "https://lucsoft.local/ns/pcb#",
 
     "Component": "pcb:Component",
+    "Assembly": "pcb:Assembly",
     "Pin": "pcb:Pin",
     "Rule": "pcb:Rule",
-    "Datasheet": "pcb:Datasheet",
 
     "name": "schema:name",
     "description": "schema:description",
     "manufacturer": "schema:manufacturer",
     "mpn": "schema:mpn",
     "category": "schema:category",
-    "url": "schema:url",
 
     "lcscId": "pcb:lcscId",
     "package": "pcb:package",
@@ -24,10 +23,6 @@
     "priceUsd": "pcb:unitPriceUsd",
 
     "datasheet": { "@id": "pcb:datasheet", "@type": "@id" },
-    "sha256": "pcb:sha256",
-    "localPdf": "pcb:localPdf",
-    "localText": "pcb:localText",
-    "pageCount": "pcb:pageCount",
 
     "pins": { "@id": "pcb:hasPin", "@container": "@set" },
     "number": "pcb:pinNumber",
@@ -35,19 +30,42 @@
     "vMax": "pcb:absoluteMaxVoltage",
     "vMin": "pcb:absoluteMinVoltage",
     "iMaxMa": "pcb:absoluteMaxCurrentMa",
+    "contact": "pcb:contactDesignation",
+    "source": "pcb:provenanceSource",
 
     "parameters": { "@id": "pcb:parameter", "@container": "@index" },
     "value": "schema:value",
     "unit": "schema:unitCode",
+    "tolerance": "pcb:tolerance",
 
     "rules": { "@id": "pcb:hasRule", "@container": "@set" },
+    "id": "pcb:ruleId",
     "severity": "pcb:severity",
     "requires": "pcb:requires",
     "appliesTo": "pcb:appliesToPin",
 
     "provenance": { "@id": "pcb:provenance", "@container": "@index" },
     "retrieved": { "@id": "pcb:retrievedAt", "@type": "schema:Date" },
-    "verifiedBy": "pcb:verifiedBy",
-    "seeAlso": { "@id": "schema:subjectOf", "@type": "@id" }
+    "seeAlso": { "@id": "schema:subjectOf", "@type": "@id" },
+
+    "designVerdict": "pcb:designVerdict",
+    "note": "pcb:note",
+    "notes": { "@id": "pcb:note", "@container": "@set" },
+
+    "composedOf": { "@id": "pcb:composedOf", "@container": "@set" },
+    "quantity": "pcb:quantity",
+    "role": "pcb:role",
+
+    "envelope": { "@id": "pcb:envelope", "@type": "@json" },
+    "systemLimits": { "@id": "pcb:systemLimits", "@type": "@json" },
+    "thermalLimit": { "@id": "pcb:thermalLimit", "@type": "@json" },
+    "inrush": { "@id": "pcb:inrush", "@type": "@json" },
+    "cabling": { "@id": "pcb:cabling", "@type": "@json" },
+    "connector": { "@id": "pcb:connector", "@type": "@json" },
+    "dataInterface": { "@id": "pcb:dataInterface", "@type": "@json" },
+    "failureModes": { "@id": "pcb:failureModes", "@type": "@json" },
+    "environment": { "@id": "pcb:environment", "@type": "@json" },
+    "sourceOfTruth": { "@id": "pcb:sourceOfTruth", "@type": "@json" },
+    "bulkCapacitorSwap": { "@id": "pcb:bulkCapacitorSwap", "@type": "@json" }
   }
 }

@@ -345,7 +345,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── stock.py           check a BOM against live LCSC stock
     │   ├── okf.py             check the docs against OKF v0.2 conformance
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
-    └── tests/                 regression tests: erc, xref, okf
+    └── tests/                 regression tests: erc, xref, okf, kb
 
 ## Conventions
 
@@ -749,7 +749,11 @@ instead. `consistency.py` reports every row it cannot read for the same reason.
 `ignore:` and `dnf:` are all data that silently disables checking when it is
 wrong — a typo in `appliesTo` makes a part rule match no pin and never run.
 `kb.py check` and `K6`/`K7` cover these; anything new of that kind needs the
-same.
+same. `kb/context.jsonld` is one more: a term it does not define is dropped
+by a JSON-LD reader and by nothing else, so the data goes on reading fine
+while the linked-data claim stops being true. `kb.py check` reports any key
+the context does not cover, and `@json` is the escape hatch that must not
+be used to silence a field that really is vocabulary.
 
 Rule ids are prefixed by area — `S` structural, `K` knowledge base,
 `C` connectivity, `E` electrical, `P` power, `B` bus, `Q` sourcing,

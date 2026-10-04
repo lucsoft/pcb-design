@@ -1,7 +1,7 @@
 {
   "@context": "../context.jsonld",
   "@id": "pcb:LedMatrixModuleV3",
-  "@type": "pcb:Assembly",
+  "@type": "Assembly",
   "name": "LED matrix module V3",
   "description": "6x6 WS2812D-F8 behind an XL1509-5.0E1 buck, one 100nF per LED. Chained. NOTE: the EasyEDA project is titled 'V2' but is actually V3 - V2 used a different converter and had no decoupling capacitors.",
   "retrieved": "2026-10-01",

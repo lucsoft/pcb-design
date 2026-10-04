@@ -31,6 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PARTS = ROOT / "kb" / "parts"
+MODULES = ROOT / "kb" / "modules"
 API = "https://wmsc.lcsc.com/ftps/wm/product/detail?productCode={}"
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
@@ -278,6 +279,72 @@ VALID_REQUIRES = {"decoupling", "pullup", "not-pulled-low", "connected",
                   "series"}
 
 
+def check_context_coverage() -> int:
+    """Report keys the JSON-LD context does not define.
+
+    This fails OPEN and silently, which is why it is worth a check of its
+    own: a JSON-LD processor DROPS a term the context has no definition for.
+    The data stays in the file, `jq` still reads it, every tool here still
+    reads it -- and the claim in kb/VOCABULARY.md that the knowledge base is
+    valid linked data quietly stops being true for that field. Six terms the
+    documentation promised (`designVerdict`, `notes`, a rule's `id` and
+    `note`, a pin's `contact` and `source`) had drifted out of the context
+    this way.
+
+    A term declared `"@type": "@json"` keeps its value verbatim as a JSON
+    literal, so the keys inside it are data rather than vocabulary and are
+    not walked. Same for an `@index` container: its keys are the index.
+    """
+    ctx_path = ROOT / "kb" / "context.jsonld"
+    try:
+        ctx = json.loads(ctx_path.read_text())["@context"]
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        # Three answers, not two. Unreadable is not "no problems found".
+        print(f"UNCHECKED context coverage: cannot read "
+              f"{ctx_path.name} — {exc}")
+        return 0
+
+    defined = {k for k in ctx if not k.startswith("@")}
+    stop = {k for k, v in ctx.items() if isinstance(v, dict)
+            and (v.get("@type") == "@json" or v.get("@container") == "@index")}
+
+    problems = 0
+    seen = {}
+
+    def walk(node, path, name):
+        nonlocal problems
+        if isinstance(node, dict):
+            for k, v in node.items():
+                if k.startswith("@"):
+                    continue
+                if k not in defined:
+                    key = (path, k)
+                    if key not in seen:
+                        seen[key] = name
+                        where = f"{path}/{k}" if path else k
+                        print(f"WARN  {name}: '{where}' is not in "
+                              f"context.jsonld, so a JSON-LD reader drops it")
+                        problems += 1
+                    # Do not descend into an undefined term. Its children are
+                    # moot until the parent is defined, and reporting them
+                    # turns one missing definition into a wall of findings --
+                    # one assembly record would have produced about 150.
+                    continue
+                if k in stop:
+                    continue
+                walk(v, f"{path}/{k}" if path else k, name)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, path, name)
+
+    for f in sorted(PARTS.glob("*.json")) + sorted(MODULES.glob("*.json")):
+        try:
+            walk(json.loads(f.read_text()), "", f.name)
+        except json.JSONDecodeError:
+            continue           # already reported by the per-record pass
+    return problems
+
+
 def cmd_check() -> int:
     files = sorted(PARTS.glob("*.json"))
     problems = 0
@@ -356,7 +423,11 @@ def cmd_check() -> int:
             print(f"ERROR {f.name}: tier must be 'basic', 'extended' or null")
             problems += 1
 
-    print(f"\n{len(files)} record(s), {problems} problem(s)\n")
+    problems += check_context_coverage()
+
+    # Name what was checked rather than asserting everything was.
+    print(f"\n{len(files)} record(s) and {len(list(MODULES.glob('*.json')))} "
+          f"assembly record(s), {problems} problem(s)\n")
     return 1 if problems else 0
 
 
