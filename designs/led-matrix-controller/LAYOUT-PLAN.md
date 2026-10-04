@@ -198,6 +198,35 @@ local-geometry fingerprint and `epro.py diff` all apply unchanged.
 and splice each rail-only part in immediately after its owner. About fifteen
 lines, no network call.
 
+### Built, and it delivers less than the review predicted
+
+`--layout star` is implemented and verified. Measured against the shipped
+row layout, over the 96 satellites the ownership rule assigns:
+
+| | fan-out crossings | owner distance | sheet |
+|---|---|---|---|
+| row (shipped) | 120 | 59,005 | 2600 × 1775 — **660 × 451 mm** |
+| star | **110** | **37,130** | 2050 × 5380 — **521 × 1367 mm** |
+
+**Crossings fall 8%, not to near-zero.** The review predicted 5 against 80.
+The "a monotone matching cannot cross" argument is true but narrow: it holds
+*within one side of one hub*, and most of the crossings here are between
+different hubs and between the stacks under non-hub owners, where nothing
+constrains the order.
+
+**Decoupler-to-owner distance falls 37%**, which is the real win and the
+thing Stage 1 was supposed to buy. C24 now sits beside LED1 rather than
+eleven slots away.
+
+**The sheet is three times taller and does not fit A0.** 1367 mm against
+A0's 841. The hub columns are laid side by side in x, but each hub's
+satellites hang down the full span of its pin column, so y grows with the
+largest hub rather than with the component count.
+
+So the honest state: better on both quality measures, unusable on size. The
+next thing is **band columns** — three columns of four bands — which the
+review also named and which is independent of everything above.
+
 ## The metric was self-contradictory
 
 Every layout decision here was made by comparing total bounding span — a

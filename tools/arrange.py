@@ -96,6 +96,30 @@ def read_records(path: Path):
     return name, out
 
 
+def read_rails(yml: Path) -> list[str]:
+    """The net names declared under `rails:` in design.yaml.
+
+    The same deliberately small reader the block mapping uses: one level of
+    keys under one heading, which is all the shape this needs and one less
+    dependency than a YAML library.
+    """
+    if not yml.exists():
+        return []
+    out, inside = [], False
+    for line in yml.read_text(encoding="utf-8").splitlines():
+        if re.match(r"^rails:\s*$", line):
+            inside = True
+            continue
+        if inside and line and not line[0].isspace():
+            break
+        if not inside:
+            continue
+        m = re.match(r"^\s{2}(\S[^:]*):\s*$", line)
+        if m:
+            out.append(m.group(1).strip().strip("\"'"))
+    return out
+
+
 def read_blocks(netlist: Path, designators: set[str]) -> dict[str, str]:
     """designator -> block name, from the generator's sections and design.yaml."""
     blocks: dict[str, str] = {}
@@ -280,6 +304,96 @@ def seriate(members, nets):
         out.append(nxt)
         left.discard(nxt)
     return out
+
+
+def local_pins(lines, grid_, of_record, owner):
+    """designator -> [(symbol-local dx, dy, net)] for every placed pin.
+
+    Derived from the export, not fetched: each pin already carries a stub
+    whose endpoint is the pin and whose NET attribute names the net, and the
+    component's anchor and rotation turn that back into a symbol-local
+    offset. So the star layout needs no library call and no `Pin Number`
+    attribute -- which is just as well, since PIN record ids are not unique
+    and reading a number from them returns nonsense.
+    """
+    netof = {b["parentId"]: b["value"] for h, b, _ in lines
+             if h and h["type"] == "ATTR" and b.get("key") == "NET"
+             and b.get("value")}
+    at = {}
+    for h, b, _ in lines:
+        if h and h["type"] == "LINE" and b.get("lineGroup") in netof:
+            for x, y in ((b["startX"], b["startY"]), (b["endX"], b["endY"])):
+                at.setdefault((round(x), round(y)), set()).add(netof[b["lineGroup"]])
+
+    desig = {b["parentId"]: b["value"] for h, b, _ in lines
+             if h and h["type"] == "ATTR" and b.get("key") == "Designator"
+             and b.get("value")}
+    symref = {b["parentId"]: b["value"] for h, b, _ in lines
+              if h and h["type"] == "ATTR" and b.get("key") == "Symbol"
+              and b.get("value")}
+    sympins = collections.defaultdict(list)
+    for h, b, doc in lines:
+        if h and h["type"] == "PIN" and doc and doc[0] == "SYMBOL":
+            sympins[doc[1]].append(b)
+
+    rot = {0: lambda x, y: (x, y), 90: lambda x, y: (-y, x),
+           180: lambda x, y: (-x, -y), 270: lambda x, y: (y, -x)}
+    out = collections.defaultdict(list)
+    for h, b, _ in lines:
+        if (not h or h["type"] != "COMPONENT" or not b.get("partId")
+                or h["id"] not in desig or desig[h["id"]].endswith("?")):
+            continue
+        r = (b.get("rotation") or 0) % 360
+        if r not in rot:
+            continue
+        for q in sympins.get(symref.get(h["id"]), []):
+            dx, dy = rot[r](q.get("x", 0), q.get("y", 0))
+            pt = (round(b["x"] + dx), round(b["y"] + dy))
+            for n in at.get(pt, ()):
+                out[desig[h["id"]]].append((dx, dy, n))
+    return out
+
+
+def owners(members, nets, pinsof, rails, decl):
+    """satellite -> the component it belongs beside, within one band.
+
+    Two populations, two rules, measured rather than assumed:
+
+    - **rail-only parts**, every pin on a declared rail: the owner is the
+      non-rail-only component whose pins contain every rail this one
+      touches, nearest in declaration order. 31 of this board's 39. Where
+      that finds nothing, fall back to sharing *any* rail, which places 7
+      more -- C10 and C11 at L1, C13 at L2, R1 at U6, D8 at U10. Strict
+      first and loose only as fallback, because the loose rule on its own
+      moves 19 components off an answer the strict rule had right.
+    - **everything else**: the hub in the band reached over a non-rail net,
+      most shared nets first.
+
+    The rail-only rule is what finds C24 beside LED1 through C31 beside
+    LED8. A hub model keyed on pin count sends all eight to U9, because U9
+    is the only thing in that band with five pins.
+    """
+    hubs = {d for d in members if len(pinsof.get(d, ())) >= 5}
+    ronly = {d for d in members
+             if pinsof.get(d) and all(n in rails for n in pinsof[d])}
+    out = {}
+    for d in sorted(ronly, key=_desig_key):
+        want = set(pinsof[d])
+        for test in (lambda o: want <= o, lambda o: bool(want & o)):
+            cand = [o for o in members
+                    if o != d and o not in ronly and test(set(pinsof.get(o, ())))]
+            if cand:
+                out[d] = min(cand, key=lambda o: (abs(decl[o] - decl[d]), decl[o]))
+                break
+    for d in sorted(members - ronly - hubs, key=_desig_key):
+        shared = collections.Counter()
+        for h in hubs:
+            for n in set(pinsof.get(d, ())) & set(pinsof.get(h, ())):
+                if n not in rails:
+                    shared[h] += 1
+        if shared:
+            out[d] = max(sorted(shared), key=lambda h: (shared[h], -decl[h]))
+    return out, hubs
 
 
 def pack(blocks, order, box, width, gap_x, gap_y, gap_block, nets=None):
@@ -535,6 +649,124 @@ def reread(path, lines, of_record, owner):
     return anchor_geometry(back, of_record, owner)
 
 
+def relax(placed, box, gap, rounds=200):
+    """Push overlapping components apart, in the space `collisions()` reads.
+
+    Deliberately not a second rectangle calculation. Three attempts at an
+    in-band resolver each used a different reading of what the placement
+    dict holds -- corner, anchor, top edge -- and each left pairs behind
+    for `collisions()` to catch. The fix is to have one definition: resolve
+    here, on the final offsets, with the same `x0 + dx` arithmetic the
+    check uses, so the two cannot disagree.
+
+    Always pushes the lower of a pair further down, so it terminates.
+    """
+    for _ in range(rounds):
+        bad = collisions(placed, box, pad=gap // 2)
+        if not bad:
+            return placed
+        for a, b in bad:
+            ax0, ay0, ax1, ay1 = box[a]
+            bx0, by0, bx1, by1 = box[b]
+            adx, ady = placed[a]
+            bdx, bdy = placed[b]
+            # whichever sits lower gets pushed below the other
+            lo, hi = (b, a) if (bdy + by1) < (ady + ay1) else (a, b)
+            hx0, hy0, hx1, hy1 = box[hi]
+            lx0, ly0, lx1, ly1 = box[lo]
+            top = placed[hi][1] + hy0
+            placed[lo] = (placed[lo][0], top - gap - (ly1 - ly0) - ly0)
+    return placed
+
+
+def star_pack(blocks, order, box, nets, pinsof, localpins, rails, decl,
+              gap_x, gap_y, gap_block):
+    """Place each band as its hubs with their satellites hung off the pins.
+
+    The structure of a board like this is not a chain and not three rows:
+    twelve components with five or more pins and 117 satellites around
+    them. So a satellite goes beside the hub pin that actually reaches it,
+    on the side that pin is on.
+
+    **Zero crossings in the fan-out is a property of the construction.**
+    Within one side of a hub, the pins are sorted by y and the satellites
+    are placed in that same order, so the matching between them is
+    monotone, and a monotone matching between two sorted sequences cannot
+    cross. It is not a tuned result and there is no parameter to get wrong.
+    """
+    members = collections.defaultdict(set)
+    for d, b in blocks.items():
+        members[b].add(d)
+
+    placed, y_cursor = {}, 0.0
+    for name in reversed(order):
+        mem = members[name]
+        own, hubs = owners(mem, nets, pinsof, rails, decl)
+        band = {}
+
+        # satellites per hub, split by which side of the hub their pin is on
+        kids = collections.defaultdict(lambda: {"L": [], "R": []})
+        for sat, o in own.items():
+            if o not in hubs:
+                continue
+            shared = {n for n in pinsof.get(sat, ()) if n in set(pinsof.get(o, ()))}
+            cands = [(dx, dy) for dx, dy, n in localpins.get(o, ()) if n in shared]
+            dx, dy = (min(cands, key=lambda c: (-abs(c[0]), c[1]))
+                      if cands else (0, 0))
+            kids[o]["L" if dx < 0 else "R"].append((dy, sat))
+
+        x = 0.0
+        for hub in sorted(hubs, key=_desig_key):
+            hx0, hy0, hx1, hy1 = box[hub]
+            colw = max((box[s][2] - box[s][0]
+                        for side in kids[hub].values() for _, s in side),
+                       default=0)
+            # left column, hub, right column
+            band[hub] = (x + colw + gap_x, 0.0)
+            for side, sx in (("L", x), ("R", x + colw + gap_x + (hx1 - hx0) + gap_x)):
+                col = sorted(kids[hub][side], key=lambda t: (-t[0], _desig_key(t[1])))
+                cy = None
+                for dy, sat in col:
+                    sh = box[sat][3] - box[sat][1]
+                    want = float(dy)
+                    if cy is not None:
+                        want = min(want, cy - sh - gap_y)
+                    band[sat] = (sx, want)
+                    cy = want
+            x += colw * 2 + (hx1 - hx0) + 4 * gap_x
+
+        # satellites of a non-hub owner stack directly under it
+        for sat, o in own.items():
+            if o in hubs or o not in band:
+                continue
+            ox, oy = band[o]
+            n = sum(1 for s2, o2 in own.items() if o2 == o and s2 < sat)
+            band[sat] = (ox, oy - (box[o][3] - box[o][1]) - gap_y
+                         - n * ((box[sat][3] - box[sat][1]) + gap_y))
+        # anything with no owner goes in a row beneath the band
+        loose = sorted(mem - set(band), key=_desig_key)
+        lx = 0.0
+        low = min((v[1] for v in band.values()), default=0.0)
+        for d in loose:
+            band[d] = (lx, low - 200)
+            lx += (box[d][2] - box[d][0]) + gap_x
+
+        # Resolve overlaps for real, over the whole band rather than per
+        # hub side or per exact column. Both narrower versions left pairs
+        # behind -- 19 and then 16 -- because the things that collide here
+        # sit at *nearby* x, not identical x: a satellite against a stack
+        # under a non-hub owner. Push the lower of any overlapping pair
+        # below the upper one and repeat; always pushing downward means it
+        # terminates, and a band is at most twenty components.
+        top = max(v[1] + box[d][3] - box[d][1] for d, v in band.items())
+        for d, (bx, by) in band.items():
+            x0, y0, x1, y1 = box[d]
+            placed[d] = (bx - x0, -(y_cursor + (top - by)) - y1)
+        height = top - min(v[1] for v in band.values())
+        y_cursor += height + gap_block
+    return placed
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -548,6 +780,10 @@ def main() -> int:
                     help="canvas units to wrap a block's row at (default 2400)")
     ap.add_argument("--gap", type=int, default=40,
                     help="units between neighbours (default 40)")
+    ap.add_argument("--layout", choices=("row", "star"), default="row",
+                    help="row: one connectivity-ordered chain per band. "
+                         "star: hubs with their satellites hung off the pins "
+                         "that reach them (default row)")
     ap.add_argument("--block-gap", type=int, default=120,
                     help="extra units between blocks (default 120)")
     a = ap.parse_args()
@@ -643,7 +879,30 @@ def main() -> int:
         for netname in c["pins"].values():
             if not netname.upper().startswith("NC_"):
                 nets[netname].append(c["props"]["Designator"])
-    placed = pack(blocks, order, box, a.width, a.gap, a.gap, a.block_gap, nets)
+    if a.layout == "star":
+        rails = set(read_rails(a.netlist.with_name("design.yaml")))
+        if not rails:
+            print("  error: --layout star needs design.yaml's rails:",
+                  file=sys.stderr)
+            return 2
+        pinsof = {c["props"]["Designator"]:
+                  [v for v in c["pins"].values()
+                   if not v.upper().startswith("NC_")]
+                  for c in design.values()}
+        decl = {c["props"]["Designator"]: i
+                for i, c in enumerate(design.values())}
+        localpins = local_pins(lines, grid, of_record, owner)
+        placed = relax(star_pack(blocks, order, box, nets, pinsof,
+                                 localpins, rails, decl, a.gap, a.gap,
+                                 a.block_gap), box, a.gap)
+        missing = sorted(set(blocks) - set(placed))
+        if missing:
+            print(f"  error: star layout placed nothing for "
+                  f"{', '.join(missing[:8])}", file=sys.stderr)
+            return 1
+    else:
+        placed = pack(blocks, order, box, a.width, a.gap, a.gap,
+                      a.block_gap, nets)
     counts = collections.Counter(blocks.values())
     print(f"\n  {len(order)} blocks:")
     for b in order:
