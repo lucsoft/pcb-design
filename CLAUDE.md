@@ -353,8 +353,28 @@ got. That is also why `Footprint` is the one field `fixparts.py` copies under
 `--no-footprint`: it is a uuid naming a library document rather than display
 text, and it decides which copper lands.
 
-**EasyEDA's "auto assign" fetches the catalogue record, and overwrites
-`Name` doing it.** Running it on three components changed those three and
+**The feature is called Device Standardization**, in the schematic's left
+panel, and it sorts every component into *Undetermined*, *Allocation number*
+or *Exact Match*. EasyEDA's own documentation describes the colours — red for
+a mismatch, **yellow for "has a vendor number but lacks other vendor
+information"**, green for complete — and does not document the criteria
+behind them. Users have asked on the forum why a component with a correct
+LCSC number still reads Undetermined and have not been answered; one reported
+36 instances of the companion warning, *"Component attributes does not match
+the Supplier Part, It is recommended to use Device Standardization"*, with
+every part assigned.
+
+The yellow definition is the one that matters here and it matches what the
+file shows exactly: a C-number present, the rest of the vendor record absent.
+Getting to green is `Assign LCSC Part` → `Use Recommended Device` →
+`Replace`, which the left panel can do in batch. EasyEDA recommends running
+it **before exporting the BOM**.
+
+So a part reading Undetermined is not a missing or wrong C-number, and no
+tool here can fix it: the missing data is the LCSC parametric record, which
+lives on JLCPCB's servers.
+
+**"Assign LCSC Part" fetches that record, and overwrites `Name` doing it.** Running it on three components changed those three and
 nothing else in a 9573-record file: it wrote the full LCSC parametric set
 (`RDS(on) 30.44mΩ`, `Trigger Current 600mA~6A`, `Propagation Delay
 8.5ns@5V,50pF`), the 3D model — all identical field-for-field to what the
