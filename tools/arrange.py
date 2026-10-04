@@ -238,7 +238,51 @@ def extents(lines, grid, of_record, owner):
     return {d: tuple(v) for d, v in box.items()}
 
 
-def pack(blocks, order, box, width, gap_x, gap_y, gap_block):
+def seriate(members, nets):
+    """Order a block's components so connected ones end up adjacent.
+
+    Sorting by designator puts C1, C2, C3 in a row and the parts they
+    actually connect to somewhere else, which is what makes a correct
+    schematic read as a parts list. This is a greedy chain: start at the
+    least-connected component, then repeatedly take whichever unplaced
+    neighbour shares the most nets.
+
+    Only nets with at most four pins count as a connection. The four power
+    rails carry 209 of this board's 441 pins, and letting GND vote would make
+    every component adjacent to every other, which is the same as no
+    information at all.
+
+    Ties break on the designator, so the result is deterministic.
+    """
+    adj = collections.defaultdict(collections.Counter)
+    for members_of_net in nets.values():
+        inside = [d for d in members_of_net if d in members]
+        if not 2 <= len(members_of_net) <= 4 or len(inside) < 2:
+            continue
+        for a in inside:
+            for b in inside:
+                if a != b:
+                    adj[a][b] += 1
+
+    todo = sorted(members, key=_desig_key)
+    if not adj:
+        return todo
+    start = min(todo, key=lambda d: (len(adj[d]), _desig_key(d)))
+    out, left = [start], set(todo) - {start}
+    while left:
+        cur = out[-1]
+        cand = [d for d in left if d in adj[cur]]
+        if cand:
+            nxt = max(cand, key=lambda d: (adj[cur][d], -_desig_key(d)[1]))
+        else:
+            # chain exhausted: start a new one at the least-connected leftover
+            nxt = min(left, key=lambda d: (len(adj[d] or {}), _desig_key(d)))
+        out.append(nxt)
+        left.discard(nxt)
+    return out
+
+
+def pack(blocks, order, box, width, gap_x, gap_y, gap_block, nets=None):
     """designator -> (dx, dy) offset for its anchor, packed by real size.
 
     The *input* grid has to be uniform, because that is what lets a record be
@@ -254,7 +298,8 @@ def pack(blocks, order, box, width, gap_x, gap_y, gap_block):
 
     placed, y = {}, 0.0
     for name in order:
-        ds = sorted(members[name], key=_desig_key)
+        ds = (seriate(set(members[name]), nets) if nets
+              else sorted(members[name], key=_desig_key))
         row, x, row_h = [], 0.0, 0.0
         rows = []
         for d in ds:
@@ -587,7 +632,12 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
-    placed = pack(blocks, order, box, a.width, a.gap, a.gap, a.block_gap)
+    nets = collections.defaultdict(list)
+    for c in design.values():
+        for netname in c["pins"].values():
+            if not netname.upper().startswith("NC_"):
+                nets[netname].append(c["props"]["Designator"])
+    placed = pack(blocks, order, box, a.width, a.gap, a.gap, a.block_gap, nets)
     counts = collections.Counter(blocks.values())
     print(f"\n  {len(order)} blocks:")
     for b in order:
