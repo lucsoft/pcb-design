@@ -502,9 +502,9 @@
   "gge39": {
     "props": {
       "Designator": "C12",
-      "device_name": "CL21A106KAYNNNE",
-      "value": "10uF 25V",
-      "Supplier Part": "C15850"
+      "device_name": "CL21A226MAQNNNE",
+      "value": "22uF 25V",
+      "Supplier Part": "C45783"
     },
     "pins": {
       "1": "BUS_5V",

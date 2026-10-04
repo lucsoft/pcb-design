@@ -1418,7 +1418,7 @@ it.
 | C9 | **220 nF 100 V X7R 0805** | C513710 | TPS54360B input decoupling — this one sits on the **36 V bus**, so it takes the same 100 V part as the eFuse inputs, not the 0402 |
 | C14 | **100 nF 50 V X7R 0402** | C131394 | SY8089 input decoupling, on the 5 V rail |
 | C10,C11 | **10 µF 50 V X5R 1206** | C7432781 | TPS54360B output |
-| C12 | **10 µF 25 V X5R 0805** | C15850 | SY8089 input |
+| C12 | **22 µF 25 V X5R 0805** | C45783 | SY8089 input — p.2 and p.7 ask for C_IN ≥ 10 µF, which this meets, and it is the part C13 and C15 already carry rather than a third capacitor reel |
 | C13 | **22 µF 25 V X5R 0805** | C45783 | SY8089 output — the p.1 selection table ticks 2.2 µH only at 22 µF and above, and L2 is 2.2 µH. 10 µF would be outside the vendor's endorsed L/C set, for a COT regulator whose stability depends on exactly that pair |
 | C15 | **22 µF 25 V X5R 0805** | C45783 | ESP32-C6 local bulk — the 382 mA TX peak |
 | C16,C19,C20 | **100 nF 50 V X7R 0402** | C131394 | ESP32-C6, HUSB238A and INA226 supply decoupling |

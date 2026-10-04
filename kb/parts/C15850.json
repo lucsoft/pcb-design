@@ -41,6 +41,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 10 uF 25 V X5R 0805. input and output bulk around the SY8089",
+  "designVerdict": "REJECTED. 10 uF 25 V X5R 0805. Live LCSC stock is 0 as of 2026-10-04 while the jlcsearch mirror still reported 12.7 M. The one placement it held, C12, moved to C45783",
   "notes": []
 }

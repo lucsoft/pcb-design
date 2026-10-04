@@ -41,6 +41,6 @@
     "pins": "two-terminal passive - pads 1 and 2, no polarity",
     "tier": "jlcsearch is_basic flag, cached - confirm against JLCPCB before ordering"
   },
-  "designVerdict": "SELECTED. 22 uF 25 V X5R 0805. local bulk at the ESP32-C6 and at each regulator output",
+  "designVerdict": "SELECTED. 22 uF 25 V X5R 0805. local bulk at the ESP32-C6, at each regulator output, and the SY8089 input",
   "notes": []
 }
