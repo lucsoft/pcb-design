@@ -23,6 +23,23 @@ record is added or removed, no other key. That is checked after writing: the
 output must differ from the input in exactly the `Supplier Part` instance
 attributes and nowhere else.
 
+**There is no separate "assigned" flag**, which is the first thing to look
+for and it does not exist. Re-importing a file with the C-number corrected
+and then opening five components in the editor showed EasyEDA filling seven
+fields on exactly those five and nothing on the other 124: Datasheet,
+Description, Footprint, JLCPCB Part Class, LCSC Part Name, Supplier Footprint
+and Value. No boolean anywhere, `Unique ID` empty on both, the COMPONENT
+records identical in shape. "Assigned" is not a state EasyEDA records -- it
+is whether those fields happen to be filled, and it fills them lazily, when
+a human opens the part.
+
+So this copies them, which is what the editor would do one component at a
+time. Values are taken verbatim from the DEVICE document, because that is
+what EasyEDA itself wrote: on all five, every field came out byte-identical
+to the device's. **Only empty fields are filled.** A non-empty instance value
+is a deliberate override, and discarding one silently would be a worse bug
+than the one this fixes.
+
 What this cannot settle is whether EasyEDA reads the instance or the device
 when both exist. Nothing readable from outside answers that. **Export the BOM
 from EasyEDA and look** -- that is the only thing that does, and it takes a
@@ -38,6 +55,23 @@ import zipfile
 from pathlib import Path
 
 KEY = "Supplier Part"
+
+# The other fields EasyEDA itself copies from the device onto an instance the
+# moment it can resolve the part. Observed, not guessed: on the five
+# components opened in the editor after the C-number was corrected, every one
+# of these came out byte-identical to the device's value.
+COPY_KEYS = ("LCSC Part Name", "JLCPCB Part Class", "Supplier Footprint",
+             "Datasheet", "Value", "Description")
+
+# Kept apart from the rest because it is the only structural one. Every field
+# above is display or BOM metadata; `Footprint` is a uuid naming a library
+# document, and library documents are how EasyEDA tracks updates -- each is
+# embedded with its own DOCHEAD carrying `uuid`, `version` and `updateTime`,
+# and an update is a version it has not got. Copying the device's own uuid
+# onto the instance should be inert, since it is the same uuid the device
+# already points at. "Should be" is not a standard this project accepts for a
+# field that decides which copper lands, so it is opt-out.
+FOOTPRINT_KEY = "Footprint"
 
 
 def load(path: Path):
@@ -63,14 +97,14 @@ def load(path: Path):
     return eprus[0], rows
 
 
-def device_parts(rows) -> dict[str, str]:
-    """DEVICE document uuid -> its Supplier Part."""
+def device_parts(rows) -> dict[str, dict]:
+    """DEVICE document uuid -> its whole attribute dict."""
     out = {}
     for h, b, doc, _ in rows:
         if h and h["type"] == "META" and doc and doc[0] == "DEVICE":
-            sp = (b.get("attributes") or {}).get(KEY)
-            if sp:
-                out[doc[1]] = sp
+            at = b.get("attributes") or {}
+            if at.get(KEY):
+                out[doc[1]] = at
     return out
 
 
@@ -81,6 +115,9 @@ def main() -> int:
     ap.add_argument("export", type=Path)
     ap.add_argument("-o", "--out", type=Path)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--no-footprint", action="store_true",
+                    help="leave the Footprint uuid alone (see the note on "
+                         "library update tracking)")
     a = ap.parse_args()
     if not a.dry_run and not a.out:
         print("error: give -o/--out, or --dry-run", file=sys.stderr)
@@ -89,9 +126,10 @@ def main() -> int:
         print(f"error: {a.export} not found", file=sys.stderr)
         return 2
 
+    copy_keys = COPY_KEYS if a.no_footprint else COPY_KEYS + (FOOTPRINT_KEY,)
     name, rows = load(a.export)
-    dev = device_parts(rows)
-    if not dev:
+    devattrs = device_parts(rows)
+    if not devattrs:
         print(f"error: {a.export.name} holds no DEVICE document, so there is "
               f"no correct value to copy from", file=sys.stderr)
         return 2
@@ -104,12 +142,14 @@ def main() -> int:
            and b.get("value")}
 
     print(f"\n{a.export.name}")
-    print(f"  {len(dev)} device definition(s), {len(desig)} placed component(s)")
+    print(f"  {len(devattrs)} device definition(s), "
+          f"{sum(1 for d in desig.values() if not d.endswith(chr(63)))} placement(s)")
 
-    out_lines, fixes, skipped, templates = [], [], [], 0
+    out_lines, fixes, filled, skipped, templates = [], [], [], [], 0
+    seen_comp = set()
     for h, b, doc, raw in rows:
-        if (h is None or h["type"] != "ATTR" or b.get("key") != KEY
-                or b.get("parentId") not in desig):
+        key = b.get("key") if h and h["type"] == "ATTR" else None
+        if (key not in (KEY,) + copy_keys or b.get("parentId") not in desig):
             out_lines.append(raw)
             continue
         cid = b["parentId"]
@@ -117,18 +157,34 @@ def main() -> int:
         # document, not a placement on the sheet. Correcting it would be
         # editing the part definition rather than this board's use of it.
         if desig[cid].endswith("?"):
-            templates += 1
+            if cid not in seen_comp:
+                templates += 1
+                seen_comp.add(cid)
             out_lines.append(raw)
             continue
-        want = dev.get(ref.get(cid))
-        if not want:
-            skipped.append((desig[cid], "points at no DEVICE document"))
+        attrs = devattrs.get(ref.get(cid))
+        if attrs is None:
+            if key == KEY:
+                skipped.append((desig[cid], "points at no DEVICE document"))
             out_lines.append(raw)
             continue
-        if b.get("value") == want:
-            out_lines.append(raw)
-            continue
-        fixes.append((desig[cid], b.get("value"), want))
+        want = attrs.get(key)
+        cur = b.get("value")
+        if key == KEY:
+            # The instance holds the partId. Replace it outright: it is the
+            # field the BOM resolves by and a partId resolves to nothing.
+            if not want or cur == want:
+                out_lines.append(raw)
+                continue
+            fixes.append((desig[cid], cur, want))
+        else:
+            # Fill only what is empty. A non-empty instance value is a
+            # deliberate override of the device, and silently discarding one
+            # would be a worse bug than the one being fixed.
+            if not want or cur not in (None, ""):
+                out_lines.append(raw)
+                continue
+            filled.append((desig[cid], key))
         nb = dict(b)
         nb["value"] = want
         out_lines.append(f"{json.dumps(h, separators=(',', ':'))}||"
@@ -140,8 +196,13 @@ def main() -> int:
         print(f"  ... and {len(fixes) - 10} more")
     for d, why in skipped:
         print(f"  SKIP   {d}: {why}")
-    print(f"\n  {len(fixes)} attribute(s) to correct, "
-          f"{templates} library template(s) left alone, {len(skipped)} skipped")
+    import collections as _c
+    byk = _c.Counter(k for _, k in filled)
+    for k, v in byk.most_common():
+        print(f"  fill   {k:20s} on {v} instance(s) that had it empty")
+    print(f"\n  {len(fixes)} C-number(s) corrected, {len(filled)} empty field(s) "
+          f"filled, {templates} library template(s) left alone, "
+          f"{len(skipped)} skipped")
 
     if a.dry_run:
         print("  --dry-run: nothing written\n")
@@ -173,7 +234,7 @@ def main() -> int:
             continue
         # The only permitted difference, on the only permitted key.
         changed = {k for k in set(b1) | set(b2) if b1.get(k) != b2.get(k)}
-        if (h1["type"] != "ATTR" or b1.get("key") != KEY
+        if (h1["type"] != "ATTR" or b1.get("key") not in (KEY,) + copy_keys
                 or changed != {"value"}):
             drift.append(f"{h1.get('id')}: changed {sorted(changed)}")
     if drift:

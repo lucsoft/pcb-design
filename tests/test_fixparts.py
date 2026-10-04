@@ -54,11 +54,21 @@ def make(path, parts, with_device=True):
              "x": i * 300, "y": -60})
         add({"type": "ATTR", "id": f"m{i}"},
             {"key": "Manufacturer Part", "value": f"MPN{i}", "parentId": f"c{i}"})
+        # empty, as the importer leaves them
+        add({"type": "ATTR", "id": f"cls{i}"},
+            {"key": "JLCPCB Part Class", "value": "", "parentId": f"c{i}"})
+        add({"type": "ATTR", "id": f"fp{i}"},
+            {"key": "Footprint", "value": None, "parentId": f"c{i}"})
+        # already carrying a deliberate value, which must survive
+        add({"type": "ATTR", "id": f"val{i}"},
+            {"key": "Value", "value": f"KEEP{i}", "parentId": f"c{i}"})
     if with_device:
         for i, (d, lcsc, _) in enumerate(parts):
             add({"type": "DOCHEAD"}, {"docType": "DEVICE", "uuid": f"dev{i}"})
             add({"type": "META", "id": f"meta{i}"},
-                {"title": f"P{i}", "attributes": {"Supplier Part": lcsc}})
+                {"title": f"P{i}", "attributes": {
+                "Supplier Part": lcsc, "JLCPCB Part Class": "Extended Part",
+                "Footprint": f"fpuuid{i}", "Value": f"DEVICE{i}"}})
 
     lines = [f"{json.dumps(h, separators=(',', ':'))}||"
              f"{json.dumps(b, separators=(',', ':'))}|" for h, b in recs]
@@ -115,12 +125,29 @@ def main():
               all(a[k].get("x") == b[k].get("x") and a[k].get("y") == b[k].get("y")
                   for k in a))
         check("no record appeared or vanished", set(a) == set(b))
-        others = [k for k in a if a[k] != b[k]]
-        check("exactly one attribute differs, and it is the intended one",
-              others == ["s0"], str(others))
+        others = sorted(k for k in a if a[k] != b[k])
+        check("only the intended attributes differ",
+              others == ["cls0", "cls1", "fp0", "fp1", "s0"], str(others))
         check("no other key on that record moved",
               {k for k in set(a["s0"]) | set(b["s0"])
                if a["s0"].get(k) != b["s0"].get(k)} == {"value"})
+
+    if out.exists():
+        # --- the other device fields -------------------------------------
+        # EasyEDA fills these itself, lazily, when a human opens the part.
+        # There is no "assigned" flag anywhere; whether a part counts as
+        # assigned is just whether these are filled.
+        check("an empty JLCPCB Part Class is filled from the device",
+              b["cls0"]["value"] == "Extended Part", str(b["cls0"]))
+        check("a null Footprint is filled from the device",
+              b["fp0"]["value"] == "fpuuid0", str(b["fp0"]))
+        check("a non-empty instance value is NOT overwritten",
+              b["val0"]["value"] == "KEEP0", str(b["val0"]))
+        check("...including on a component that needed no C-number fix",
+              b["val1"]["value"] == "KEEP1", str(b["val1"]))
+        check("the template's fields are left alone too",
+              b["cls2"]["value"] == "" and b["fp2"]["value"] is None,
+              f'{b["cls2"]} {b["fp2"]}')
 
     # --- break probe: nothing to copy from --------------------------------
     bare = tmp / "bare.epro2"

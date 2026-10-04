@@ -334,6 +334,25 @@ with the output deleted if anything else differs. Library templates inside
 the DEVICE documents (designator ending in `?`) are left alone; correcting
 one would be editing the part definition rather than this board's use of it.
 
+**There is no "assigned" flag**, which is the first thing to look for and it
+does not exist. Re-importing with the C-number corrected and then opening
+five components showed EasyEDA filling seven fields on exactly those five and
+nothing on the other 124 — Datasheet, Description, Footprint, JLCPCB Part
+Class, LCSC Part Name, Supplier Footprint, Value. No boolean, `Unique ID`
+empty on both, the COMPONENT records identical in shape. "Assigned" is not a
+state EasyEDA records; it is whether those fields happen to be filled, and it
+fills them lazily when a human opens the part. Values are copied from the
+device verbatim, which is why `fixparts.py` can do the same for all of them.
+
+**Library updates are tracked by `uuid` + `version` on each `DOCHEAD`.** Every
+library item a project uses is embedded as its own document — this export has
+55 `DEVICE`, 55 `SYMBOL` and 31 `FOOTPRINT` — and each head carries `uuid`
+(what the item is), `version` (which revision), `updateTime` and
+`editVersion`. An available update is a `version` the embedded copy has not
+got. That is also why `Footprint` is the one field `fixparts.py` copies under
+`--no-footprint`: it is a uuid naming a library document rather than display
+text, and it decides which copper lands.
+
 What no amount of reading from outside settles is whether EasyEDA honours the
 instance or the device when both exist. **Export the BOM from EasyEDA and
 look** — that is the only thing that does.
