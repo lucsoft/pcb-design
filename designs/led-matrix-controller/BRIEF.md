@@ -1,65 +1,77 @@
 ---
 type: Brief
 title: "LED matrix controller: original brief"
-description: Verbatim requirement snippets from the conversation that started the design.
+description: What the controller board has to do, as specified at the outset -- USB PD EPR, UART over the same cable, W5500 Ethernet, and a power budget the firmware adapts to.
 tags: [led-matrix, requirements]
 status: stable
-generated: { by: human:lucsoft, at: 2026-10-01T22:49:49+02:00 }
+generated: { by: claude-code/claude-opus-5, at: 2026-10-04T13:03:49Z }
+sources:
+  - id: conversation
+    resource: the design conversation of 2026-10-01 and its attachments
+    title: Where the requirements were stated
+  - id: module-v3
+    resource: /kb/modules/led-matrix-module-v3.json
+    title: The module the controller has to drive
 ---
 
-Project: Driver Controller for LED Matrix Module System. Allowing for Ethernet controlling or directly via USB.
+# LED matrix controller — brief
 
-snippets from chat:
+A controller and driver board for a modular LED matrix system, driven from
+TouchDesigner. It should connect to a laptop over a single USB cable for
+quick work, or run from a standalone supply with control over Ethernet once
+the installation is built.
 
-can this build an PCB that has USB PD also allows for UART over the same usb cable so both the usb ic and the uart can talk to the same allows to talk to an esp32-c6. also it should have support for these spi ethernet W5500 SPI thingys?
+The modules themselves exist and work. What is missing is the board that
+powers and drives them: today they run off a lab supply with an ESP32-C6
+dev kit, which is fine on a bench and neither portable nor usable at a rave.
 
-this would be the perfect controller/driver for the led modules
+## The modules this has to drive
 
-also it would need to follow the USB PD EPR 180 W spec. and maybe add an efuse 👉 👈
+Each module is a 6×6 array of WS2812D-F8 fed in parallel, with its own
+XL1509-5.0E1 buck converter stepping the bus down to 5 V at up to 2 A. The
+converter takes a bus anywhere from 4.5 V to 40 V, so the controller can run
+the bus high and let each module drop it locally. Modules are chained.
 
-because its software defined this would allow me to make the led matrix module complety flexible
-like did you plug it your old laptop? i see that because it doesn't give enough power i limit how many LEDs i can power up
-got the full power? well here you go
-do you have a standalone power brick? well i can receive UDP packages too!
+The current module revision is recorded in `kb/modules/led-matrix-module-v3.json`.
 
-writeup:
+## Requirements
 
-So im building a Modular LED Matrix controlled via touch designer.
+- **USB PD, following the EPR 180 W specification.** This is what makes the
+  single-cable case worth building, and it is also what makes the design
+  harder than a 5 V board.
+- **UART over the same USB cable as power delivery**, so the PD controller
+  and a UART bridge share one connector and both reach the ESP32-C6.
+- **Ethernet over SPI**, using a W5500.
+- **An ESP32-C6** as the host, which needs a 3.3 V rail available at boot
+  before anything else is negotiated.
+- **An eFuse**, if it fits the budget.
+- **A power budget the firmware adapts to.** The board should negotiate
+  whatever the attached supply offers and cap brightness and module count
+  to match: plugged into an old laptop, fewer LEDs light; on a full supply,
+  all of them do. Making this software-defined is what keeps the module
+  system flexible rather than fixed to one power source.
+- **UDP control** when running from a standalone supply rather than USB.
 
-Each Module is a 6x6 WS2812D-F8 connected in parallel.
+## Context and constraints
 
-Each Module has a Voltage Downstepper (XL1509-5.0E1)
+Layout is done in EasyEDA Pro. The core ICs look settled — HUSB238A-BB001-QN16R
+is the candidate for PD — but EPR makes the surrounding design more involved
+than a basic PD sink, and the plan for how the parts fit together is the part
+that needs working out rather than the part selection.
 
-allowing from putting down 40 V at 2 Amps to 5V
+One detail worth carrying forward: the PD controller exposes a pin for cutting
+power, so a supply that overheats and shuts down can drop the MOSFET rather
+than browning out the board.
 
-these models are chain.
+The modules and everything built so far have been manageable. This board is
+the first one that is not, which is why it gets written down before it gets
+drawn.
 
-Currently i just run these Modules via a lab powersupply but i want a nice controller board to it which allows for quick connecting to a laptop or when fully build just connected to a power supply and everything else is via ethernet
+## References
 
-im not really an expert in anything and all PCB designs are currently done in EasyEDA Pro
-
-and that controller board im planning is a bit too much to chew on for me
-everything else for now was okay for now
-
-like for IC i think of HUSB238A-BB001-QN16R 
-but because of USB EPR it kinda get more complex
-
-
-currently thats my led module v3 i made in easyeda:
-
-https://cdn.discordapp.com/attachments/1542958352093413476/1543362944178323516/DXF_PCB6_2026-08-29_AutoCAD2007.dxf?ex=6abf7100&is=6abe1f80&hm=847964cb8225b96f1f3a857b75793c39887a88f19b3e7c6b3a0cb63c17ad12e4&
-
----
-
-like i think i have the core ICs picked out, just need some plan on how to write everything. 
-
-So the ESP32 can bootup (needs 3.3V rail). so the USB PD Chip can rase the voltage and somehow i want to use the USB 2.0 rail for a UART chip to the esp32-c6.
-so thats kinda my most concern
-
-i saw that the USB PD has some pinout for cutting power (like when the USB power supply overheats and shuts off) it can turn of the mosfet
-
-https://cdn.discordapp.com/attachments/1542958352093413476/1543593779565691031/image.png?ex=6abf9f3b&is=6abe4dbb&hm=ad4670a7cd46b2b80bb703bda0d7387cfd28aca1490f82d353760dbf80720045
-
-----
-
-Currently i drive these modules with an ESP32-C6 Dev Kit + DC Power Supply, works good but not really portable or usable at a rave.
+Two Discord attachments were shared with the original brief: a DXF export of
+the v3 module PCB, and a screenshot of the PD controller's pinout showing the
+power-cut pin. Both are signed CDN links and have since expired, so they are
+not reproduced here — `kb/modules/led-matrix-module-v3.json` carries what was
+read off the first, and the second is superseded by the HUSB238A datasheet in
+`kb/parts/`.
