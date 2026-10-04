@@ -46,6 +46,35 @@ def make_epro2(path, records):
         z.writestr("doc.epru", "\n".join(lines))
 
 
+def with_parts(pin_nets, parts):
+    """A schematic plus the DEVICE documents its components resolve through.
+
+    The C-number is on the device, not the instance, and reached by a
+    `Device` attribute holding the document uuid. The instance also carries
+    an attribute literally called `Supplier Part` whose value is the partId
+    -- a decoy, and the reason the fixture sets it to something wrong on
+    purpose: a reader that trusts it gets the wrong answer, and must.
+    """
+    recs = schematic(pin_nets)
+    for i, (desig, lcsc) in enumerate(parts):
+        uuid = f"dev{i}"
+        recs.append(({"type": "DOCHEAD"},
+                     {"docType": "DEVICE", "uuid": uuid}))
+        recs.append(({"type": "META", "id": f"m{i}"},
+                     {"title": f"PART{i}",
+                      "attributes": {"Supplier Part": lcsc}}))
+        recs.append(({"type": "COMPONENT", "id": f"k{i}"},
+                     {"partId": f"PART{i}.1", "x": i * 300, "y": 0}))
+        recs.append(({"type": "ATTR", "id": f"kd{i}"},
+                     {"key": "Designator", "value": desig, "parentId": f"k{i}"}))
+        recs.append(({"type": "ATTR", "id": f"kv{i}"},
+                     {"key": "Device", "value": uuid, "parentId": f"k{i}"}))
+        recs.append(({"type": "ATTR", "id": f"ks{i}"},
+                     {"key": "Supplier Part", "value": f"PART{i}.1",
+                      "parentId": f"k{i}"}))
+    return recs
+
+
 def schematic(pin_nets):
     """A schematic-shaped document: one WIRE per pin, named by an ATTR."""
     recs = []
@@ -111,6 +140,8 @@ def main():
 
     rc, out = run("diff", sch, nl)
     check("matching export diffs clean", rc == 0 and "identical" in out, out)
+    check("...and says the parts went UNCHECKED, not that they passed",
+          "UNCHECKED" in out and "unverified, not verified" in out, out)
 
     # break probe 1: a net port lost on one pin -> the count drops
     lost = tmp / "lost.epro2"
@@ -133,6 +164,37 @@ def main():
     # fail-closed: diffing against a document with no nets must NOT pass
     rc, out = run("diff", empty, nl)
     check("diff against a net-less export refuses to pass", rc == 2, f"rc={rc} {out}")
+
+    # --- the part check ---------------------------------------------------
+    # `Supplier Part` is the only field the importer resolves by, and nothing
+    # in EasyEDA validates it, so a wrong C-number places a different part
+    # with no symptom. The net diff is blind to this entirely: the nets are
+    # unaffected by which part sits on them.
+    pn = tmp / "parts.json"
+    pn.write_text(json.dumps({
+        "gge1": {"props": {"Designator": "U1", "Supplier Part": "C111"},
+                 "pins": {"1": "GND"}},
+        "gge2": {"props": {"Designator": "U2", "Supplier Part": "C222"},
+                 "pins": {"1": "VCC"}}}), encoding="utf-8")
+
+    good = tmp / "parts-ok.epro2"
+    make_epro2(good, with_parts(["GND", "VCC"], [("U1", "C111"), ("U2", "C222")]))
+    rc, out = run("diff", good, pn)
+    check("matching C-numbers pass", rc == 0 and "resolves to the C-number" in out, out)
+
+    swapped = tmp / "parts-bad.epro2"
+    make_epro2(swapped, with_parts(["GND", "VCC"], [("U1", "C999"), ("U2", "C222")]))
+    rc, out = run("diff", swapped, pn)
+    check("a wrong C-number is reported",
+          rc == 1 and "WRONGPART" in out and "C999" in out, out)
+    check("...even though the nets are untouched",
+          "identical" not in out and "108" not in out, out)
+
+    nodev = tmp / "parts-none.epro2"
+    make_epro2(nodev, with_parts(["GND", "VCC"], [("U1", "C111")]))
+    rc, out = run("diff", nodev, pn)
+    check("a placement resolving to nothing is reported",
+          rc == 1 and ("NOPART" in out or "MISSING" in out), out)
 
     print()
     if FAILURES:

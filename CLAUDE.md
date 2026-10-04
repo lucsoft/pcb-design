@@ -300,6 +300,26 @@ is exactly what a name-only comparison passes. Exit status is 1 on any
 discrepancy and **2 if the export carried no nets at all** — an empty export
 must not read as a clean one.
 
+It checks the **parts** as well, and those matter more than the nets: a wrong
+C-number places a different component silently, and nothing in EasyEDA
+validates it. The nets are unaffected by which part sits on them, so a net-only
+diff is blind to the one mistake that costs a board spin.
+
+**The C-number is not on the component instance.** An `.epru` is a
+concatenation of documents, each opened by a `DOCHEAD`; the schematic is one
+and every part it uses is embedded alongside as a `DEVICE` document.
+`Supplier Part` lives on that device's META, and an instance reaches it
+through a `Device` attribute holding the document uuid. The instance *does*
+carry an attribute called `Supplier Part` and it is a **decoy** — it holds the
+partId, so `FS32X225K101EGG.1` rather than `C153036`. Reading that one and
+concluding the number is missing is the obvious mistake. A hand-drawn
+schematic has no per-instance copy at all.
+
+An export with no `DEVICE` document reports the parts **UNCHECKED** rather
+than failing: "this file carries no device data" is a third answer, not a
+synonym for "every part is wrong", and the noise from collapsing them is how
+a real `WRONGPART` line gets scrolled past.
+
 EasyEDA's DRC does not substitute for this. It checks geometry, not intent;
 a clean DRC says nothing about whether the board is connected correctly.
 

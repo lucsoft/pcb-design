@@ -13,7 +13,7 @@ on newlines first, then on `||` within each line.
     epro.py types  <file.epro2>          record types and counts
     epro.py bom    <file.epro2>          components with LCSC numbers
     epro.py nets   <file.epro2>          net names
-    epro.py diff   <file.epro2> <netlist.json>   exported nets vs the netlist
+    epro.py diff   <file.epro2> <netlist.json>   nets AND parts vs the netlist
     epro.py dump   <file.epro2> TYPE     raw payloads of one record type
 """
 
@@ -174,6 +174,58 @@ def cmd_nets(path: Path) -> int:
     return 0
 
 
+def read_placements(path: Path) -> tuple[dict, int]:
+    """designator -> the LCSC part the file will actually resolve it to.
+
+    The C-number is **not** on the component instance. An `.epru` is a
+    concatenation of documents, each opened by a `DOCHEAD`; the schematic is
+    one of them and every part it uses is embedded as a `DEVICE` document
+    alongside. `Supplier Part` lives on that device's META, and an instance
+    points at it through a `Device` attribute holding the document uuid.
+
+    The instance *does* carry an attribute called `Supplier Part`, and it is
+    a decoy: it holds the partId, so `FS32X225K101EGG.1` rather than
+    `C153036`. Reading that one and concluding the number is missing is the
+    mistake this function exists to prevent. A hand-drawn schematic has no
+    per-instance copy at all.
+    """
+    import zipfile as _zip
+    z = _zip.ZipFile(path)
+    rows, cur = [], None
+    for name in z.namelist():
+        if not name.endswith(".epru"):
+            continue
+        for line in z.read(name).decode("utf-8", "replace").splitlines():
+            if "||" not in line:
+                continue
+            head, _, body = line.partition("||")
+            try:
+                h = json.loads(head)
+                b = json.loads(body.rstrip("|"))
+            except json.JSONDecodeError:
+                continue
+            if h.get("type") == "DOCHEAD":
+                cur = (b.get("docType"), b.get("uuid"))
+            rows.append((h, b, cur))
+
+    dev = {}
+    for h, b, doc in rows:
+        if h.get("type") == "META" and doc and doc[0] == "DEVICE":
+            sp = (b.get("attributes") or {}).get("Supplier Part")
+            if sp:
+                dev[doc[1]] = sp
+    desig = {b["parentId"]: b["value"] for h, b, _ in rows
+             if h.get("type") == "ATTR" and b.get("key") == "Designator"
+             and b.get("value") and b["value"] != "?"}
+    ref = {b["parentId"]: b["value"] for h, b, _ in rows
+           if h.get("type") == "ATTR" and b.get("key") == "Device" and b.get("value")}
+    out = {}
+    for h, b, _ in rows:
+        if h.get("type") == "COMPONENT" and b.get("partId") and h["id"] in desig:
+            out[desig[h["id"]]] = dev.get(ref.get(h["id"]))
+    return out, len(dev)
+
+
 def cmd_diff(path: Path, netlist: Path) -> int:
     """Compare an exported document's nets against the netlist that went in.
 
@@ -220,7 +272,43 @@ def cmd_diff(path: Path, netlist: Path) -> int:
     for n in differ:
         print(f"  COUNT     {n}: netlist {want[n]} pin(s), export {have[n]}")
 
-    bad = len(missing) + len(extra) + len(differ)
+    # --- and the parts, which matter more than the nets ------------------
+    # `Supplier Part` is the only field the importer resolves a component by,
+    # and EasyEDA validates nothing about it: a wrong C-number places a
+    # different part silently, with no symbol or footprint field to correct
+    # it afterwards. So the netlist's intent is checked against what the file
+    # will actually order.
+    placed, ndev = read_placements(path)
+    want_part = {c["props"]["Designator"]: c["props"].get("Supplier Part")
+                 for c in design.values()}
+    wrong = sorted((d, want_part[d], placed[d]) for d in want_part
+                   if placed.get(d) and placed[d] != want_part[d])
+    if ndev == 0:
+        # Three answers, not two. "No device documents in this export" is not
+        # "every part is wrong"; collapsing them would make a net-only export
+        # look like a catastrophe, and the noise is how a real WRONGPART gets
+        # scrolled past. Reported as unchecked, loudly, and not counted.
+        unresolved = []
+        print(f"  UNCHECKED the export carries no DEVICE document, so no "
+              f"placement's C-number could be read")
+        print(f"            {len(want_part)} part(s) in the netlist are "
+              f"therefore unverified, not verified")
+    else:
+        unresolved = sorted(d for d in want_part if not placed.get(d))
+        print(f"  {ndev} device definition(s), "
+              f"{sum(1 for v in placed.values() if v)} of {len(want_part)} "
+              f"placements resolved")
+        for d in unresolved:
+            print(f"  NOPART    {d}: netlist asks for {want_part[d]}, the file "
+                  f"resolves it to nothing")
+        for d, w, g in wrong:
+            print(f"  WRONGPART {d}: netlist asks for {w}, the file will place {g}")
+        if not unresolved and not wrong:
+            print(f"  every placement resolves to the C-number the netlist "
+                  f"asked for")
+    print()
+
+    bad = len(missing) + len(extra) + len(differ) + len(unresolved) + len(wrong)
     if bad:
         print(f"\n  {bad} discrepancy(ies) — do not proceed to layout\n")
         return 1
