@@ -303,6 +303,45 @@ must not read as a clean one.
 EasyEDA's DRC does not substitute for this. It checks geometry, not intent;
 a clean DRC says nothing about whether the board is connected correctly.
 
+### 9. Group the schematic
+
+The importer places every component on a regular grid in netlist order and
+gives each pin its own short wire stub carrying the net name. That is
+electrically complete and unreadable.
+
+    ./tools/arrange.py <export.epro2> <netlist.json> --dry-run
+    ./tools/arrange.py <export.epro2> <netlist.json> -o grouped.epro2
+
+Blocks come from the `# ---- Name ----` section comments in `netlist.py`, plus
+a `blocks:` mapping in `design.yaml` for anything the generator builds in a
+loop. A designator in neither is an **error**: placing it somewhere by default
+puts a part in the wrong block silently.
+
+**It only translates, and that is the whole safety argument.** Connectivity in
+an EasyEDA schematic is geometric — a wire meets a pin because their
+coordinates coincide, and nothing records the pair. Move a symbol without its
+wire and the net names all stay in the file while the circuit opens, which
+`epro.py diff` cannot see. A rigid translation of a whole grid cell cannot do
+that, because every coincidence inside the cell is preserved.
+
+The tool refuses to write unless each component owns its cell, no wire crosses
+a cell boundary, and no cell holds more wires than its component has pins.
+After writing it re-reads the result and requires every component's local
+geometry to be unchanged — then run `epro.py diff` as well. Both, not either:
+the diff proves the nets, the fingerprint proves the geometry.
+
+**An `.epru` mixes two coordinate spaces in one stream** — instance placements
+on the sheet, and the symbol and footprint *definitions* they refer to. A PIN
+record's x/y is a position inside its symbol, shared by every instance. The
+first version of this tool translated anything with an `x` and a `y`, which
+dragged 1040 library records along with J1 and would have moved pins inside
+their symbols board-wide, with the net diff still clean. Classify canvas
+records by a positive allowlist, never by "has coordinates".
+
+It does **not** draw wires, and replacing the stubs with real polylines is a
+different and much harder problem: generating geometry, where an endpoint off
+by one unit is an open circuit that renders as a connection.
+
 ## Simulation
 
 The ERC is static analysis — it is where most schematic bugs die, and it is
@@ -345,6 +384,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── eda.py             EasyEDA library: symbol pin numbers, verify
     │   ├── erc.py             electrical rule check
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets, diff)
+    │   ├── arrange.py         group an imported schematic into functional blocks
     │   ├── plot.py            chart helper: palette and house style
     │   ├── stale.py           find superseded values after a numeric change
     │   ├── consistency.py     check a document against the netlist it describes

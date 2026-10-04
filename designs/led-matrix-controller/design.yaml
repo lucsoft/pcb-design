@@ -127,3 +127,17 @@ dnf:
     The C-number resolves the symbol and footprint and must not reach a PCBA
     order, where it buys the $22.89 WIZnet original instead of the EUR 12.30
     clone that drops into the same footprint. Hand-soldered.
+
+# Which functional block each component belongs to, for `tools/arrange.py`.
+#
+# Most of the mapping is derived: arrange.py reads the `# ---- Name ----`
+# section comments in netlist.py and assigns every component declared under
+# one. This covers what the generator builds in a *loop*, where the designator
+# is computed and no literal line carries it.
+#
+# A component in neither place is an error rather than a default. Guessing
+# would put a part in the wrong block silently, and one part in the wrong
+# block reads as a layout decision nobody made.
+blocks:
+  Status chain: [LED1, LED2, LED3, LED4, LED5, LED6, LED7, LED8,
+                 C24, C25, C26, C27, C28, C29, C30, C31]
