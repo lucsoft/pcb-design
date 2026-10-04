@@ -65,37 +65,51 @@ other than the identity for the first time.
 
 Two things the test found that no amount of reading would have:
 
-**The stored angle is counter-clockwise; the toolbar button is clockwise.**
-One press of the clockwise button wrote `"rotation": 270`, which is the same
-thing — CCW 270 = CW 90 — so the file follows the ordinary mathematical
-convention and nothing is inverted. Verified against R9: stored 270 puts
-pin 1 twenty units **below** the anchor, and that is where the export has
-it.
+**Both rotations are now validated.** R9 was rotated one way and R13 the
+other; the file carries one component at 90, one at 270 and 127 at 0, and
+**441 of 441 pin positions land on their stub**. `ROT[90]` and `ROT[270]`
+are exercised against real data.
 
-The table stage 2 needs, for a two-pin part whose pins are local (+20, 0)
-and (−20, 0):
+**The sheet's y axis runs the other way from what the tools assumed.** The
+title block — always at the bottom of a sheet — sits at y = −230 while the
+components span −1905 to −35, so **more negative y is higher up**. Two
+things were backwards because of this, both now fixed:
 
-| stored | pin 1 ends | use when |
+- the rotation table below, which had top and bottom swapped
+- `arrange.py` stacked the twelve bands bottom-to-top, putting the USB-C
+  inlet at the foot of the sheet and the fan header at the head. The signal
+  flow read backwards and nothing caught it, because every check in that
+  tool is about rigidity and none is about direction.
+
+**The rotation table, measured not assumed.** For a two-pin part whose pins
+are at symbol-local (+20, 0) and (−20, 0) — and pin 1 is the (+20, 0) one,
+confirmed by matching each position's net back to `netlist.json`:
+
+| stored | pin 1 | pin 2 |
 |---|---|---|
-| 0 | right | signal + signal |
-| 90 | **up** | **pin 1 is the supply pin** |
-| 180 | left | — |
-| 270 | **down** | **pin 1 is the ground pin** |
+| 0 | right | left |
+| 90 | **bottom** | **top** |
+| 180 | left | right |
+| 270 | **top** | **bottom** |
 
-So "supply up" is stored **90** when the supply is on pin 1 and **270** when
-it is on pin 2 — which is why it has to be computed from the symbol's pin
-order rather than written as a constant.
+So stage 2's rule — ground pin down — needs no symbol geometry at all:
 
-**EasyEDA writes fractional anchors.** R9 came back at
-`y: -1374.9999999999998`, so its computed pin missed the stub by 2 × 10⁻¹³
-and `schwire.py` refused the whole file. Fail-closed and useless. Every
-coordinate now goes through a `grid()` snap before it is compared or
-emitted, with a regression probe for a fractional anchor. An exact tuple
-match against a float is a check that works until a human touches the file.
+```
+stored = 270  if the ground net is on pin 2
+stored =  90  if the ground net is on pin 1
+```
 
-What is still unverified: `ROT[90]` and `ROT[180]` specifically — R9
-exercised 270 — and `isMirror`, which `arrange.py` still does not guard at
-all and which four committed `.epro2` contain.
+which is a lookup in `netlist.json` and nothing else. R9 happens to be
+correct already; R13 is at 90 with GND on pin 2, so its ground pin is at the
+top and it is one of the 36.
+
+Still unverified: `ROT[180]`, which no export has exercised, and
+`isMirror`, which `arrange.py` does not guard at all and which the committed
+reference exports contain. Also the `Pin Number` attribute — **`PIN` record
+ids are not unique** across the 251 in a file, so reading a pin's number
+from its attributes gives nonsense. The net is the reliable route: match a
+pin's absolute position to the net on its stub, then to the pin number in
+`netlist.json`. That is how the table above was established.
 
 ## Stage 1 — Rail-role rows, no new geometry
 

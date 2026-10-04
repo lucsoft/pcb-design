@@ -296,8 +296,14 @@ def pack(blocks, order, box, width, gap_x, gap_y, gap_block, nets=None):
     for d, b in blocks.items():
         members[b].append(d)
 
+    # More negative y is HIGHER on the sheet: the title block, which is
+    # always at the bottom of a sheet, sits at y = -230 while the components
+    # span -1905 to -35. Stepping y downward therefore walks UP the page, so
+    # stacking the blocks in netlist order put the USB-C inlet at the bottom
+    # and the fan header at the top and the signal flow read backwards.
+    # Stacking in reverse is what puts the first block at the top.
     placed, y = {}, 0.0
-    for name in order:
+    for name in reversed(order):
         ds = (seriate(set(members[name]), nets) if nets
               else sorted(members[name], key=_desig_key))
         row, x, row_h = [], 0.0, 0.0
