@@ -126,40 +126,112 @@ the first attempt gave R9 fourteen different pin numbers. The reliable route
 is position → the net on its stub → the pin number in `netlist.json`, which
 is how the rotation table above was established.
 
-## Stage 1 — Rail-role rows, no new geometry
+## Stage 1 — Dropped. It is degenerate on this board
 
-Give `pack()` a per-band row assignment instead of one flat chain:
+Review measured the proposal and it fails on its own terms. Classifying all
+129 components by "a pin on the band's ground rail → bottom, supply-only →
+top, else middle":
 
-- a component with a pin on the band's **ground** rail goes in the bottom row
-- one with only **supply** pins goes in the top row
-- everything else goes between
+| | |
+|---|---|
+| bottom | **97** |
+| middle | 30 |
+| top | **2** — D14 and R48, the supply-to-supply pair that already has no rotation rule |
+
+**Eleven of twelve bands are not three rows.** All twelve hubs have a GND
+pin, so every IC lands in the bottom row — contradicting the sketch this
+plan sold the idea with, which put U1 in the middle. And **97 of 129
+components have a GND pin**: the predicate partitions nothing.
+
+Measured against what already ships, it is worse on every axis including
+the one that chose the shipped layout: span +14%, fan-out crossings +30%,
+contiguity gaps +152%. The motivating example is not even fixed — C12, C13,
+C14 and U5 all have GND pins, so they all land in the same row in the same
+order.
+
+The informative predicate on this board is not "touches ground". It is
+**rail-only**: 39 components whose every pin is on a declared rail, which is
+exactly the population with no edge in the connectivity graph.
+
+## Stage 1 (replacement) — Owner-anchored stars
+
+The board is not a chain and not three rows. It is **twelve stars**: twelve
+components with five or more pins — J1, U1, U2, U3, U4, U5, U6, U7, U8, U9,
+U10, U11 — and 117 satellites. Nine bands have one hub, two have two, two
+have none.
+
+**Ownership.** For each of the 39 rail-only parts, the owner is the
+component in the same band that is not itself rail-only and whose pin set
+contains every rail the part touches, ties broken by nearest in declaration
+order. Measured, the assignments read correctly:
 
 ```
-   top     [C33]   [C8]              supply-only parts
-   middle  [R21]  ┌────┐  [R44]      signal path
-                  │ U1 │
-   bottom  [C19]  └────┘  [C18]      parts touching ground
+C24 -> LED1   C25 -> LED2   ...   C31 -> LED8     the per-LED decouplers
+C18, C19 -> U1     C15 -> U2     C21 -> U7, C22 -> U8
+C34 -> U10         C33 -> J1
 ```
 
-**This is pure translation.** Every structural check in `arrange.py`
-survives unchanged, the local-geometry fingerprint still proves rigidity,
-`collisions()` still refuses overlap, the three-seed determinism test still
-applies, and `epro.py diff` cannot be affected because no record is created
-or deleted. It buys "power at the top, ground at the bottom" at band
-granularity **without drawing a single line**.
+The per-LED capacitors are the case no pin-count hub model finds — it would
+send all eight to U9.
 
-It also fixes a measured defect in the current ordering that has nothing to
-do with rails: `seriate()` only counts nets of two to four pins, so a
-decoupling capacitor — whose only nets are rails — has **no edge at all**.
-**39 of 129 components are in that position.** The result is visible:
+**This rule assigns 31 of 39, not the 38 the review claimed.** Eight are
+left: C10, C11, C13, D14, D8, D9, J4, R1. The review's own examples for
+them — C10 and C11 to L1, C13 to L2, R1 to U6 — **cannot arise from the rule
+as written**: L1's pins are SW_5V and BUS_5V, so C10's GND is not contained
+in them. A looser rule is needed, probably "shares at least one rail, in the
+same band, nearest in declaration order", and it has to be measured before
+it is written down. **That is the open item on this stage.**
 
-```
-seriate("5 V -> 3.3 V")  ->  C12 C13 C14 L2 U5 R28 R29 R30
-```
+**Placement.** Read each hub's symbol pin coordinates, split its satellites
+left and right by the sign of the pin's x, sort each column by pin y, place
+each satellite at the hub's y plus that pin's y, then sweep to enforce
+spacing. A monotone matching between a sorted pin column and a sorted
+satellite column **cannot cross** — zero fan-out crossings is a property of
+the construction rather than a tuned result. Satellites of a non-hub owner
+stack below it.
 
-The three capacitors sit in designator order at one end and U5 is fifth.
-Row assignment by rail role puts them back where they belong without needing
-a new adjacency rule.
+Still translation-only, so `collisions()`, the per-cell checks, the
+local-geometry fingerprint and `epro.py diff` all apply unchanged.
+
+**The cheap fallback**, if the symbol geometry is not wanted: keep
+`seriate()`, change its restart rule from least-connected to most-connected,
+and splice each rail-only part in immediately after its owner. About fifteen
+lines, no network call.
+
+## The metric was self-contradictory
+
+Every layout decision here was made by comparing total bounding span — a
+length metric — while the stated conclusion was that length is the wrong
+objective. Both cannot hold, and the metric is the part that is wrong:
+
+- It is **blind to the components the layout is about**. 37 of 129 appear in
+  no 2-to-4-pin net with a band-mate, so their positions do not move the
+  number at all. That is the decoupling capacitors.
+- It **measures packing density**. Changing `--gap` from 40 to 50 moves it
+  3.9%; `--block-gap` 120 to 240 moves it 12.7%. The force-directed-versus-
+  chain decision was made on **3.2%**, which is less than one step of a
+  cosmetic parameter. That comparison is not a result.
+
+It does rank `seriate()` above random orderings, so it stays as a smoke
+test. It is not a decision procedure, and **the three figures at the top of
+this document should not be cited again.**
+
+What to measure instead: **fan-out crossings** — for each hub, the segments
+from its pins to its satellites, counting proper intersections. That is what
+"reads as a circuit" means here, and the proposed layout scores 5 against
+roughly 80 for the shipped one.
+
+## `seriate()` has one bad line
+
+Its restart rule picks the **least**-connected leftover, which is always a
+zero-degree capacitor while one remains — and that capacitor has no
+neighbour either, so it restarts again. The 36 zero-degree parts end up with
+a mean normalised position of 0.13 in their band: 34 of 36 in the first
+third, none in the last. That is the whole of the `C12 C13 C14 L2 U5 …`
+complaint, and it is a `min` that should be a `max`.
+
+Greedy itself is fine. Exhaustive permutation of the small bands puts it
+within +2 of optimal on contiguity.
 
 ## Stage 2 — Rotate only what is unambiguous
 
