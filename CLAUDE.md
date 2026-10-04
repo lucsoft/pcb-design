@@ -568,9 +568,39 @@ chain: `arrange.py` then `fixparts.py --complete`. That reproduces the
 standardization work from the device documents, so nothing done by hand in
 between is lost.
 
-It does **not** draw wires, and replacing the stubs with real polylines is a
-different and much harder problem: generating geometry, where an endpoint off
-by one unit is an open circuit that renders as a connection.
+### 10. Draw the local wires
+
+    ./tools/schwire.py <export.epro2> <netlist.json> -o wired.epro2
+
+**Most of a schematic like this stays labels, and that is correct.** Of 441
+pins, 209 are on four power rails — GND alone has 124 — which nobody draws as
+lines; 281 are on nets spanning more than one functional block. What is left
+is 48 nets living inside one block, and after connectivity ordering 19 of them
+span under 200 units with 13 more under 400. Those are the ones where a line
+reads as a circuit instead of crossing the sheet.
+
+**The tool only adds.** The stubs and their labels stay, so connectivity is
+still carried by name and a drawn wire is decoration over a connection that
+already exists. Geometry that is slightly wrong changes nothing — the inverse
+of the usual danger here, where the wire *is* the connection and one unit
+short is an open circuit.
+
+The one real hazard is a wire passing over a pin on a **different** net,
+which in a geometric schematic connects them, and which `epro.py diff` cannot
+see because the declared names are unchanged. Three orthogonal shapes are
+tried per net and the first clean one wins; a net with no clean path stays a
+label. On this board that is 20 drawn and 12 left, out of 32 candidates.
+
+**The pin transform is verified, not trusted.** Absolute position is the
+component anchor plus its symbol-local pin offset rotated by the component's
+rotation — and every pin must then land on one of the stubs the importer
+drew. 441 of 441 here; anything less and the tool refuses rather than routing
+from positions it guessed. Mirrored placements are refused outright: this
+board has none, so the sign convention has never been observed.
+
+Raising `--max-span` from 400 to 800 buys 7 more nets and 1200 buys 2 beyond
+that, at the cost of longer lines. Diminishing, and worth looking at before
+accepting.
 
 ## Simulation
 
@@ -616,6 +646,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets, diff)
     │   ├── arrange.py         group an imported schematic into functional blocks
     │   ├── fixparts.py        put the real LCSC number on each instance
+    │   ├── schwire.py         draw wires between pins already side by side
     │   ├── plot.py            chart helper: palette and house style
     │   ├── stale.py           find superseded values after a numeric change
     │   ├── consistency.py     check a document against the netlist it describes
