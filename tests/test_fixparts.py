@@ -73,6 +73,9 @@ def make(path, parts, with_device=True):
                 # --complete has to create, and the two that must not be
                 # created however complete the copy gets
                 "Description": f"DESC{i}", "RDS(on)": "30.44m",
+                # the device holds a pipe-separated pair here; the instance
+                # takes only what is before the first pipe
+                "3D Model": f"model{i}|extra{i}",
                 "Name": "={Manufacturer Part}", "Designator": "U?"}})
 
     lines = [f"{json.dumps(h, separators=(',', ':'))}||"
@@ -183,6 +186,17 @@ def main():
         h1 = hashlib.sha256(zipfile.ZipFile(comp).read("doc.epru")).hexdigest()
         h2 = hashlib.sha256(zipfile.ZipFile(comp2).read("doc.epru")).hexdigest()
         check("two --complete runs are byte-identical", h1 == h2)
+
+        check("3D Model is cut at the first pipe",
+              any(v.get("key") == "3D Model" and v.get("value") == "model0"
+                  for v in made.values()),
+              str([v for v in made.values() if v.get("key") == "3D Model"]))
+        check("...and the device's own value is left whole",
+              "|" in json.dumps(read(src)), "device value was altered")
+        check("--complete fills every empty attribute, not a short list",
+              b2["cls0"]["value"] == "Extended Part"
+              and b2["val0"]["value"] == "KEEP0",
+              "a non-empty value was clobbered or an empty one missed")
 
     # --- break probe: nothing to copy from --------------------------------
     bare = tmp / "bare.epro2"

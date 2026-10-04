@@ -91,6 +91,21 @@ NEVER_COPY = {"Designator", "Name", "Symbol", "Device", "Unique ID",
               "Group ID", "Channel ID", "Reuse Block"}
 
 
+def device_value(key, raw):
+    """What the *instance* copy of a device attribute should be.
+
+    Almost always the device's value verbatim. The exception is `3D Model`,
+    which the device holds as a pipe-separated pair -- model uuid, then a
+    second reference -- where the instance takes only the part before the
+    first pipe. Measured against a manual click-through of EasyEDA's own
+    Device Standardization: 101 components matched that rule, 2 had no pipe
+    to cut, and nothing contradicted it.
+    """
+    if key == "3D Model" and isinstance(raw, str) and "|" in raw:
+        return raw.split("|", 1)[0]
+    return raw
+
+
 def attr_payload(key, value, parent):
     """The shape EasyEDA writes for an attribute with no position.
 
@@ -168,6 +183,14 @@ def main() -> int:
         return 2
 
     copy_keys = COPY_KEYS if a.no_footprint else COPY_KEYS + (FOOTPRINT_KEY,)
+    # In --complete the hand-picked list is wrong, and measurably so. Checked
+    # against a manual click-through of EasyEDA's own Device Standardization:
+    # it fills *every* empty instance attribute from the device, not six of
+    # them. Restricting the fill left 900 slots empty that EasyEDA populated
+    # -- Tolerance, Voltage Rating, Temperature Coefficient, Operating
+    # Temperature, Power(Watts) -- all of which the device already carried.
+    # The short list was right only while the evidence was six fields wide.
+    fill_all = a.complete
     name, rows = load(a.export)
     devattrs = device_parts(rows)
     if not devattrs:
@@ -190,7 +213,9 @@ def main() -> int:
     seen_comp = set()
     for h, b, doc, raw in rows:
         key = b.get("key") if h and h["type"] == "ATTR" else None
-        if (key not in (KEY,) + copy_keys or b.get("parentId") not in desig):
+        wanted = (key == KEY or key in copy_keys
+                  or (fill_all and key is not None and key not in NEVER_COPY))
+        if not wanted or b.get("parentId") not in desig:
             out_lines.append(raw)
             continue
         cid = b["parentId"]
@@ -209,7 +234,7 @@ def main() -> int:
                 skipped.append((desig[cid], "points at no DEVICE document"))
             out_lines.append(raw)
             continue
-        want = attrs.get(key)
+        want = device_value(key, attrs.get(key))
         cur = b.get("value")
         if key == KEY:
             # The instance holds the partId. Replace it outright: it is the
@@ -275,7 +300,7 @@ def main() -> int:
                 hdr = {"type": "ATTR", "ticket": ticket, "id": new_id(cid, key)}
                 insert[line].append(
                     f"{json.dumps(hdr, separators=(',', ':'))}||"
-                    f"{json.dumps(attr_payload(key, val, cid), separators=(',', ':'))}|")
+                    f"{json.dumps(attr_payload(key, device_value(key, val), cid), separators=(',', ':'))}|")
                 created.append((desig[cid], key))
 
         merged = []
@@ -330,8 +355,9 @@ def main() -> int:
             continue
         # The only permitted difference, on the only permitted key.
         changed = {k for k in set(b1) | set(b2) if b1.get(k) != b2.get(k)}
-        if (h1["type"] != "ATTR" or b1.get("key") not in (KEY,) + copy_keys
-                or changed != {"value"}):
+        permitted = (b1.get("key") == KEY or b1.get("key") in copy_keys
+                     or (fill_all and b1.get("key") not in NEVER_COPY))
+        if h1["type"] != "ATTR" or not permitted or changed != {"value"}:
             drift.append(f"{h1.get('id')}: changed {sorted(changed)}")
     if drift:
         a.out.unlink(missing_ok=True)

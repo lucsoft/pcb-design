@@ -400,10 +400,29 @@ parent + key so two runs are byte-identical, and the output is deleted
 unless every original record survives unaltered and in order with exactly
 the expected number of additions.
 
-Whether that flips the panel to *Exact Match* is unknown and only a
-re-import answers it: the status may well be computed server-side, in which
-case the file can be as complete as EasyEDA's own Replace leaves it and
-still read yellow.
+**Validated against a manual click-through** of the real panel, slot by
+slot: 3435 attribute slots come out the same, **0 where EasyEDA filled
+something the tool left empty, and 0 where the two disagree on a value**.
+The tool is a superset — 151 slots it filled on components the manual pass
+had not reached.
+
+Three deliberate divergences remain, all understood:
+
+| | |
+|---|---|
+| `Name`, 96 slots | EasyEDA writes the device formula `={Value}`; the tool keeps the netlist's `22uF 25V`. The whole point. |
+| `Group ID`, `Reuse Block`, `Channel ID`, 288 slots | EasyEDA deletes these null attributes; the tool leaves them |
+| `3D Model` | the device holds a pipe-separated pair, the instance takes only what precedes the first pipe. 101 components confirmed the rule, nothing contradicted it |
+
+Getting there took two corrections the comparison forced, both of the same
+shape — a rule inferred from too narrow a sample. The fill was restricted to
+six hand-picked keys when EasyEDA fills every empty one (900 slots missed),
+and `3D Model` was copied whole when only its first segment belongs on an
+instance.
+
+Whether this flips the panel to *Exact Match* is still unknown and only a
+re-import answers it: the status may be computed server-side, in which case
+a file indistinguishable from EasyEDA's own output still reads yellow.
 
 **"Assign LCSC Part" fetches that record, and overwrites `Name` doing it.** Running it on three components changed those three and
 nothing else in a 9573-record file: it wrote the full LCSC parametric set
