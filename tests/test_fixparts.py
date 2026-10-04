@@ -172,8 +172,17 @@ def main():
         made = {k: v for k, v in b2.items() if k not in a2}
         check("records were added, not replaced", len(made) > 0 and len(b2) > len(a2))
         keys = {v.get("key") for v in made.values()}
-        check("Name is never created from the device's formula",
-              "Name" not in keys, str(keys))
+        # Name used to be on the never-copy list, so that the netlist's
+        # `value` stayed readable on the sheet. That is given up on purpose:
+        # Device Standardization resets a literal Name to the device formula,
+        # and the route around it -- writing the label into `Value` -- made
+        # the catalogue comparison fail instead. The sheet now shows what the
+        # catalogue says.
+        allname = {k: v for k, v in b2.items() if v.get("key") == "Name"}
+        check("Name is set to the device's formula, literal or not",
+              allname and all(str(v["value"]).startswith("={")
+                              for v in allname.values()),
+              str([v.get("value") for v in allname.values()]))
         check("Designator is never created from the device's template",
               "Designator" not in keys, str(keys))
         check("the template component gets nothing",

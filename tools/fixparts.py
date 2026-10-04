@@ -87,8 +87,23 @@ FOOTPRINT_KEY = "Footprint"
 #                the formula -- and the main reason to do this here instead.
 #   Symbol, Device, Unique ID, Group ID, Channel ID, Reuse Block
 #                structural links the instance has already or must not gain
-NEVER_COPY = {"Designator", "Name", "Symbol", "Device", "Unique ID",
+NEVER_COPY = {"Designator", "Symbol", "Device", "Unique ID",
               "Group ID", "Channel ID", "Reuse Block"}
+
+# Set from the device even where the instance already holds something, which
+# fill-if-empty would skip.
+#
+#   Supplier Part  the instance's copy is the partId decoy
+#   Name           the instance carries the netlist's `value` as a literal;
+#                  the device carries the formula EasyEDA renders, and which
+#                  one differs per device -- `={Value}` on 88 placements
+#                  here, `={Manufacturer Part}` on 41. Keeping the literal
+#                  does not survive Device Standardization, and the route
+#                  around that -- writing the label into `Value` -- broke the
+#                  catalogue comparison instead. So the sheet shows what the
+#                  catalogue says; the netlist's `value` stays in
+#                  netlist.json, where consistency.py already checks it.
+OVERWRITE = {"Supplier Part", "Name"}
 
 
 def device_value(key, raw):
@@ -213,10 +228,12 @@ def main() -> int:
           f"{sum(1 for d in desig.values() if not d.endswith(chr(63)))} placement(s)")
 
     out_lines, fixes, filled, skipped, templates = [], [], [], [], 0
+    renamed = []
     seen_comp = set()
     for h, b, doc, raw in rows:
         key = b.get("key") if h and h["type"] == "ATTR" else None
-        wanted = (key == KEY or key in copy_keys
+        wanted = (key == KEY or (key in OVERWRITE and fill_all)
+                  or key in copy_keys
                   or (fill_all and key is not None and key not in NEVER_COPY))
         if not wanted or b.get("parentId") not in desig:
             out_lines.append(raw)
@@ -240,13 +257,12 @@ def main() -> int:
         want = device_value(key, attrs.get(key))
         cur = b.get("value")
 
-        if key == KEY:
-            # The instance holds the partId. Replace it outright: it is the
-            # field the BOM resolves by and a partId resolves to nothing.
+        if key in OVERWRITE and (key == KEY or fill_all):
+            # Replace outright rather than fill only when empty.
             if not want or cur == want:
                 out_lines.append(raw)
                 continue
-            fixes.append((desig[cid], cur, want))
+            (fixes if key == KEY else renamed).append((desig[cid], cur, want))
         else:
             # Fill only what is empty. A non-empty instance value is a
             # deliberate override of the device, and silently discarding one
@@ -267,11 +283,19 @@ def main() -> int:
     for d, why in skipped:
         print(f"  SKIP   {d}: {why}")
     byk = collections.Counter(k for _, k in filled)
-    for k, v in byk.most_common():
-        print(f"  fill   {k:20s} on {v} instance(s) that had it empty")
-    print(f"\n  {len(fixes)} C-number(s) corrected, {len(filled)} empty field(s) "
-          f"filled, {templates} library template(s) left alone, "
-          f"{len(skipped)} skipped")
+    for k, v in byk.most_common(8):
+        print(f"  fill   {k:24s} on {v} instance(s) that had it empty")
+    if len(byk) > 8:
+        rest = sum(v for _, v in byk.most_common()[8:])
+        print(f"  fill   {len(byk) - 8} further key(s), {rest} instance(s) "
+              f"— parametric specs, one set per part type")
+    if renamed:
+        f = collections.Counter(n for _, _, n in renamed)
+        print(f"  name   {len(renamed)} instance(s) put back on their device's "
+              f"formula: " + ", ".join(f"{k} x{v}" for k, v in f.most_common()))
+    print(f"\n  {len(fixes)} C-number(s) corrected, {len(renamed)} name(s) "
+          f"restored to the formula, {len(filled)} empty field(s) filled, "
+          f"{templates} library template(s) left alone, {len(skipped)} skipped")
 
     # --- create what the instance does not have at all -------------------
     created = []
@@ -360,7 +384,7 @@ def main() -> int:
             continue
         # The only permitted difference, on the only permitted key.
         changed = {k for k in set(b1) | set(b2) if b1.get(k) != b2.get(k)}
-        permitted = (b1.get("key") == KEY or b1.get("key") in copy_keys
+        permitted = (b1.get("key") in OVERWRITE or b1.get("key") in copy_keys
                      or (fill_all and b1.get("key") not in NEVER_COPY))
         if h1["type"] != "ATTR" or not permitted or changed != {"value"}:
             drift.append(f"{h1.get('id')}: changed {sorted(changed)}")

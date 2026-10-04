@@ -422,9 +422,23 @@ instance.
 
 **Only `Designator` and `Name` are drawn on the sheet**, and `Name` is a
 formula on the device — `={Value}` on 88 of this board's 129 placements,
-`={Manufacturer Part}` on the other 41. So the netlist's `value` cannot be
-kept on screen: a literal `Name` displays it and Device Standardization
-resets it to the formula.
+`={Manufacturer Part}` on the other 41, **which one depending on the
+device**. So the netlist's `value` cannot be kept on screen: a literal
+`Name` displays it and Device Standardization resets it to the formula.
+
+The Replace dialog's comparison table shows this directly — `Name: 10k` in
+red against `={Value}` in red, while `Value: 10kΩ` matches in black. A
+literal `Name` **is** one of the mismatches holding a part off *Exact
+Match*, so `--complete` now sets `Name` to whichever formula its device
+carries. That takes this board to 129 of 129 names agreeing with their
+device.
+
+Also in that dialog, and worth knowing before using it: *Keep designator and
+unique ID* is ticked by default, *Keep current symbol* and *Keep current
+footprint* are not and carry a red warning about network connections,
+*Other Properties* defaults to **Only keep target device properties**, and
+*Keep not empty value first* is off — which is why Replace overwrites
+rather than merges.
 
 **Do not route around that by writing the label into `Value`.** A `--labels`
 mode that did exactly this lasted one commit. `Value` is one of the fields
