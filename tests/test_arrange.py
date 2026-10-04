@@ -104,9 +104,13 @@ def write_design(d, comps, sections):
     (d / "netlist.py").write_text("\n".join(src), encoding="utf-8")
 
 
-def run(*args):
+def run(*args, seed=None):
+    import os
+    env = dict(os.environ)
+    if seed is not None:
+        env["PYTHONHASHSEED"] = str(seed)
     p = subprocess.run([sys.executable, str(ARRANGE), *map(str, args)],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, env=env)
     return p.returncode, p.stdout + p.stderr
 
 
@@ -203,6 +207,25 @@ def main():
     rc, log = run(d / "in.epro2", d / "netlist.json", "-o", d / "out.epro2")
     check("a wire crossing a cell is refused", rc == 1 and "SPANS" in log, log)
     check("...and nothing is written", not (d / "out.epro2").exists())
+
+    # --- determinism ------------------------------------------------------
+    # Python randomises string hashing per process, which randomises set
+    # iteration order. The tool reads sets of cells and dicts of blocks, so
+    # "it came out the same twice" is not evidence -- two runs can share a
+    # seed. Forcing three different seeds is.
+    import hashlib
+    d = tmp / "det"; d.mkdir()
+    build(d / "in.epro2", comps, extra=lib)
+    write_design(d, comps, sections)
+    digests = set()
+    for seed in (0, 1, 12345):
+        o = d / f"out{seed}.epro2"
+        rc, log = run(d / "in.epro2", d / "netlist.json", "-o", o, seed=seed)
+        if rc == 0 and o.exists():
+            digests.add(hashlib.sha256(
+                zipfile.ZipFile(o).read("doc.epru")).hexdigest())
+    check("three hash seeds give one byte-identical output",
+          len(digests) == 1, f"{len(digests)} distinct digests")
 
     # --- break probe: a layout tight enough for symbols to touch ----------
     # The collision check is the only thing standing between a tighter sheet

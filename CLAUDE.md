@@ -355,6 +355,12 @@ in a geometric schematic, and `epro.py diff` reads the net *names* declared on
 each wire, so it reports the file identical. The tool refuses to write when
 any two padded bounding boxes intersect.
 
+**It is deterministic, and that is tested rather than asserted.** Same input,
+same flags, byte-identical `.epru` — so a layout can be regenerated, diffed
+and reviewed. Python randomises string hashing per process and therefore set
+iteration order, so "it came out the same twice" proves nothing; the suite
+forces three different `PYTHONHASHSEED` values and requires one digest.
+
 It does **not** draw wires, and replacing the stubs with real polylines is a
 different and much harder problem: generating geometry, where an endpoint off
 by one unit is an open circuit that renders as a connection.
