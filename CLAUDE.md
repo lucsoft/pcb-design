@@ -410,7 +410,7 @@ Three deliberate divergences remain, all understood:
 
 | | |
 |---|---|
-| `Name`, 96 slots | EasyEDA writes the device formula `={Value}`; the tool keeps the netlist's `22uF 25V`. The whole point. |
+| `Name`, 96 slots | EasyEDA writes the device formula; the tool used to write a literal. See below — feeding the formula beats fighting it |
 | `Group ID`, `Reuse Block`, `Channel ID`, 288 slots | EasyEDA deletes these null attributes; the tool leaves them |
 | `3D Model` | the device holds a pipe-separated pair, the instance takes only what precedes the first pipe. 101 components confirmed the rule, nothing contradicted it |
 
@@ -420,9 +420,29 @@ six hand-picked keys when EasyEDA fills every empty one (900 slots missed),
 and `3D Model` was copied whole when only its first segment belongs on an
 instance.
 
-Whether this flips the panel to *Exact Match* is still unknown and only a
-re-import answers it: the status may be computed server-side, in which case
-a file indistinguishable from EasyEDA's own output still reads yellow.
+**Only `Designator` and `Name` are drawn on the sheet**, and `Name` is a
+formula on the device — `={Value}` on 88 of this board's 129 placements,
+`={Manufacturer Part}` on the other 41. A literal `Name` displays correctly
+and is destroyed the next time anyone runs Device Standardization.
+
+    ./tools/fixparts.py <export.epro2> --labels designs/<name>/netlist.json
+
+feeds the formula instead of fighting it: the netlist's `value` goes into the
+instance's `Value`, which the formula then renders. **That survives** — a
+non-empty instance `Value` came through the click-through untouched on all 88
+that had one. The 41 on `={Manufacturer Part}` cannot be done this way and
+will show the MPN; the dialog's *Keep designator and unique ID* checkbox, on
+by default, does not extend to `Name`.
+
+**Do not stash labels in `Unique ID`** even though it survives Replace. It is
+a field EasyEDA generates — populated in the hand-built module reference,
+empty in an import — and nothing here establishes what reads it. The
+schematic-to-PCB link is the obvious candidate, and overwriting it to hold
+`22uF 25V` would be trading a cosmetic problem for a structural one.
+
+Whether any of this flips the panel to *Exact Match* is still unknown and
+only a re-import answers it: the status may be computed server-side, in which
+case a file indistinguishable from EasyEDA's own output still reads yellow.
 
 **"Assign LCSC Part" fetches that record, and overwrites `Name` doing it.** Running it on three components changed those three and
 nothing else in a 9573-record file: it wrote the full LCSC parametric set

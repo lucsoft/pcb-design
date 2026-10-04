@@ -167,6 +167,10 @@ def main() -> int:
     ap.add_argument("export", type=Path)
     ap.add_argument("-o", "--out", type=Path)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--labels", type=Path, metavar="NETLIST.JSON",
+                    help="keep the netlist's `value` visible on the sheet, "
+                         "through the device's own Name formula where that "
+                         "works")
     ap.add_argument("--complete", action="store_true",
                     help="also CREATE the attributes an instance lacks, "
                          "copying them from its device -- what EasyEDA's "
@@ -191,6 +195,14 @@ def main() -> int:
     # Temperature, Power(Watts) -- all of which the device already carried.
     # The short list was right only while the evidence was six fields wide.
     fill_all = a.complete
+    labels = {}
+    if a.labels:
+        if not a.labels.exists():
+            print(f"error: {a.labels} not found", file=sys.stderr)
+            return 2
+        labels = {c["props"]["Designator"]: c["props"].get("value")
+                  for c in json.loads(a.labels.read_text(encoding="utf-8")).values()}
+
     name, rows = load(a.export)
     devattrs = device_parts(rows)
     if not devattrs:
@@ -198,6 +210,7 @@ def main() -> int:
               f"no correct value to copy from", file=sys.stderr)
         return 2
 
+    by_desig = {}
     desig = {b["parentId"]: b["value"] for h, b, _, _ in rows
              if h and h["type"] == "ATTR" and b.get("key") == "Designator"
              and b.get("value")}
@@ -205,11 +218,14 @@ def main() -> int:
            if h and h["type"] == "ATTR" and b.get("key") == "Device"
            and b.get("value")}
 
+    by_desig = {v: k for k, v in desig.items()}
+
     print(f"\n{a.export.name}")
     print(f"  {len(devattrs)} device definition(s), "
           f"{sum(1 for d in desig.values() if not d.endswith(chr(63)))} placement(s)")
 
     out_lines, fixes, filled, skipped, templates = [], [], [], [], 0
+    relabelled, fragile = [], []
     seen_comp = set()
     for h, b, doc, raw in rows:
         key = b.get("key") if h and h["type"] == "ATTR" else None
@@ -236,6 +252,26 @@ def main() -> int:
             continue
         want = device_value(key, attrs.get(key))
         cur = b.get("value")
+
+        # Only `Designator` and `Name` are drawn on the sheet, and `Name` is
+        # a formula on the device -- `={Value}` on 88 of the 129 placements
+        # here, `={Manufacturer Part}` on the rest. Writing a literal `Name`
+        # displays correctly and is destroyed the next time anyone runs
+        # Device Standardization, which resets it to the formula.
+        #
+        # So feed the formula instead of fighting it. A non-empty instance
+        # `Value` came through the click-through untouched on all 88 that
+        # had one, which makes this the durable half of the answer.
+        lab = labels.get(desig[cid])
+        if lab and key == "Value" and attrs.get("Name") == "={Value}":
+            want = lab
+            if cur != lab:
+                relabelled.append(desig[cid])
+                nb = dict(b)
+                nb["value"] = lab
+                out_lines.append(f"{json.dumps(h, separators=(',', ':'))}||"
+                                 f"{json.dumps(nb, separators=(',', ':'))}|")
+                continue
         if key == KEY:
             # The instance holds the partId. Replace it outright: it is the
             # field the BOM resolves by and a partId resolves to nothing.
@@ -313,6 +349,27 @@ def main() -> int:
         print(f"  create {len(created)} attribute(s) on {len(bydes)} component(s), "
               f"copied from their device")
 
+    if labels:
+        # Three outcomes, not two. Conflating "already right" with "cannot be
+        # done" overstates the problem by the size of the first group, and
+        # this report said 66 when the real answer was 41.
+        placed_des = {d for d in desig.values() if not d.endswith("?")}
+        on_value = {d for d in placed_des
+                    if devattrs.get(ref.get(by_desig[d]), {}).get("Name") == "={Value}"}
+        already = sorted(d for d in on_value
+                         if labels.get(d) and d not in relabelled)
+        fragile = sorted(d for d in placed_des - on_value if labels.get(d))
+        print(f"  label  {len(relabelled)} placement(s) relabelled through the "
+              f"device's `={{Value}}` formula, {len(already)} already correct")
+        print(f"         these survive Device Standardization: a non-empty "
+              f"instance `Value` came through the click-through untouched on "
+              f"all {len(on_value)} that had one")
+        if fragile:
+            print(f"         {len(fragile)} sit on a `={{Manufacturer Part}}` "
+                  f"device and cannot be done this way — the sheet shows the "
+                  f"MPN unless `Name` is a literal, and a literal is what "
+                  f"Replace overwrites")
+
     if a.dry_run:
         print("  --dry-run: nothing written\n")
         return 0
@@ -356,6 +413,7 @@ def main() -> int:
         # The only permitted difference, on the only permitted key.
         changed = {k for k in set(b1) | set(b2) if b1.get(k) != b2.get(k)}
         permitted = (b1.get("key") == KEY or b1.get("key") in copy_keys
+                     or (labels and b1.get("key") == "Value")
                      or (fill_all and b1.get("key") not in NEVER_COPY))
         if h1["type"] != "ATTR" or not permitted or changed != {"value"}:
             drift.append(f"{h1.get('id')}: changed {sorted(changed)}")
