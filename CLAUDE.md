@@ -288,10 +288,17 @@ routing are yours from here.
 
 ### 8. Verify after importing
 
-Export the netlist from EasyEDA and diff it against the JSON that went in.
+Export the document from EasyEDA and diff it against the JSON that went in:
+
+    ./tools/epro.py diff <export.epro2> designs/<name>/netlist.json
+
 Do not trust the canvas or an API success message: the failure modes that
 matter are invisible on screen — pins that look wired but carry no net port,
-and separate nets silently merged into one.
+and separate nets silently merged into one. The diff counts **pin references**
+rather than nets, because a net that keeps its name while losing half its pins
+is exactly what a name-only comparison passes. Exit status is 1 on any
+discrepancy and **2 if the export carried no nets at all** — an empty export
+must not read as a clean one.
 
 EasyEDA's DRC does not substitute for this. It checks geometry, not intent;
 a clean DRC says nothing about whether the board is connected correctly.
@@ -337,7 +344,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── ds.py              datasheet fetch, index, find, page
     │   ├── eda.py             EasyEDA library: symbol pin numbers, verify
     │   ├── erc.py             electrical rule check
-    │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets)
+    │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets, diff)
     │   ├── plot.py            chart helper: palette and house style
     │   ├── stale.py           find superseded values after a numeric change
     │   ├── consistency.py     check a document against the netlist it describes
@@ -567,6 +574,7 @@ the only record of the module design.
     ./tools/epro.py types <file.epro2>     record types and counts
     ./tools/epro.py bom   <file.epro2>     devices with LCSC numbers
     ./tools/epro.py nets  <file.epro2>     net names
+    ./tools/epro.py diff  <file.epro2> <netlist.json>   exported nets vs input
     ./tools/epro.py dump  <file.epro2> META -n 3
 
 An `.epro2` is a zip holding `project2.json` and one or more `.epru` documents.

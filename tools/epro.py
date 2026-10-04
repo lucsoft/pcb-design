@@ -13,6 +13,7 @@ on newlines first, then on `||` within each line.
     epro.py types  <file.epro2>          record types and counts
     epro.py bom    <file.epro2>          components with LCSC numbers
     epro.py nets   <file.epro2>          net names
+    epro.py diff   <file.epro2> <netlist.json>   exported nets vs the netlist
     epro.py dump   <file.epro2> TYPE     raw payloads of one record type
 """
 
@@ -126,16 +127,104 @@ def cmd_bom(path: Path) -> int:
     return 0
 
 
-def cmd_nets(path: Path) -> int:
-    nets = collections.Counter()
-    for _, b in records(path):
+def read_nets(path: Path) -> tuple[collections.Counter, collections.Counter]:
+    """Net name -> reference count, plus which representation carried it.
+
+    Two representations, and reading only the first is what made this report
+    "0 nets" on a schematic holding 108 of them:
+
+    - **PCB copper** carries the net on the object: `netName` on the trace.
+    - **A schematic does not.** The wire record holds only an id; the net is an
+      `ATTR` with `key: "NET"` whose `parentId` points back at the wire.
+    """
+    nets, how = collections.Counter(), collections.Counter()
+    for h, b in records(path):
         n = b.get("netName") or b.get("net")
         if isinstance(n, str) and n.strip():
             nets[n] += 1
+            how["object netName (PCB copper)"] += 1
+            continue
+        if (h.get("type") or "").upper() == "ATTR" and b.get("key") == "NET":
+            v = b.get("value")
+            if isinstance(v, str) and v.strip():
+                nets[v] += 1
+                how["ATTR key=NET (schematic wire)"] += 1
+    return nets, how
+
+
+def cmd_nets(path: Path) -> int:
+    nets, how = read_nets(path)
     print(f"\n{len(nets)} nets\n")
     for k, v in nets.most_common():
         print(f"  {k:<28} {v:>5} refs")
     print()
+    if not nets:
+        # Say which shapes were looked for. A bare "0 nets" reads as "this
+        # document has none" when it may mean "this document stores them in a
+        # third way nobody here has seen".
+        print("  no record carried a net name, in either representation:")
+        print("    - PCB:       `netName` / `net` on the object")
+        print("    - schematic: ATTR with key=NET, parentId -> the wire")
+        print("  if the document plainly has nets, the format has moved.")
+        print()
+        return 1
+    for k, v in how.most_common():
+        print(f"  carried by {k}: {v} record(s)")
+    print()
+    return 0
+
+
+def cmd_diff(path: Path, netlist: Path) -> int:
+    """Compare an exported document's nets against the netlist that went in.
+
+    This is step 8 of the workflow, and it is the only check that catches the
+    two failure modes the canvas hides: a pin that looks wired but carries no
+    net, and two nets silently merged into one. A merge removes a name; a lost
+    net port lowers one name's count. Both show up here and nowhere else.
+
+    Counting is by *pin references*, not by net, because a net that kept its
+    name while losing half its pins is the case a name-only diff passes.
+    """
+    want: collections.Counter = collections.Counter()
+    try:
+        design = json.loads(netlist.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"error: cannot read {netlist}: {e}", file=sys.stderr)
+        return 2
+    for comp in design.values():
+        for net in (comp.get("pins") or {}).values():
+            want[net] += 1
+
+    have, how = read_nets(path)
+    if not have:
+        print(f"\nerror: {path.name} carried no net names at all — refusing to "
+              f"report a clean diff against nothing", file=sys.stderr)
+        return 2
+
+    missing = sorted(set(want) - set(have))
+    extra = sorted(set(have) - set(want))
+    differ = sorted(n for n in set(want) & set(have) if want[n] != have[n])
+
+    print(f"\n{netlist}")
+    print(f"  {len(want):>4} nets, {sum(want.values()):>4} pin connections")
+    print(f"{path}")
+    print(f"  {len(have):>4} nets, {sum(have.values()):>4} pin connections")
+    for k, v in how.most_common():
+        print(f"       carried by {k}")
+    print()
+
+    for n in missing:
+        print(f"  MISSING   {n}: {want[n]} pin(s) in the netlist, absent from the export")
+    for n in extra:
+        print(f"  EXTRA     {n}: {have[n]} pin(s) in the export, not in the netlist")
+    for n in differ:
+        print(f"  COUNT     {n}: netlist {want[n]} pin(s), export {have[n]}")
+
+    bad = len(missing) + len(extra) + len(differ)
+    if bad:
+        print(f"\n  {bad} discrepancy(ies) — do not proceed to layout\n")
+        return 1
+    print(f"  identical: every net and every pin count agrees\n")
     return 0
 
 
@@ -162,6 +251,9 @@ def main() -> int:
     for name in ("types", "bom", "nets"):
         s = sub.add_parser(name)
         s.add_argument("file", type=Path)
+    f = sub.add_parser("diff")
+    f.add_argument("file", type=Path)
+    f.add_argument("netlist", type=Path)
     d = sub.add_parser("dump")
     d.add_argument("file", type=Path)
     d.add_argument("recordtype")
@@ -173,6 +265,7 @@ def main() -> int:
     if a.cmd == "types": return cmd_types(a.file)
     if a.cmd == "bom":   return cmd_bom(a.file)
     if a.cmd == "nets":  return cmd_nets(a.file)
+    if a.cmd == "diff":  return cmd_diff(a.file, a.netlist)
     if a.cmd == "dump":  return cmd_dump(a.file, a.recordtype, a.limit)
     return 2
 
