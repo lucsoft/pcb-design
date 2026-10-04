@@ -410,7 +410,7 @@ Three deliberate divergences remain, all understood:
 
 | | |
 |---|---|
-| `Name`, 96 slots | EasyEDA writes the device formula; the tool used to write a literal. See below — feeding the formula beats fighting it |
+| `Name`, 96 slots | EasyEDA writes the device formula, the tool leaves the netlist's literal in place. See below |
 | `Group ID`, `Reuse Block`, `Channel ID`, 288 slots | EasyEDA deletes these null attributes; the tool leaves them |
 | `3D Model` | the device holds a pipe-separated pair, the instance takes only what precedes the first pipe. 101 components confirmed the rule, nothing contradicted it |
 
@@ -422,23 +422,29 @@ instance.
 
 **Only `Designator` and `Name` are drawn on the sheet**, and `Name` is a
 formula on the device — `={Value}` on 88 of this board's 129 placements,
-`={Manufacturer Part}` on the other 41. A literal `Name` displays correctly
-and is destroyed the next time anyone runs Device Standardization.
+`={Manufacturer Part}` on the other 41. So the netlist's `value` cannot be
+kept on screen: a literal `Name` displays it and Device Standardization
+resets it to the formula.
 
-    ./tools/fixparts.py <export.epro2> --labels designs/<name>/netlist.json
+**Do not route around that by writing the label into `Value`.** A `--labels`
+mode that did exactly this lasted one commit. `Value` is one of the fields
+the standardization panel *compares against the catalogue*, so writing
+`10uF 50V` where the device says `10uF` turns 63 matching components into 63
+red mismatches — pushing the board away from *Exact Match* to gain a label,
+which is the opposite of the point. The catalogue value is also the better
+label: `10kΩ` belongs on a symbol, `10K 1206` carries a package that belongs
+in the BOM.
 
-feeds the formula instead of fighting it: the netlist's `value` goes into the
-instance's `Value`, which the formula then renders. **That survives** — a
-non-empty instance `Value` came through the click-through untouched on all 88
-that had one. The 41 on `={Manufacturer Part}` cannot be done this way and
-will show the MPN; the dialog's *Keep designator and unique ID* checkbox, on
-by default, does not extend to `Name`.
+**Do not stash labels in `Unique ID`** either, even though the Replace
+dialog's *Keep designator and unique ID* checkbox is on by default and so
+makes it durable. It is a field EasyEDA generates — populated in the
+hand-built module reference, empty in an import — and nothing here
+establishes what reads it. The schematic-to-PCB link is the obvious
+candidate.
 
-**Do not stash labels in `Unique ID`** even though it survives Replace. It is
-a field EasyEDA generates — populated in the hand-built module reference,
-empty in an import — and nothing here establishes what reads it. The
-schematic-to-PCB link is the obvious candidate, and overwriting it to hold
-`22uF 25V` would be trading a cosmetic problem for a structural one.
+The netlist's `value` stays where it belongs, in `netlist.json` and in the
+BOM tables of the design record. The schematic shows what the catalogue
+says.
 
 Whether any of this flips the panel to *Exact Match* is still unknown and
 only a re-import answers it: the status may be computed server-side, in which
