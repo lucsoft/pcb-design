@@ -424,6 +424,144 @@ inputs:
     source: "ESP32-C6 guaranteed V_OH, 0.8 x VDD"
     provenance: datasheet
 
+  # ---- the PD front end: Q3, R44 and the Zener clamp -------------------
+
+  V_BE_Q3:
+    value: 0.80
+    unit: V
+    source: "MMBT5551 Fig.5 p.3 read at I_C = 1 mA gives ~0.63 V at 25 C; extrapolated to -20 C at -2 mV/C it is ~0.72 V, and 0.80 V is the conservative end. No tabulated V_BE(on) exists -- see Assumptions"
+    provenance: assumed
+  V_BE_Q3_LO:
+    value: 0.60
+    unit: V
+    source: "the low end of the same silicon-junction band"
+    provenance: assumed
+  H_FE_Q3:
+    value: 60
+    unit: ""
+    source: "deliberately below the datasheet's 80 min at I_C = 1.0 mA, because this follower runs at V_CE ~0.84 V on a 12 V contract where beta droops"
+    provenance: assumed
+  H_FE_DATASHEET_MIN:
+    value: 80
+    unit: ""
+    source: "MMBT5551 datasheet p.1, I_C = 1.0 mA and V_CE = 5.0 V"
+    provenance: datasheet
+  R44:
+    value: 3.24
+    unit: kohm
+    source: "chosen: the value at which the 12 V margin stops depending on the unpublished VBUS pin current, with the resistor still comfortably derated"
+    provenance: chosen
+  R44_ALT_47:
+    value: 4.7
+    unit: kohm
+    source: "the value R44 passed through, kept for the sensitivity table"
+    provenance: chosen
+  R44_ALT_22:
+    value: 2.2
+    unit: kohm
+    source: "the next step down, kept for the sensitivity table"
+    provenance: chosen
+  I_VBUS_PIN_MAX:
+    value: 800
+    unit: uA
+    source: "HUSB238A p.6, VBUS pin current max at VDD = 3.3 V and VBUS = 5 V -- the only condition published"
+    provenance: datasheet
+  I_VBUS_PIN_TYP:
+    value: 330
+    unit: uA
+    source: "HUSB238A p.6, VBUS pin current typ at VDD = 3.3 V and VBUS = 5 V"
+    provenance: datasheet
+  I_VBUS_PIN_MID:
+    value: 1.8
+    unit: mA
+    source: "an intermediate point between the two published rows, for the sensitivity table"
+    provenance: inferred
+  I_VBUS_PIN_NOVDD_TYP:
+    value: 4.0
+    unit: mA
+    source: "HUSB238A p.6, VBUS pin current typ at 29.4 V with VDD unpowered"
+    provenance: datasheet
+  I_VBUS_PIN_NOVDD_MAX:
+    value: 4.5
+    unit: mA
+    source: "HUSB238A p.6, VBUS pin current max at 29.4 V with VDD unpowered -- the binding end"
+    provenance: datasheet
+  V_ZENER_LO:
+    value: 25.65
+    unit: V
+    source: "BZT52C27 (C173421) low bin"
+    provenance: datasheet
+  V_ZENER_NOM:
+    value: 27
+    unit: V
+    source: "BZT52C27 nominal"
+    provenance: datasheet
+  V_ZENER_HI:
+    value: 28.35
+    unit: V
+    source: "BZT52C27 (C173421) high bin"
+    provenance: datasheet
+  V_ZENER_C20_NOM:
+    value: 20
+    unit: V
+    source: "BZT52C20, the part this design carried for four revisions"
+    provenance: datasheet
+  V_ZENER_C20_LO:
+    value: 19
+    unit: V
+    source: "BZT52C20 low bin"
+    provenance: datasheet
+  V_ZENER_C20_HI:
+    value: 21
+    unit: V
+    source: "BZT52C20 high bin"
+    provenance: datasheet
+  V_GS_BSS138_LO:
+    value: 0.8
+    unit: V
+    source: "BSS138 V_GS at 800 uA, low end"
+    provenance: datasheet
+  V_GS_BSS138_TYP:
+    value: 1.5
+    unit: V
+    source: "BSS138 V_GS(th) as other vendors publish it; the fitted C7420339 is 1.6 V max"
+    provenance: inferred
+  V_GS_BSS138_MAX:
+    value: 1.6
+    unit: V
+    source: "C7420339 BSS138 V_GS(th) max"
+    provenance: datasheet
+  V_UV_F2:
+    value: 22.4
+    unit: V
+    source: "HUSB238A p.7, vVBUV_F2: a flat 22.4 V for RDO >= 26 V"
+    provenance: datasheet
+  OV_BAND:
+    value: 120
+    unit: "%"
+    source: "HUSB238A VBUS_OV, 120% of the requested voltage"
+    provenance: datasheet
+  P_RATING_0402:
+    value: 62.5
+    unit: mW
+    source: "thick-film 0402 rating"
+    provenance: datasheet
+  V_TVS_CLAMP:
+    value: 64.5
+    unit: V
+    source: "SMCJ40CA headline clamping voltage at its rated 23.3 A surge"
+    provenance: datasheet
+  V_CEO_MMBT5551:
+    value: 160
+    unit: V
+    source: "MMBT5551 datasheet V_CEO"
+    provenance: datasheet
+  V_DS_BSS138:
+    value: 50
+    unit: V
+    source: "BSS138 V_DS rating, for the comparison the NPN replaced"
+    provenance: datasheet
+
 derived:
 
   # ---- budget ---------------------------------------------------------
@@ -941,6 +1079,218 @@ derived:
     unit: W
     display: { unit: mW, digits: 2 }
 
+  # ---- the follower ----------------------------------------------------
+  #
+  # R44 is the only path into the base, so the base sits I_B x R44 below the
+  # collector and the emitter one V_BE below that. The disconnect threshold is
+  # a percentage of the REQUESTED voltage, so a fixed offset is a bigger
+  # fraction of a smaller contract -- which is what makes 12 V the pinch point.
+
+  i_base:
+    expr: I_VBUS_PIN_MAX / H_FE_Q3
+    unit: A
+    display: { unit: uA, digits: 2 }
+  v_r44_drop:
+    expr: i_base * R44
+    unit: V
+    display: { unit: mV, digits: 2 }
+  pin_at_9v:
+    expr: 0.95 * V_PDO_9 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_at_12v:
+    expr: 0.95 * V_PDO_12 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_at_15v:
+    expr: 0.95 * V_PDO_15 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_at_20v:
+    expr: 0.95 * V_PDO_20 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_clamped:
+    expr: V_ZENER_LO - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_clamped_hi:
+    expr: V_ZENER_HI - V_BE_Q3_LO
+    unit: V
+    display: { unit: V, digits: 4 }
+  margin_9v:
+    expr: pin_at_9v - UV_BAND_F1 * V_PDO_9
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_12v:
+    expr: pin_at_12v - UV_BAND_F0 * V_PDO_12
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_15v:
+    expr: pin_at_15v - UV_BAND_F0 * V_PDO_15
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_20v:
+    expr: pin_at_20v - UV_BAND_F0 * V_PDO_20
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_clamped:
+    expr: pin_clamped - V_UV_F2
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_12v_fraction:
+    expr: margin_12v / (UV_BAND_F0 * V_PDO_12)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  margin_12v_at_hfe80:
+    expr: 0.95 * V_PDO_12 - I_VBUS_PIN_MAX / H_FE_DATASHEET_MIN * R44 - V_BE_Q3 - UV_BAND_F0 * V_PDO_12
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_bus_at_uv_f2:
+    expr: V_UV_F2 + V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_bus_ov_trip:
+    expr: OV_BAND * V_BUS
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # what a MOSFET follower would have needed, and what the 20 V clamp gave
+  v_min_for_bss138:
+    expr: V_GS_BSS138_MAX / (0.95 - UV_BAND_F0)
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_20v_bss138:
+    expr: 0.95 * V_PDO_20 - V_GS_BSS138_MAX - UV_BAND_F0 * V_PDO_20
+    unit: V
+    display: { unit: V, digits: 1 }
+  pin_c20_nom:
+    expr: V_ZENER_C20_NOM - V_GS_BSS138_TYP
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_c20_lo:
+    expr: V_ZENER_C20_LO - V_GS_BSS138_MAX
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_c20_hi:
+    expr: V_ZENER_C20_HI - V_GS_BSS138_LO
+    unit: V
+    display: { unit: V, digits: 3 }
+  below_uv_f2_c20:
+    expr: V_UV_F2 - pin_c20_nom
+    unit: V
+    display: { unit: V, digits: 2 }
+
+  # ---- what the follower does at the bottom of vSafe5V -----------------
+
+  pin_follower_lo:
+    expr: V_VSAFE5V_LO - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_follower_hi:
+    expr: V_VSAFE5V_LO - v_r44_drop - V_BE_Q3_LO
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_follower_vbus_min:
+    expr: pin_follower_lo - V_VBUS_PIN_MIN
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_follower_vbprs:
+    expr: pin_follower_lo - V_VBPRS_R_TYP
+    unit: V
+    display: { unit: V, digits: 2 }
+  vbus_pin_requirement_drop:
+    expr: V_VBUS_PIN_MIN_NOVDD - V_VBUS_PIN_MIN
+    unit: V
+    display: { unit: V, digits: 3 }
+  vbus_pin_current_ratio:
+    expr: I_VBUS_PIN_NOVDD_MAX / I_VBUS_PIN_MAX
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  pin_at_36v_nominal:
+    expr: V_ZENER_NOM - (V_BE_Q3 + V_BE_Q3_LO) / 2
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_schottky_reverse:
+    expr: pin_at_36v_nominal - V_RAIL5_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # ---- Q3 and R44 at the corners ---------------------------------------
+
+  v_ce_q3_normal:
+    expr: v_bus_max - pin_clamped
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_ce_q3_clamp:
+    expr: V_TVS_CLAMP - pin_clamped
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_ce_bss138_ratio:
+    expr: V_DS_BSS138 / v_ce_q3_clamp
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  v_across_r44_nominal:
+    expr: V_BUS - V_ZENER_NOM
+    unit: V
+    display: { unit: V, digits: 2 }
+  i_zener:
+    expr: v_across_r44_nominal / R44
+    unit: A
+    display: { unit: mA, digits: 3 }
+  p_r44_nominal:
+    expr: v_across_r44_nominal ** 2 / R44
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_r44_vendor_step:
+    expr: v_across_r44_nominal ** 2 / R44_ALT_47
+    unit: W
+    display: { unit: mW, digits: 2 }
+  derating_r44_nominal:
+    expr: p_r44_nominal / P_RATING_0402
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  derating_r44_vendor_step:
+    expr: p_r44_vendor_step / P_RATING_0402
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  v_across_r44_corner:
+    expr: v_bus_max - V_ZENER_LO
+    unit: V
+    display: { unit: V, digits: 4 }
+  p_r44_corner:
+    expr: v_across_r44_corner ** 2 / R44
+    unit: W
+    display: { unit: mW, digits: 3 }
+  derating_r44_corner:
+    expr: p_r44_corner / P_RATING_0402
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  v_across_r44_clamp:
+    expr: V_TVS_CLAMP - V_ZENER_LO
+    unit: V
+    display: { unit: V, digits: 4 }
+  p_r44_clamp:
+    expr: v_across_r44_clamp ** 2 / R44
+    unit: W
+    display: { unit: mW, digits: 3 }
+  derating_r44_clamp:
+    expr: p_r44_clamp / P_RATING_0402
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  p_zener:
+    expr: V_ZENER_NOM * i_zener
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_q3_collector:
+    expr: (V_BUS - (V_ZENER_NOM - V_BE_Q3)) * I_VBUS_PIN_MAX
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_front_end:
+    expr: p_q3_collector + p_r44_nominal + p_zener
+    unit: W
+    display: { unit: W, digits: 2 }
+
 tables:
 
   power-budget:
@@ -1052,3 +1402,35 @@ tables:
          "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4",
          "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4",
          "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4"]
+
+  follower-margins:
+    columns: ["PDO", "band", "threshold", "pin at a −5% bus", "margin"]
+    align: [left, left, right, right, right]
+    rows:
+      - ["9 V", "F1, 80%", "=UV_BAND_F1*V_PDO_9 @ V,3", "=pin_at_9v @ V,3", "+{=margin_9v @ V,2}"]
+      - ["**12 V**", "F0, 86%", "=UV_BAND_F0*V_PDO_12 @ V,4", "=pin_at_12v @ V,4",
+         "**+{=margin_12v @ V,2}**"]
+      - ["15 V", "F0, 86%", "=UV_BAND_F0*V_PDO_15 @ V,4", "=pin_at_15v @ V,4", "+{=margin_15v @ V,2}"]
+      - ["20 V", "F0, 86%", "=UV_BAND_F0*V_PDO_20 @ V,4", "=pin_at_20v @ V,4", "+{=margin_20v @ V,2}"]
+      - ["28 V", "F2, flat", "=V_UV_F2 @ V,4", "=pin_clamped @ V,4", "+{=margin_clamped @ V,3}"]
+      - ["36 V", "F2, flat", "=V_UV_F2 @ V,4", "=pin_clamped @ V,4", "+{=margin_clamped @ V,3}"]
+
+  r44-sensitivity:
+    columns: ["R44", "at 800 µA", "at 1.8 mA", "at 4.0 mA", "at **4.5 mA**"]
+    align: [left, right, right, right, right]
+    rows:
+      - ["4.7 kΩ",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MAX/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MID/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_TYP/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_MAX/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2}**"]
+      - ["**3.24 kΩ**",
+         "**{=margin_12v @ V,3}**",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_MID/H_FE_Q3*R44-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3}**",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_TYP/H_FE_Q3*R44-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2}**",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_MAX/H_FE_Q3*R44-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2}**"]
+      - ["2.2 kΩ",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MAX/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MID/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_TYP/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_MAX/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3"]

@@ -577,7 +577,7 @@ def fmt(value, digits):
     if value == 0:
         return "0"
     if abs(value) >= 1e6 or abs(value) < 1e-4:
-        return f"{value:.{digits}g}"
+        return f"{value:.{digits}g}".replace("-", "−")
     places = digits - 1 - math.floor(math.log10(abs(value)))
     rounded = round(value, places)
     # rounding 9.99 up can carry into the next decade, so settle the exponent
@@ -585,7 +585,9 @@ def fmt(value, digits):
     if rounded and math.floor(math.log10(abs(rounded))) != math.floor(math.log10(abs(value))):
         places = digits - 1 - math.floor(math.log10(abs(rounded)))
         rounded = round(value, places)
-    return f"{rounded:.{max(0, places)}f}"
+    # U+2212, because that is the minus sign this project's prose uses and a
+    # regenerated table has to match the typography around it
+    return f"{rounded:.{max(0, places)}f}".replace("-", "−")
 
 
 def sigfigs(text: str) -> int:

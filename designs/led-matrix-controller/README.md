@@ -727,7 +727,7 @@ builds at 28 V or below.
 **We use 27 V (BZT52C27), one bin below Hynetek's published 28 V, and the 20 V
 part this design carried for four revisions would have broken it.** The argument
 for 20 V was that
-it puts the VBUS pin at ~18.5 V, "comfortably inside its 3.15-29.4 V window",
+it puts the VBUS pin at ~18.5 V<!--calc:pin_c20_nom-->, "comfortably inside its 3.15-29.4 V window",
 where a 28-30 V part would sit at ~28.5 V against a 29.4 V recommended maximum.
 
 The window is not 3.15-29.4 V at 36 V. The undervoltage table on **p.7** has
@@ -739,13 +739,13 @@ The window is not 3.15-29.4 V at 36 V. The undervoltage table on **p.7** has
 | vVBUV_F1 | 10 V ≥ RDO > 5 V | 80% of the requested voltage |
 | **vVBUV_F2** | **RDO ≥ 26 V** | **22.4 V, absolute** |
 
-At a 36 V contract the disconnect threshold is a flat **22.4 V** and the clamped
-pin sat at 18.5 V — **3.9 V below it, permanently**. Per the datasheet's UVP
+At a 36 V contract the disconnect threshold is a flat **22.4 V**<!--calc:V_UV_F2--> and the clamped
+pin sat at 18.5 V — **3.9 V**<!--calc:below_uv_f2_c20--> below it, permanently. Per the datasheet's UVP
 text the part then *"moves out the Attached.SNK state"*, so the sequence is
 negotiate 36 V, false disconnect, source reverts to vSafe5V, repeat. The board
 could never have held its own headline PDO. Every corner failed: BZT52C20 is
-19-21 V and the BSS138's V_GS at 800 µA is 0.8-1.6 V, so the pin landed at
-17.4-20.2 V against a threshold that does not move.
+19-21 V<!--calc:V_ZENER_C20_LO..V_ZENER_C20_HI--> and the BSS138's V_GS at 800 µA is 0.8-1.6 V<!--calc:V_GS_BSS138_LO..V_GS_BSS138_MAX-->, so the pin landed at
+17.4-20.2 V<!--calc:pin_c20_lo..pin_c20_hi--> against a threshold that does not move.
 
 **BZT52C27 (C173421, 25.65-28.35 V)** fixes the clamp. But fixing the clamp only
 fixed `vVBUV_F2`, and that was the second mistake: **the other two bands break
@@ -762,8 +762,8 @@ condition in the 86% band is
     0.95·V − V_offset ≥ 0.86·V ⇒      V_offset ≤ 0.09·V
 
 — 0.95 because a compliant fixed PDO may sit 5% low, the figure this document
-uses everywhere. With the BSS138's 1.6 V worst-case V_GS that needs **V ≥ 17.8 V**,
-so 9 V, 12 V and 15 V all false-disconnect, and 20 V survives by 0.2 V. Those are
+uses everywhere. With the BSS138's 1.6 V worst-case V_GS that needs **V ≥ 17.8 V**<!--calc:v_min_for_bss138-->,
+so 9 V, 12 V and 15 V all false-disconnect, and 20 V survives by 0.2 V<!--calc:margin_20v_bss138-->. Those are
 exactly the contracts the degradation story is built on.
 
 **Q3 becomes an NPN emitter follower (MMBT5551, C7420357) and R44 drops to
@@ -771,31 +771,33 @@ exactly the contracts the degradation story is built on.
 0.8-1.6 V, and that halving is the whole fix. The lower R44 keeps the base
 current's own IR drop out of the margin:
 
+<!-- calc:table follower-margins -->
 | PDO | band | threshold | pin at a −5% bus | margin |
-|---|---|---|---|---|
+|---|---|---:|---:|---:|
 | 9 V | F1, 80% | 7.20 V | 7.71 V | +0.51 V |
 | **12 V** | F0, 86% | 10.32 V | 10.56 V | **+0.24 V** |
 | 15 V | F0, 86% | 12.90 V | 13.41 V | +0.51 V |
 | 20 V | F0, 86% | 17.20 V | 18.16 V | +0.96 V |
 | 28 V | F2, flat | 22.40 V | 24.85 V | +2.45 V |
 | 36 V | F2, flat | 22.40 V | 24.85 V | +2.45 V |
+<!-- calc:end -->
 
-Worked at V_BE = 0.80 V, h_FE = **60**, R44 = 3.24 kΩ (a 43 mV base drop) and
+Worked at V_BE = 0.80 V<!--calc:V_BE_Q3-->, h_FE = **60**<!--calc:H_FE_Q3-->, R44 = 3.24 kΩ<!--calc:R44--> (a 43 mV<!--calc:v_r44_drop--> base drop) and
 the BZT52C27's low corner. The 60 is
 deliberately below the datasheet's 80 min at I_C = 1.0 mA, which is the row that
-brackets this operating point; at 80 the 12 V margin is 0.25 V rather than 0.24 V,
+brackets this operating point; at 80 the 12 V margin is 0.25 V<!--calc:margin_12v_at_hfe80--> rather than 0.24 V<!--calc:margin_12v-->,
 so every figure in the table is the pessimistic one. **12 V is the pinch
 point** — it sits just inside the 86% band, where the required offset is at
-its smallest — and 0.24 V of margin on a 10.32 V threshold is 2.3%. Carried in
+its smallest — and 0.24 V of margin on a 10.32 V threshold is 2.3%<!--calc:margin_12v_fraction-->. Carried in
 Known electrical limits rather than claimed as solved.
 
-At the top end the swap helps as well: the pin lands at 24.85-27.75 V against the
+At the top end the swap helps as well: the pin lands at 24.85-27.75 V<!--calc:pin_clamped..pin_clamped_hi--> against the
 22.4 V threshold and the 29.4 V recommended maximum, with more room at both ends
 than the MOSFET gave, because V_BE is smaller than V_GS. Worked at the binding
 corner — a +5% bus against the lowest emitter the spread allows, 25.65 − 0.80 =
-24.85 V — V_CE is **12.95 V** in normal operation and **39.65 V** during a 64.5 V
-TVS clamp, against the part's **160 V**
-V_CEO — where the BSS138's 50 V would have been only 1.3× that event.
+24.85 V<!--calc:pin_clamped--> — V_CE is **12.95 V**<!--calc:v_ce_q3_normal--> in normal operation and **39.65 V**<!--calc:v_ce_q3_clamp--> during a 64.5 V
+TVS clamp, against the part's **160 V**<!--calc:V_CEO_MMBT5551-->
+V_CEO — where the BSS138's 50 V would have been only 1.3×<!--calc:v_ce_bss138_ratio--> that event.
 
 **What is not datasheet-backed here is V_BE.** The MMBT5551 datasheet specifies
 V_CEO, V_EBO and h_FE and gives **no V_BE(on)** at any current. The 0.6-0.8 V
@@ -803,17 +805,19 @@ used above is a silicon junction at 800 µA over −20 to +85 °C, which is phys
 rather than a figure anyone published, and the 12 V margin rests on it directly.
 It is recorded as `inferred` in the part record and wants a measurement.
 
-Two things the NPN costs. Base current is 13 µA at h_FE 60 and R44 has to supply
+Two things the NPN costs. Base current is 13 µA<!--calc:i_base--> at h_FE 60 and R44 has to supply
 it, so R44's value lands directly on the 12 V margin — and the pin current it
 scales with is published **only at VBUS = 5 V** (p.6: `VDD=3.3 V & VBUS=5 V`).
 That makes the margin sensitive to a number the datasheet does not give at the
 contract where it matters, so R44 is sized to be insensitive rather than optimal:
 
+<!-- calc:table r44-sensitivity -->
 | R44 | at 800 µA | at 1.8 mA | at 4.0 mA | at **4.5 mA** |
-|---|---|---|---|---|
+|---|---:|---:|---:|---:|
 | 4.7 kΩ | 0.217 V | 0.139 V | −0.033 V | **−0.073 V** |
 | **3.24 kΩ** | **0.237 V** | **0.183 V** | **0.064 V** | **0.037 V** |
 | 2.2 kΩ | 0.251 V | 0.214 V | 0.133 V | 0.115 V |
+<!-- calc:end -->
 
 **4.5 mA is the hard upper bound**, not 4.0 — the other VBUS current row reads
 4 typ / 4.5 **max** at 29.4 V with VDD unpowered, and this document's own rule is
@@ -852,9 +856,9 @@ impedance, where a series resistor would drop voltage with load current.
 #### The follower does not reach the thresholds at 5 V, and the fix is two parts
 
 The follower costs one V_BE, and it costs it where there is least room. At the
-bottom of vSafe5V — a **4.75 V** bus — the base sits 43 mV below the rail
+bottom of vSafe5V — a **4.75 V** bus — the base sits 43 mV<!--calc:v_r44_drop--> below the rail
 (I_B × R44) and the emitter one V_BE below that, so the pin gets
-**3.91 – 4.11 V**. Against a VBUS-pin minimum of **4.5 V** with VDD unpowered,
+**3.91 – 4.11 V**<!--calc:pin_follower_lo..pin_follower_hi-->. Against a VBUS-pin minimum of **4.5 V**<!--calc:V_VBUS_PIN_MIN_NOVDD--> with VDD unpowered,
 the chip would not reliably come up.
 
 **First: VDD (pin 5) is an input supply, so tie it to 3V3.** The datasheet is
@@ -865,11 +869,11 @@ once:
 
 | With VDD = 3.3 V | With VDD unpowered |
 |---|---|
-| VBUS pin range **3.15 – 29.4 V** | 4.5 – 29.4 V |
-| VBUS pin current **330 µA typ / 800 µA max** | 4.5 mA |
+| VBUS pin range **3.15 V**<!--calc:V_VBUS_PIN_MIN--> – 29.4 V | 4.5 V<!--calc:V_VBUS_PIN_MIN_NOVDD--> – 29.4 V |
+| VBUS pin current **330 µA**<!--calc:I_VBUS_PIN_TYP--> typ / **800 µA**<!--calc:I_VBUS_PIN_MAX--> max | 4.5 mA<!--calc:I_VBUS_PIN_NOVDD_MAX--> |
 
-The requirement drops by 1.35 V and the current by **5.6x**, and 3.91 V now
-clears it by 0.76 V. That alone would do — but it is not what decides, because
+The requirement drops by 1.35 V<!--calc:vbus_pin_requirement_drop--> and the current by **5.6x**<!--calc:vbus_pin_current_ratio-->, and 3.91 V now
+clears it by 0.76 V<!--calc:margin_follower_vbus_min-->. That alone would do — but it is not what decides, because
 two *threshold* figures sit above the minimum and the follower misses both.
 Sequencing makes this safe: nothing has to happen until
 firmware pulls EN_N low, and by then the 5 V and 3.3 V rails are both up, because
@@ -881,14 +885,14 @@ rail sits at **4.56 V** typical (the dropout table), and an RB751V-40 drops
 seeing its emitter above (V_base − V_BE), simply stops conducting. At the
 converter's applicable worst-case on-resistance the rail is 4.48 V and the pin
 **4.11 V**, which is the figure the residuals below have to be read at. Once the bus rises the
-follower takes the pin to ~26.3 V and the Schottky is reverse-biased by 21.3 V,
+follower takes the pin to ~26.3 V<!--calc:pin_at_36v_nominal--> and the Schottky is reverse-biased by 21.3 V<!--calc:v_schottky_reverse-->,
 well inside its 40 V rating. It does nothing at 36 V and everything at 5 V.
 
 | | Follower alone | With D14 |
 |---|---|---|
-| Pin at a 4.75 V bus | 3.91 – 4.11 V | **4.19 V** typ, **4.11 V** at the R_DS corner |
-| Against the 3.15 V minimum | +0.76 V | +1.04 V |
-| Against the 4.0 V thresholds | **−0.09 V at the low corner** | +0.19 V typ, **+0.11 V** at the R_DS corner |
+| Pin at a 4.75 V bus | 3.91 – 4.11 V<!--calc:pin_follower_lo..pin_follower_hi--> | **4.19 V**<!--calc:v_pin_typ--> typ, **4.11 V**<!--calc:v_pin_applicable--> at the R_DS corner |
+| Against the 3.15 V minimum | +0.76 V<!--calc:margin_follower_vbus_min--> | +1.04 V<!--calc:margin_pin_min--> |
+| Against the 4.0 V thresholds | **−0.09 V**<!--calc:margin_follower_vbprs--> at the low corner | +0.19 V<!--calc:margin_vbprs_typ_at_typ--> typ, **+0.11 V**<!--calc:margin_vbprs_typ_at_applicable--> at the R_DS corner |
 
 So D14 is not rescuing a part that fails its supply minimum — the follower clears
 that by 0.76 V since VDD was tied to 3V3. It is buying the margin on the two 4.0 V
@@ -912,14 +916,14 @@ the `AttachWait.SNK → Attached.SNK` transition on VBUS detection, which is wha
 vVBPRS_R implements, and the UV detector was not mentioned at all.
 
 **Honest position: two margins, both thin, and one of them unspecified.**
-`VBUS_OK` rising clears by **+0.11 V** at the converter's applicable worst-case
-on-resistance (+0.19 V on a typical one) and misses by 0.29 V on a max-threshold
+`VBUS_OK` rising clears by **+0.11 V**<!--calc:margin_vbprs_typ_at_applicable--> at the converter's applicable worst-case
+on-resistance (+0.19 V<!--calc:margin_vbprs_typ_at_typ--> on a typical one) and misses by 0.29 V on a max-threshold
 part. The under-voltage detector publishes no band covering a 5 V RDO at
-all; its **adjacent** band is F1 at 80%, giving a 4.00 V bound that the pin
-clears by **+0.11 V** at the R_DS corner and +0.19 V on a typical converter —
+all; its **adjacent** band is F1 at 80%, giving a 4.00 V<!--calc:uv_bound_f1--> bound that the pin
+clears by **+0.11 V**<!--calc:margin_uv_f1_applicable--> at the R_DS corner and +0.19 V<!--calc:margin_uv_f1_typ--> on a typical converter —
 numerically the same pair as `VBUS_OK` by coincidence, since vVBPRS_R typ is
 4.0 V and 80% of 5 V is also 4.0 V. Reading the *next* band up instead (F0, 86%)
-would put the bound at 4.30 V and the pin 0.19 V short, which is the pessimistic
+would put the bound at 4.30 V<!--calc:uv_bound_f0--> and the pin 0.19 V<!--calc:shortfall_uv_f0--> short, which is the pessimistic
 case rather than the adjacent one. Both margins would move
 0.35 V the right way if the 5 V rail were not at its own dropout floor.
 Bench-check it on the first board; if it
