@@ -948,10 +948,10 @@ Hynetek states it plainly: *"因为HUSB238A没有36V/48V OV保护"* — there is
 VBUS-present detection, but **destroys OVP and the discharge path**. UVP is the
 exception and the whole follower analysis below depends on it: the clamped pin
 tracks the bus again once the Zener stops conducting, which is a **bus** figure
-of 25.7–28.4 V across the clamp's spread, so vVBUV_F2's flat
-22.4 V fires at a bus of roughly 23.2 V — the intended threshold plus one V_BE.
+of 25.65–28.35 V<!--calc:V_ZENER_LO..V_ZENER_HI--> across the clamp's spread, so vVBUV_F2's flat
+22.4 V fires at a bus of roughly 23.2 V<!--calc:v_bus_at_uv_f2--> — the intended threshold plus one V_BE.
 OVP genuinely cannot fire, because VBUS_OV is 120% of the requested voltage —
-43.2 V on a 36 V contract — and the clamp never lets the pin near it. It is
+43.2 V<!--calc:v_bus_ov_trip--> on a 36 V contract — and the clamp never lets the pin near it. It is
 also why 48 V is I²C-only while GPIO mode stops at 28 V.
 
 Accepted, because it is inherent to the topology rather than a mistake — but it
@@ -1060,16 +1060,16 @@ Per channel, from the datasheet's own equations rather than from its worked
 example — **back-solving the gain from the rounded example in §10.2.2.3 gives
 33x and is wrong**. The datasheet specifies
 `GAIN(dVdT) = 23.5 / 25 / 26 V/V` directly (p.7), and Equations 1 and 2 give it
-independently as `1/(20.8e3 × 2 µA) = 24.0`.
+independently as `1/(20.8e3 × 2 µA) = 24.0`<!--calc:gain_dvdt_check-->.
 
     t(dVdT) = 20.8e3 × V_IN × C_dVdT (2)
     I(INRUSH) = C_OUT × V_IN / t(dVdT) (1)
 
 | Element | Value | Derivation |
 |---|---|---|
-| R_ILIM | **3.24 kΩ** 1% | the datasheet tabulates 3 kΩ → 6 A and 4.02 kΩ → 4.5 A, i.e. I·R ≈ 18 kΩ·A, so 3.24 kΩ gives **5.56 A**. Clears the 4.0 A white-flash peak by 1.29x at the low end of its ±7% spread |
-| C_dVdT | **220 nF** | Eq. 2 gives t = 20.8e3 × 36 × 220 nF = **165 ms**; Eq. 1 gives inrush = 3.3 mF × 36 / 165 ms = **0.72 A**. Carrying I(dVdT) 1.775-2.225 µA and GAIN 23.5-26 V/V, the spread is **137-190 ms** and **0.63-0.87 A** before C_dVdT's own ±10% |
-| UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.28 V**, **OVP 40.68 V**, and draws 35.4 µA. The E192 values this string first carried (723 k / 249 k / 29.4 k) are not stocked in 0402 — see Bill of materials |
+| R_ILIM | **3.24 kΩ**<!--calc:R_ILIM--> 1% | the datasheet tabulates 3 kΩ → 6 A and 4.02 kΩ → 4.5 A, i.e. I·R ≈ 18 kΩ·A<!--calc:ILIM_PRODUCT-->, so 3.24 kΩ gives **5.56 A**<!--calc:i_limit-->. Clears the 4.0 A white-flash peak by 1.29x<!--calc:ilim_margin--> at the low end of its ±7% spread |
+| C_dVdT | **220 nF**<!--calc:C_DVDT--> | Eq. 2 gives t = 20.8e3 × 36 × 220 nF = **165 ms**<!--calc:t_dvdt-->; Eq. 1 gives inrush = 3.3 mF × 36 / 165 ms = **0.72 A**<!--calc:i_inrush-->. Carrying I(dVdT) 1.775-2.225 µA<!--calc:I_DVDT_MIN..I_DVDT_MAX--> and GAIN 23.5-26 V/V<!--calc:GAIN_DVDT_MIN..GAIN_DVDT_MAX-->, the spread is **137-190 ms**<!--calc:t_dvdt_lo..t_dvdt_hi--> and **0.63-0.87 A**<!--calc:i_inrush_lo..i_inrush_hi--> before C_dVdT's own ±10% |
+| UVLO/OVP string | **732 kΩ / 255 kΩ / 30.0 kΩ** 1% | IN → R_UV1 → **UVLO** → R_UV2 → **OVP** → R_UV3 → GND, against 1.2 V on both pins. UVLO is the *upper* tap. Gives **UVLO 4.28 V**<!--calc:uvlo_trip-->, **OVP 40.68 V**<!--calc:ovp_trip-->, and draws 35.4 µA<!--calc:i_divider-->. The E192 values this string first carried (723 k / 249 k / 29.4 k) are not stocked in 0402 — see Bill of materials |
 | C_IN | **220 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as a **minimum**. A nominal 100 nF ±10% part meets it with zero margin — 90 nF at tolerance alone, less after X7R's tempco and DC-bias loss at 36 V. 220 nF lands near 150-170 nF effective. Same reasoning the TPS54360B row applies with its "≥3 µF effective after DC-bias derating" |
 | PGOOD pull-up | **10 kΩ** to 3V3, shared | open drain; both channels wire-ORed onto one GPIO |
 | C_OUT, **OUT → GND** | **220 nF** ≥100 V | p.6 Recommended Operating Conditions gives 0.1 µF as the **minimum** at IN, P_IN and OUT. C34/C35, oversized so the minimum survives tolerance and DC bias |
@@ -1077,38 +1077,38 @@ independently as `1/(20.8e3 × 2 µA) = 24.0`.
 
 **The inrush is constant, which is the whole point.** Equations 1 and 2 make the
 charging current independent of bus voltage and of how far the ramp has
-progressed. At **0.72 A** per channel, **both channels can be released
-simultaneously** — 1.44 A against a 5.0 A contract — and the staggering the
+progressed. At **0.72 A**<!--calc:i_inrush--> per channel, **both channels can be released
+simultaneously** — 1.44 A<!--calc:i_inrush_both--> against a 5.0 A contract — and the staggering the
 previous design needed is gone.
 
 **The ramp time does not depend on module count, at 25 °C.** Equation 2 has no
-C_OUT term, so t is **165 ms** whether a channel carries 10 modules or 20 — until
+C_OUT term, so t is **165 ms**<!--calc:t_dvdt--> whether a channel carries 10 modules or 20 — until
 the thermal regulation loop engages and overrides the slew, which it will at
 higher ambients (see below); only the inrush
-scales, to 1.44 A per channel at 6.6 mF. That removes the
+scales, to 1.44 A<!--calc:i_inrush_20--> per channel at 6.6 mF<!--calc:c_channel_bank_20-->. That removes the
 12.7-modules-per-channel start-up ceiling the LM5069's fault timer imposed — the
 binding constraint returns to power, where it belongs.
 
-**Turn-on delay** is `742 µs + 49.5 × C_dVdT[nF]` = **11.6 ms** at 220 nF, which
+**Turn-on delay** is `742 µs + 49.5 × C_dVdT[nF]` = **11.6 ms**<!--calc:t_turn_on--> at 220 nF, which
 is what replaces the LM5069's multi-second insertion timer.
 
 **Ramping 3.3 mF is characterised, and the comparison is energy, not farads.**
-TI publishes the part powering into **15 mF** (Figure 16) — but at V_IN = 24 V
-and with dVdT *open*, so ½CV² = **4.32 J**. Ours is ½ × 3.3 mF × 36² = **2.14 J**,
-i.e. **2.0×** inside TI's demonstrated case, not the 4× a capacitance comparison
-suggests. At 20 modules *on a single channel* it is **4.28 J ≈ 1.0×** — equal to
+TI publishes the part powering into **15 mF**<!--calc:C_TI_DEMO--> (Figure 16) — but at V_IN = 24 V
+and with dVdT *open*, so ½CV² = **4.32 J**<!--calc:energy_ti_demo-->. Ours is ½ × 3.3 mF × 36² = **2.14 J**<!--calc:energy_channel-->,
+i.e. **2.0×**<!--calc:energy_ratio--> inside TI's demonstrated case, not the 4× a capacitance comparison
+suggests. At 20 modules *on a single channel* it is **4.28 J**<!--calc:energy_channel_20--> ≈ **1.0×**<!--calc:energy_ratio_20--> — equal to
 the demonstration, not a quarter of it. Note that case is a 40-module wall, which
 is outside the 180 W budget; it is carried as the growth bound, not the design
 point.
 
 **And the 165 ms ramp is never actually realised.** Equation 3 gives the inrush power:
 
-    P_D(inrush) = 0.5 × V_IN × I_INRUSH = 0.5 × 36 × 0.72 = **13 W** per channel
+    P_D(inrush) = 0.5 × V_IN × I_INRUSH = 0.5 × 36 × 0.72 = **13 W**<!--calc:p_inrush--> per channel
 
-for 165 ms, 26 W for the pair — six times the board's entire steady budget. The
+for 165 ms, 26 W<!--calc:p_inrush_both--> for the pair — six times the board's entire steady budget. The
 datasheet is explicit that if this exceeds the Figure 13 power-versus-time
 boundary, the **thermal regulation loop** takes over, overrides the programmed
-slew and starts a `t(Treg_timeout)` of **1.1 s minimum** (1.25 typ); if the
+slew and starts a `t(Treg_timeout)` of **1.1 s**<!--calc:T_TREG_TIMEOUT--> minimum (1.25 typ); if the
 output has not come up by
 then the FET turns off and MODE decides latch or retry.
 
@@ -1128,7 +1128,7 @@ boundary at 13 W is 120 ms, *below* the ramp. Two things make it tighter still:
 Figure 13 is time-to-*shutdown*
 at T(TSD) = 165 °C, while the regulation loop engages at T(J_REG) = 145 °C typ and
 136 °C minimum, so regulation starts earlier than the plotted time; and the
-inrush tolerance band puts P_D at 11.3-15.7 W rather than exactly 13 W.
+inrush tolerance band puts P_D at 11.3-15.6 W<!--calc:p_inrush_lo..p_inrush_hi--> rather than exactly 13 W.
 
 **The correct statement is that thermal regulation runs the ramp, not the dVdT
 capacitor.** C_dVdT sets the *intended* slew and the loop overrides it whenever
@@ -1139,41 +1139,41 @@ comes up inside it.
 
 On energy it does. Figure 13's 25 °C trace is the hardest line on that plot to
 read — light grey over a dense log grid — and two careful extractions of it
-differ by 20%, giving **5.9 to 7.0 W** at the timeout. That is **6.5 to 7.7 J**
+differ by 20%, giving **5.9 to 7.0 W**<!--calc:P_FIG13_TIMEOUT_LO..P_FIG13_TIMEOUT_HI--> at the timeout. That is **6.5 to 7.7 J**<!--calc:energy_available_lo..energy_available_hi-->
 against the **2.14 J** one channel needs at the 10-modules-per-channel design
-point: **3.0 to 3.6x**, and the spread does not change the answer. At 85 °C the
-curve is near 4 W, so about 4.5 J. The design point keeps roughly **2x** margin
+point: **3.0 to 3.6x**<!--calc:margin_treg_lo..margin_treg_hi-->, and the spread does not change the answer. At 85 °C the
+curve is near 4 W<!--calc:p_fig13_85c-->, so about 4.5 J<!--calc:E_FIG13_85C-->. The design point keeps roughly **2x**<!--calc:margin_treg_85c--> margin
 even hot; the 20-per-channel growth case sits at 4.5 J against 4.28 J, i.e.
-**1.05x**, and that case is already outside the power budget.
+**1.05x**<!--calc:margin_treg_85c_20-->, and that case is already outside the power budget.
 
 One caveat the datasheet attaches and this design cannot close: Figure 13 is
 *"taken on VQFN device on EVM board"*, and the fitted part is the HTSSOP-20. Both
 the package and the copper differ, in the unhelpful direction.
 
-**Thresholds.** UVLO at 4.28 V sits just under the part's own 4.5 V minimum
+**Thresholds.** UVLO at 4.28 V<!--calc:uvlo_trip--> sits just under the part's own 4.5 V<!--calc:V_EFUSE_MIN_OP--> minimum
 operating voltage, so **the device's own floor is the binding one** and the LED
-output follows the rails down to vSafe5V. Its hysteresis is 78 mV typ, so it
-falls out at 4.00 V — still under that floor, which is why the hysteresis does
+output follows the rails down to vSafe5V. Its hysteresis is 78 mV<!--calc:UVLO_HYST--> typ, so it
+falls out at 4.00 V<!--calc:uvlo_falling--> — still under that floor, which is why the hysteresis does
 not need designing around.
 
 **OVP cuts off at 40.68 V, and that number closes an accepted limit.** The
 reference is **±2%** (1.176/1.2/1.224 V), not the ±10% of the LM5069 comparator
 this design previously carried. With 1% resistors the trip lands between
-**39.1 V and 42.3 V** — above the 37.8 V maximum bus by 1.3 V and below the
-modules' 45 V absolute by 2.7 V. The window the old part could not fit into is
+**39.1 V and 42.3 V**<!--calc:ovp_trip_lo..ovp_trip_hi--> — above the 37.8 V maximum bus by 1.3 V<!--calc:ovp_trip_above_bus--> and below the
+modules' 45 V<!--calc:V_MODULE_ABS_MAX--> absolute by 2.7 V<!--calc:ovp_trip_below_abs-->. The window the old part could not fit into is
 comfortable for this one.
 
 **Measured against the modules' 40 V *operating* rating rather than their 45 V
-absolute, the trip's high corner is already over it by 2.3 V** — the eFuse does
+absolute, the trip's high corner is already over it by 2.3 V**<!--calc:ovp_trip_above_operating--> — the eFuse does
 not shed until it trips, so on any divider the modules see the bus up to that
 point. That is the honest comparison, and it is the one the retune option
 below has to be judged on too: both exceed 40 V operating, and the question is
 by how much. 42.3 V against 44.1 V.
 
 **The release threshold is not comfortable, and closing the trip point did not
-close it.** V(OVPF) is 1.09/1.122/1.15 V against a nominal divider ratio of 33.9, so the
-channel re-enables at **37.0-39.0 V** on the comparator spread alone and
-**36.2-39.7 V** once the 1% resistors are carried. A compliant source may sit at **37.8 V indefinitely** —
+close it.** V(OVPF) is 1.09/1.122/1.15 V against a nominal divider ratio of 33.9<!--calc:divider_ratio-->, so the
+channel re-enables at **37.0-39.0 V**<!--calc:ovp_release_comparator_lo..ovp_release_comparator_hi--> on the comparator spread alone and
+**36.2-39.7 V**<!--calc:ovp_release_lo..ovp_release_hi--> once the 1% resistors are carried. A compliant source may sit at **37.8 V indefinitely** —
 which is inside that band. A low-corner part that trips on an excursion would
 then **not re-enable on a healthy bus**: it needs the bus below 36.2 V, and a
 compliant 36 V PDO may sit anywhere in 34.2-37.8 V — so 36.2 V is *inside* the
@@ -1198,11 +1198,11 @@ corner of 39.1 V, so the channel stays up. This costs no parts: the HUSB238A and
 the I2C link it needs are already on the board for the initial negotiation.
 
 Retuning the divider instead was worked and rejected. Clearing 37.8 V on the
-release corner needs a divider ratio of at least 35.36 once the 1% resistors are
+release corner needs a divider ratio of at least 35.36<!--calc:ratio_retune--> once the 1% resistors are
 carried on both sides, which pushes the trip's
-high corner to about 44.1 V. Both options sit above the modules' XL1509
+high corner to about 44.1 V<!--calc:ovp_trip_hi_retune-->. Both options sit above the modules' XL1509
 **40 V operating** rating and inside its 45 V absolute, so the choice is
-between 2.3 V over and 4.1 V over — and 44.1 V leaves only 0.9 V to the
+between 2.3 V over and 4.1 V<!--calc:ovp_retune_above_operating--> over — and 44.1 V leaves only 0.9 V<!--calc:ovp_retune_below_abs--> to the
 absolute. Trading a recoverable stall for nearly twice the overvoltage excursion
 is the wrong direction.
 
@@ -1220,9 +1220,9 @@ V(SHUTR) ≤ 2 V, so a 3.3 V GPIO is in range with margin.
 
 | Part | Value | Why |
 |---|---|---|
-| SHDN pull-down | **10 kΩ** to GND | fail-safe off through MCU reset. Against the pin's own ≤10 µA source this holds 0.1 V, clear of the 0.8 V shutdown threshold — 100 kΩ would sit at 0.77 V and might not shut down at all |
-| GPIO series | **1 kΩ** | lets the FAULT transistor override a driven-high GPIO without shorting it. With 1 kΩ into 10 kΩ, SHDN reaches **3.0 V** when the GPIO is high, above the 2 V turn-on threshold |
-| Q1/Q2 | BSS138 drain on SHDN | FAULT asserted must pull SHDN below the 0.8 V threshold, which needs R_DS ≤ 330 Ω against the 909 Ω Thévenin source — easily met, though R_DS is not characterised at this gate drive. The GPIO then sources 3.2 mA through the 1 kΩ |
+| SHDN pull-down | **10 kΩ**<!--calc:R_SHDN_PULLDOWN--> to GND | fail-safe off through MCU reset. Against the pin's own ≤10 µA<!--calc:I_SHDN_SOURCE--> source this holds 0.1 V<!--calc:v_shdn_pulldown-->, clear of the 0.8 V<!--calc:V_SHDN_THRESHOLD--> shutdown threshold — 100 kΩ would sit at 0.77 V and might not shut down at all |
+| GPIO series | **1 kΩ**<!--calc:R_GPIO_SERIES--> | lets the FAULT transistor override a driven-high GPIO without shorting it. With 1 kΩ into 10 kΩ, SHDN reaches **3.0 V**<!--calc:v_shdn_driven--> when the GPIO is high, above the 2 V<!--calc:V_SHUTR--> turn-on threshold |
+| Q1/Q2 | BSS138 drain on SHDN | FAULT asserted must pull SHDN below the 0.8 V threshold, which needs R_DS ≤ 330 Ω<!--calc:r_ds_required_fault--> against the 909 Ω<!--calc:r_thevenin_shdn--> Thévenin source — easily met, though R_DS is not characterised at this gate drive. The GPIO then sources 3.2 mA<!--calc:i_gpio_through_fault--> through the 1 kΩ |
 
 **The logic is not inverted.** GPIO high enables, GPIO low or high-Z disables, and
 the pull-down makes reset the off state. The 2N7002s the old arrangement needed
@@ -1745,8 +1745,8 @@ in firmware are still written against 36 V and have to follow:
 | **Status power bar** | 30 W per LED across 180 W | must scale to the contract, or it shows one LED on a 36 W contract whatever the wall is doing |
 
 **The ramp no longer scales against the contract.** Inrush is `C_OUT × dV/dt` =
-0.72 A per channel whatever the bus voltage, so 1.44 A for both — 29% of a
-36 V/5 A contract and 48% of a 12 V/3 A one. No staggering, and the limiter only
+0.72 A<!--calc:i_inrush--> per channel whatever the bus voltage, so 1.44 A<!--calc:i_inrush_both--> for both — 29%<!--calc:inrush_share_36v--> of a
+36 V/5 A contract and 48%<!--calc:inrush_share_12v--> of a 12 V/3 A one. No staggering, and the limiter only
 has to hold the frame down until the ramp finishes — 165 ms as programmed,
 longer once the thermal regulation loop takes over.
 

@@ -348,6 +348,27 @@ def t_range():
     expect(m2, "error", "999")
 
 
+@case("a range may be written with a dash, 'to' or 'and'")
+def t_range_separators():
+    model = MODEL + """
+  p_lo:
+    expr: p_fet * 0.9
+    unit: W
+    display: { unit: mW, digits: 3 }
+  p_hi:
+    expr: p_fet * 1.1
+    unit: W
+    display: { unit: mW, digits: 3 }
+"""
+    for text in ("438-536 mW", "438 to 536 mW", "438 mW and 536 mW",
+                 "438 mW to 536 mW", "438–536 mW"):
+        m, _ = run(model, f"x **{text}**<!--calc:p_lo..p_hi-->\n")
+        expect_no(m, "error")
+        expect_no(m, "unchecked")
+    m, _ = run(model, "x **438 to 999 mW**<!--calc:p_lo..p_hi-->\n")
+    expect(m, "error", "999")
+
+
 # -- the graph -------------------------------------------------------------
 
 @case("affected names everything downstream and nothing else")

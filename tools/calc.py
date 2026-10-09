@@ -616,7 +616,7 @@ TRAILING = re.compile(
     r"(?P<num>[-+−]?\d[\d  ]*(?:[.,]\d+)?(?:[eE][-+]?\d+)?)\s*(?P<unit>" + U + r")?"
     r"[\s*`~)\]\"']*$")
 RANGE = re.compile(
-    r"(?P<lo>[-+−]?\d[\d  ]*(?:[.,]\d+)?)\s*(?P<lounit>" + U + r")?\s*[-–—]\s*"
+    r"(?P<lo>[-+−]?\d[\d  ]*(?:[.,]\d+)?)\s*(?P<lounit>" + U + r")?\s*(?:[-–—]|to|and)\s*"
     r"(?P<hi>[-+−]?\d[\d  ]*(?:[.,]\d+)?)\s*(?P<unit>" + U + r")?"
     r"[\s*`~)\]\"']*$")
 

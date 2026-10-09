@@ -75,6 +75,11 @@ inputs:
     unit: A
     source: "Wago picoMAX 3.5 (2091 series) contact rating"
     provenance: datasheet
+  I_CONTRACT_12V:
+    value: 3
+    unit: A
+    source: "the current a 12 V or 15 V fixed PDO offers"
+    provenance: datasheet
   V_GPIO_MODE:
     value: 28
     unit: V
@@ -560,6 +565,197 @@ inputs:
     value: 50
     unit: V
     source: "BSS138 V_DS rating, for the comparison the NPN replaced"
+    provenance: datasheet
+
+  # ---- the channel eFuses ---------------------------------------------
+
+  R_ILIM:
+    value: 3.24
+    unit: kohm
+    source: "TPS16630 §10.2.2.1; the datasheet tabulates 3 kOhm -> 6 A and 4.02 kOhm -> 4.5 A"
+    provenance: datasheet
+  ILIM_PRODUCT:
+    value: 18
+    unit: kohm*A
+    source: "TPS16630: I x R is about 18 kOhm.A across the tabulated pairs"
+    provenance: datasheet
+  ILIM_TOLERANCE:
+    value: 7
+    unit: "%"
+    source: "TPS16630 current-limit accuracy"
+    provenance: datasheet
+  C_DVDT:
+    value: 220
+    unit: nF
+    source: "chosen: sets the output slew and so the inrush"
+    provenance: chosen
+  K_DVDT:
+    value: 20.8e3
+    unit: A^-1
+    source: "TPS16630 Eq. 2, t(dVdT) = 20.8e3 x V_IN x C_dVdT"
+    provenance: datasheet
+  GAIN_DVDT_MIN:
+    value: 23.5
+    unit: ""
+    source: "TPS16630 p.7, GAIN(dVdT) 23.5 / 25 / 26 V/V"
+    provenance: datasheet
+  GAIN_DVDT_MAX:
+    value: 26
+    unit: ""
+    source: "TPS16630 p.7, GAIN(dVdT) max"
+    provenance: datasheet
+  I_DVDT_TYP:
+    value: 2.0
+    unit: uA
+    source: "TPS16630 dVdT pin current, typ"
+    provenance: datasheet
+  I_DVDT_MIN:
+    value: 1.775
+    unit: uA
+    source: "TPS16630 dVdT pin current, min"
+    provenance: datasheet
+  I_DVDT_MAX:
+    value: 2.225
+    unit: uA
+    source: "TPS16630 dVdT pin current, max"
+    provenance: datasheet
+  T_TURN_ON_BASE:
+    value: 742
+    unit: us
+    source: "TPS16630 turn-on delay, the constant term"
+    provenance: datasheet
+  T_TURN_ON_PER_NF:
+    value: 49.5
+    unit: us/nF
+    source: "TPS16630 turn-on delay, the term per nF of C_dVdT"
+    provenance: datasheet
+  R_UV1:
+    value: 732
+    unit: kohm
+    source: "chosen 1% E96 value, IN to UVLO"
+    provenance: chosen
+  R_UV2:
+    value: 255
+    unit: kohm
+    source: "chosen 1% E96 value, UVLO to OVP"
+    provenance: chosen
+  R_UV3:
+    value: 30.0
+    unit: kohm
+    source: "chosen 1% E96 value, OVP to GND"
+    provenance: chosen
+  V_REF_EFUSE:
+    value: 1.2
+    unit: V
+    source: "TPS16630 UVLO and OVP reference, 1.176 / 1.2 / 1.224 V (+/-2%)"
+    provenance: datasheet
+  V_REF_EFUSE_MIN:
+    value: 1.176
+    unit: V
+    source: "TPS16630 reference, -2%"
+    provenance: datasheet
+  V_REF_EFUSE_MAX:
+    value: 1.224
+    unit: V
+    source: "TPS16630 reference, +2%"
+    provenance: datasheet
+  V_OVPF_MIN:
+    value: 1.09
+    unit: V
+    source: "TPS16630 p.7, V(OVPF) falling threshold min (1.122 typ / 1.15 max)"
+    provenance: datasheet
+  V_OVPF_MAX:
+    value: 1.15
+    unit: V
+    source: "TPS16630 p.7, V(OVPF) falling threshold max"
+    provenance: datasheet
+  RES_TOL:
+    value: 1
+    unit: "%"
+    source: "1% resistors throughout the divider string"
+    provenance: chosen
+  UVLO_HYST:
+    value: 78
+    unit: mV
+    source: "TPS16630 UVLO hysteresis at the pin, typ"
+    provenance: datasheet
+  V_EFUSE_MIN_OP:
+    value: 4.5
+    unit: V
+    source: "TPS16630 minimum operating voltage"
+    provenance: datasheet
+  V_MODULE_ABS_MAX:
+    value: 45
+    unit: V
+    source: "XL1509 absolute maximum on the module"
+    provenance: datasheet
+  V_MODULE_OP_MAX:
+    value: 40
+    unit: V
+    source: "XL1509 maximum operating voltage on the module"
+    provenance: datasheet
+  C_TI_DEMO:
+    value: 15
+    unit: mF
+    source: "TPS16630 Figure 16, the capacitance TI demonstrates powering into"
+    provenance: datasheet
+  V_TI_DEMO:
+    value: 24
+    unit: V
+    source: "TPS16630 Figure 16, V_IN for that demonstration, with dVdT open"
+    provenance: datasheet
+  T_TREG_TIMEOUT:
+    value: 1.1
+    unit: s
+    source: "TPS16630 p.8, t(Treg_timeout) minimum (1.25 typ, 1.5 max) -- the binding end"
+    provenance: datasheet
+  P_FIG13_TIMEOUT_LO:
+    value: 5.9
+    unit: W
+    source: "TPS16630 Figure 13's 25 C trace at the timeout, low of two extractions of a light-grey curve"
+    provenance: inferred
+  P_FIG13_TIMEOUT_HI:
+    value: 7.0
+    unit: W
+    source: "TPS16630 Figure 13's 25 C trace at the timeout, high of two extractions"
+    provenance: inferred
+  E_FIG13_85C:
+    value: 4.5
+    unit: J
+    source: "Figure 13's 85 C trace at the timeout, about 4 W over 1.1 s"
+    provenance: inferred
+
+  # ---- the enable network ---------------------------------------------
+
+  R_SHDN_PULLDOWN:
+    value: 10
+    unit: kohm
+    source: "chosen: fail-safe off through MCU reset"
+    provenance: chosen
+  R_GPIO_SERIES:
+    value: 1
+    unit: kohm
+    source: "chosen: lets the FAULT transistor override a driven-high GPIO"
+    provenance: chosen
+  I_SHDN_SOURCE:
+    value: 10
+    unit: uA
+    source: "TPS16630 SHDN pin internal source, <=10 uA"
+    provenance: datasheet
+  V_SHDN_THRESHOLD:
+    value: 0.8
+    unit: V
+    source: "TPS16630 guaranteed-shutdown threshold"
+    provenance: datasheet
+  V_SHUTR:
+    value: 2
+    unit: V
+    source: "TPS16630 V(SHUTR), the turn-on threshold"
+    provenance: datasheet
+  R_DS_EFUSE_85C_MAX:
+    value: 45
+    unit: mohm
+    source: "TPS16630 p.7, integrated FET at T_J = 85 C, max (the 85 C row has no typ column)"
     provenance: datasheet
 
 derived:
@@ -1290,6 +1486,259 @@ derived:
     expr: p_q3_collector + p_r44_nominal + p_zener
     unit: W
     display: { unit: W, digits: 2 }
+
+  # ---- the eFuse's programmed values -----------------------------------
+
+  i_limit:
+    expr: ILIM_PRODUCT / R_ILIM
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_limit_low_corner:
+    expr: i_limit * (1 - ILIM_TOLERANCE)
+    unit: A
+    display: { unit: A, digits: 3 }
+    uncited: true
+  ilim_margin:
+    expr: i_limit_low_corner / i_channel_flash
+    unit: ""
+    display: { unit: "x", digits: 3 }
+  gain_dvdt_check:
+    expr: 1 / (K_DVDT * I_DVDT_TYP)
+    unit: ""
+    display: { unit: "", digits: 3 }
+  t_dvdt:
+    expr: K_DVDT * V_BUS * C_DVDT
+    unit: s
+    display: { unit: ms, digits: 3 }
+  t_dvdt_lo:
+    expr: V_BUS * C_DVDT / (GAIN_DVDT_MAX * I_DVDT_MAX)
+    unit: s
+    display: { unit: ms, digits: 3 }
+  t_dvdt_hi:
+    expr: V_BUS * C_DVDT / (GAIN_DVDT_MIN * I_DVDT_MIN)
+    unit: s
+    display: { unit: ms, digits: 3 }
+  i_inrush:
+    expr: c_channel_bank * V_BUS / t_dvdt
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_inrush_lo:
+    expr: c_channel_bank * V_BUS / t_dvdt_hi
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_inrush_hi:
+    expr: c_channel_bank * V_BUS / t_dvdt_lo
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_inrush_both:
+    expr: N_CHANNELS * i_inrush
+    unit: A
+    display: { unit: A, digits: 3 }
+  inrush_share_36v:
+    expr: i_inrush_both / I_CONTRACT
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  inrush_share_12v:
+    expr: i_inrush_both / I_CONTRACT_12V
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  t_turn_on:
+    expr: T_TURN_ON_BASE + T_TURN_ON_PER_NF * C_DVDT
+    unit: s
+    display: { unit: ms, digits: 3 }
+  c_channel_bank_20:
+    expr: 2 * c_channel_bank
+    unit: F
+    display: { unit: mF, digits: 2 }
+  i_inrush_20:
+    expr: c_channel_bank_20 * V_BUS / t_dvdt
+    unit: A
+    display: { unit: A, digits: 3 }
+
+  # ---- the ramp as energy ----------------------------------------------
+
+  energy_channel:
+    expr: 0.5 * c_channel_bank * V_BUS ** 2
+    unit: J
+    display: { unit: J, digits: 3 }
+  energy_ti_demo:
+    expr: 0.5 * C_TI_DEMO * V_TI_DEMO ** 2
+    unit: J
+    display: { unit: J, digits: 3 }
+  energy_ratio:
+    expr: energy_ti_demo / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  energy_channel_20:
+    expr: 0.5 * c_channel_bank_20 * V_BUS ** 2
+    unit: J
+    display: { unit: J, digits: 3 }
+  energy_ratio_20:
+    expr: energy_ti_demo / energy_channel_20
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  p_inrush:
+    expr: 0.5 * V_BUS * i_inrush
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_inrush_both:
+    expr: N_CHANNELS * p_inrush
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_inrush_lo:
+    expr: 0.5 * V_BUS * i_inrush_lo
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_inrush_hi:
+    expr: 0.5 * V_BUS * i_inrush_hi
+    unit: W
+    display: { unit: W, digits: 3 }
+  energy_available_lo:
+    expr: P_FIG13_TIMEOUT_LO * T_TREG_TIMEOUT
+    unit: J
+    display: { unit: J, digits: 2 }
+  energy_available_hi:
+    expr: P_FIG13_TIMEOUT_HI * T_TREG_TIMEOUT
+    unit: J
+    display: { unit: J, digits: 2 }
+  margin_treg_lo:
+    expr: energy_available_lo / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  margin_treg_hi:
+    expr: energy_available_hi / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  p_fig13_85c:
+    expr: E_FIG13_85C / T_TREG_TIMEOUT
+    unit: W
+    display: { unit: W, digits: 1 }
+  margin_treg_85c:
+    expr: E_FIG13_85C / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 1 }
+  margin_treg_85c_20:
+    expr: E_FIG13_85C / energy_channel_20
+    unit: ""
+    display: { unit: "x", digits: 3 }
+
+  # ---- the UVLO / OVP divider ------------------------------------------
+
+  r_divider_total:
+    expr: R_UV1 + R_UV2 + R_UV3
+    unit: ohm
+    display: { unit: kohm, digits: 4 }
+    uncited: true
+  uvlo_trip:
+    expr: V_REF_EFUSE * r_divider_total / (R_UV2 + R_UV3)
+    unit: V
+    display: { unit: V, digits: 3 }
+  uvlo_falling:
+    expr: (V_REF_EFUSE - UVLO_HYST) * r_divider_total / (R_UV2 + R_UV3)
+    unit: V
+    display: { unit: V, digits: 3 }
+  divider_ratio:
+    expr: r_divider_total / R_UV3
+    unit: ""
+    display: { unit: "", digits: 3 }
+  ovp_trip:
+    expr: V_REF_EFUSE * divider_ratio
+    unit: V
+    display: { unit: V, digits: 4 }
+  i_divider:
+    expr: V_BUS / r_divider_total
+    unit: A
+    display: { unit: uA, digits: 3 }
+  ratio_min:
+    expr: ((R_UV1 + R_UV2) * (1 - RES_TOL) + R_UV3 * (1 + RES_TOL)) / (R_UV3 * (1 + RES_TOL))
+    unit: ""
+    display: { unit: "", digits: 4 }
+    uncited: true
+  ratio_max:
+    expr: ((R_UV1 + R_UV2) * (1 + RES_TOL) + R_UV3 * (1 - RES_TOL)) / (R_UV3 * (1 - RES_TOL))
+    unit: ""
+    display: { unit: "", digits: 4 }
+    uncited: true
+  ovp_trip_lo:
+    expr: V_REF_EFUSE_MIN * ratio_min
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_trip_hi:
+    expr: V_REF_EFUSE_MAX * ratio_max
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_comparator_lo:
+    expr: V_OVPF_MIN * divider_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_comparator_hi:
+    expr: V_OVPF_MAX * divider_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_lo:
+    expr: V_OVPF_MIN * ratio_min
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_hi:
+    expr: V_OVPF_MAX * ratio_max
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_trip_above_bus:
+    expr: ovp_trip_lo - v_bus_max
+    unit: V
+    display: { unit: V, digits: 2 }
+  ovp_trip_below_abs:
+    expr: V_MODULE_ABS_MAX - ovp_trip_hi
+    unit: V
+    display: { unit: V, digits: 2 }
+  ovp_trip_above_operating:
+    expr: ovp_trip_hi - V_MODULE_OP_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  ratio_retune:
+    expr: v_bus_max / V_OVPF_MIN * divider_ratio / ratio_min
+    unit: ""
+    display: { unit: "", digits: 4 }
+  ovp_trip_hi_retune:
+    expr: ovp_trip_hi * ratio_retune / divider_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_retune_above_operating:
+    expr: ovp_trip_hi_retune - V_MODULE_OP_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  ovp_retune_below_abs:
+    expr: V_MODULE_ABS_MAX - ovp_trip_hi_retune
+    unit: V
+    display: { unit: V, digits: 1 }
+
+  # ---- the enable network ----------------------------------------------
+
+  v_shdn_pulldown:
+    expr: I_SHDN_SOURCE * R_SHDN_PULLDOWN
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_shdn_pulldown_100k:
+    expr: I_SHDN_SOURCE * 10 * R_SHDN_PULLDOWN
+    unit: V
+    display: { unit: V, digits: 2 }
+    uncited: true
+  v_shdn_driven:
+    expr: V_RAIL3V3 * R_SHDN_PULLDOWN / (R_SHDN_PULLDOWN + R_GPIO_SERIES)
+    unit: V
+    display: { unit: V, digits: 2 }
+  r_thevenin_shdn:
+    expr: R_SHDN_PULLDOWN * R_GPIO_SERIES / (R_SHDN_PULLDOWN + R_GPIO_SERIES)
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+  r_ds_required_fault:
+    expr: r_thevenin_shdn * V_SHDN_THRESHOLD / (v_shdn_driven - V_SHDN_THRESHOLD)
+    unit: ohm
+    display: { unit: ohm, digits: 2 }
+  i_gpio_through_fault:
+    expr: (V_RAIL3V3 - v_shdn_pulldown) / R_GPIO_SERIES
+    unit: A
+    display: { unit: mA, digits: 2 }
 
 tables:
 
