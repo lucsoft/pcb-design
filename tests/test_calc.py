@@ -194,6 +194,22 @@ def t_wrong_dimension_cited():
     expect(m, "error", "document shows it in")
 
 
+@case("the prose's minus sign is a minus sign, not absent")
+def t_unicode_minus():
+    # U+2212 is what this project's documents write. Reading it as no sign at
+    # all turns a negative margin into a positive one, which passes.
+    model = MODEL + """
+  margin:
+    expr: V_BUS - 40
+    unit: V
+    display: { unit: V, digits: 2 }
+"""
+    m, _ = run(model, "x **−4.00 V**<!--calc:margin-->\n")
+    expect_no(m, "error")
+    m2, _ = run(model, "x **4.00 V**<!--calc:margin-->\n")
+    expect(m2, "error", "4.00")
+
+
 @case("an anchor naming nothing in the model is an error")
 def t_unknown_anchor():
     m, _ = run(doc="x **487 mW**<!--calc:p_gate-->\n")
@@ -238,6 +254,23 @@ tables:
                command="render")
     expect_no(m, "error")
     assert "= I^2 R" in (d / "README.md").read_text()
+
+
+@case("a cell unit in brackets scales without printing itself")
+def t_bare_unit():
+    model = MODEL + """
+tables:
+  t:
+    columns: ["what", "mW"]
+    rows:
+      - ["FET", "=p_fet @ [mW],3"]
+      - ["bus", "=p_bus @ mW,3"]
+"""
+    m, d = run(model, DOC + "\n<!-- calc:table t -->\n<!-- calc:end -->\n",
+               command="render")
+    text = (d / "README.md").read_text()
+    assert "| FET | 487 |" in text, text          # scaled, unit not printed
+    assert "| bus | 144000 mW |" in text, text    # scaled, unit printed
 
 
 @case("a table that drifted from the model is an error, and render fixes it")

@@ -230,6 +230,200 @@ inputs:
     source: "loop resistance at the 10 m reference run including switch and sense"
     provenance: calculated
 
+  # ---- the 5 V rail and its converter ---------------------------------
+
+  V_VSAFE5V_LO:
+    value: 4.75
+    unit: V
+    source: "USB Type-C vSafe5V low tolerance"
+    provenance: datasheet
+  V_VSAFE5V_NOM:
+    value: 5.00
+    unit: V
+    source: "USB Type-C vSafe5V nominal"
+    provenance: datasheet
+  V_RAIL5_NOM:
+    value: 5.0
+    unit: V
+    source: "TPS54360B feedback divider 53.6k/10.2k against VREF 0.8 V, datasheet p.28"
+    provenance: datasheet
+  I_RAIL5:
+    value: 0.7
+    unit: A
+    source: "the 5 V rail's load, used everywhere in this document"
+    provenance: calculated
+  V_F_SS36:
+    value: 0.5
+    unit: V
+    source: "SS36 forward drop around 0.6 A; consistent with every row of the dropout and cooling tables"
+    provenance: inferred
+  R_DS_TYP:
+    value: 0.12
+    unit: ohm
+    source: "TPS54360B datasheet Figure 1, the BOOT-SW = 3 V curve, which §8.2 says applies at low dropout"
+    provenance: datasheet
+  R_DS_6V_MAX:
+    value: 190
+    unit: mohm
+    source: "TPS54360B datasheet p.5 electrical table, at VIN = 12 V and BOOT-SW = 6 V -- NOT this design's drive"
+    provenance: datasheet
+  R_DS_RATIO_LO:
+    value: 1.25
+    unit: ""
+    source: "Figure 1: the 3 V curve runs 1.25-1.30x the 6 V one, read off the plot"
+    provenance: inferred
+  R_DS_RATIO_HI:
+    value: 1.30
+    unit: ""
+    source: "Figure 1: the 3 V curve runs 1.25-1.30x the 6 V one, read off the plot"
+    provenance: inferred
+  R_DS_APPLICABLE:
+    value: 0.24
+    unit: ohm
+    source: "the 0.2375-0.247 ohm band the Figure 1 ratio gives, rounded to the one figure this document works at everywhere"
+    provenance: inferred
+  R_DCR_L1:
+    value: 72.5
+    unit: mohm
+    source: "SPM6530T-100M DCR"
+    provenance: datasheet
+  R_DCR_ALT:
+    value: 163
+    unit: mohm
+    source: "a higher-DCR 10 uH alternative, for the sensitivity check"
+    provenance: datasheet
+  V_BUFFER_MIN:
+    value: 4.5
+    unit: V
+    source: "74AHCT541 VCC minimum, datasheet; recorded as vMin on the KB record's VCC pin"
+    provenance: datasheet
+  V_D14_DROP:
+    value: 0.37
+    unit: V
+    source: "RB751V-40 forward drop, 0.37 V max at 1 mA (datasheet p.2)"
+    provenance: datasheet
+  I_FAN_25MM:
+    value: 50
+    unit: mA
+    source: "25 mm fan, typical"
+    provenance: inferred
+  I_FAN_58:
+    value: 58
+    unit: mA
+    source: "a 58 mA fan, the row that brackets 25 and 30 mm parts"
+    provenance: inferred
+  I_FAN_30MM:
+    value: 70
+    unit: mA
+    source: "30 mm fan, typical"
+    provenance: inferred
+  I_FAN_40MM:
+    value: 100
+    unit: mA
+    source: "40 mm fan, typical"
+    provenance: inferred
+
+  # ---- the HUSB238A VBUS pin ------------------------------------------
+
+  V_VBUS_PIN_MIN:
+    value: 3.15
+    unit: V
+    source: "HUSB238A p.4: VBUS pin minimum with VDD tied to 3.3 V"
+    provenance: datasheet
+  V_VBUS_PIN_MIN_NOVDD:
+    value: 4.5
+    unit: V
+    source: "HUSB238A p.4: VBUS pin minimum when VDD is unpowered"
+    provenance: datasheet
+  V_VBPRS_R_TYP:
+    value: 4.0
+    unit: V
+    source: "HUSB238A p.7, VBUS_OK rising threshold typ (3.67 min / 4.4 max)"
+    provenance: datasheet
+  V_VBPRS_R_MAX:
+    value: 4.4
+    unit: V
+    source: "HUSB238A p.7, VBUS_OK rising threshold max"
+    provenance: datasheet
+  UV_BAND_F1:
+    value: 80
+    unit: "%"
+    source: "HUSB238A p.7, vVBUV_F1: 80% of the requested voltage for 10 V >= RDO > 5 V"
+    provenance: datasheet
+  UV_BAND_F0:
+    value: 86
+    unit: "%"
+    source: "HUSB238A p.7, vVBUV_F0: 86% of the requested voltage for 26 V > RDO > 10 V"
+    provenance: datasheet
+
+  # ---- the 3.3 V rail --------------------------------------------------
+
+  I_ESP32_TX:
+    value: 382
+    unit: mA
+    source: "ESP32-C6-WROOM-1 datasheet Table 13, 802.11b at 20.5 dBm, 100% duty"
+    provenance: datasheet
+  P_ETH_MODULE:
+    value: 0.50
+    unit: W
+    source: "W5500 module draw, same as the bare PHY"
+    provenance: datasheet
+  I_MAX3485_ICC:
+    value: 2
+    unit: mA
+    source: "MAX3485 supply current, datasheet"
+    provenance: datasheet
+  I_MAX3485_LINE:
+    value: 12
+    unit: mA
+    source: "estimated line current with DE asserted into 120 ohm; the datasheet gives neither a loaded I_CC nor a V_OD -- see Assumptions"
+    provenance: assumed
+  R_TERM:
+    value: 120
+    unit: ohm
+    source: "far-end termination on the differential pair"
+    provenance: chosen
+  I_HUSB_VDD:
+    value: 4.5
+    unit: mA
+    source: "HUSB238A VDD active sink current"
+    provenance: datasheet
+  I_INA_AND_PULLUPS:
+    value: 6
+    unit: mA
+    source: "INA226 plus the I2C pull-ups, estimated"
+    provenance: inferred
+  P_RAIL3V3_SIZED:
+    value: 2.3
+    unit: W
+    source: "the ceiling the 3.3 V rail is sized for, above its computed draw"
+    provenance: chosen
+  ETA_CASCADE:
+    value: 78
+    unit: "%"
+    source: "36 -> 5 -> 3.3 V through TPS54360B then SY8089"
+    provenance: inferred
+  ETA_SINGLE:
+    value: 80
+    unit: "%"
+    source: "a hypothetical single 36 -> 3.3 V buck"
+    provenance: inferred
+  V_RAIL3V3:
+    value: 3.3
+    unit: V
+    source: "SY8089 feedback divider 100k/22.1k against VREF 0.600 V, datasheet p.2"
+    provenance: datasheet
+  VIH_SK6812_RATIO:
+    value: 0.6
+    unit: ""
+    source: "SK6812-EC20 VIH, 0.6 x VDD -- the most permissive of the three variants evaluated"
+    provenance: datasheet
+  VOH_ESP32_RATIO:
+    value: 0.8
+    unit: ""
+    source: "ESP32-C6 guaranteed V_OH, 0.8 x VDD"
+    provenance: datasheet
+
 derived:
 
   # ---- budget ---------------------------------------------------------
@@ -513,7 +707,7 @@ derived:
     unit: A
     display: { unit: A, digits: 2 }
   ripple_down_short:
-    expr: i_channel_balanced * bus_share_short
+    expr: -i_channel_balanced * bus_share_short
     unit: A
     display: { unit: A, digits: 2 }
   ripple_up_ref:
@@ -521,7 +715,7 @@ derived:
     unit: A
     display: { unit: A, digits: 2 }
   ripple_down_ref:
-    expr: i_channel_balanced * bus_share_ref
+    expr: -i_channel_balanced * bus_share_ref
     unit: A
     display: { unit: A, digits: 2 }
 
@@ -537,6 +731,215 @@ derived:
     expr: V_DROP_EXAMPLE / V_BUS
     unit: ""
     display: { unit: "%", digits: 2 }
+
+  # ---- the 5 V rail ----------------------------------------------------
+  #
+  # TPS54360B datasheet p.12 Eq. 1, inverted:
+  #   V_OUT = 0.99 V_IN + 0.99 V_F - 0.99 R_DS I_OUT - V_F - R_dc I_OUT
+  # capped at the regulated 5.0 V, which is what the rail does once the input
+  # rises far enough to leave pass-through.
+
+  r_ds_applicable_lo:
+    expr: R_DS_6V_MAX * R_DS_RATIO_LO
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+    uncited: true
+  r_ds_applicable_hi:
+    expr: R_DS_6V_MAX * R_DS_RATIO_HI
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+    uncited: true
+  r_ds_applicable_check:
+    expr: R_DS_APPLICABLE
+    unit: ohm
+    display: { unit: ohm, digits: 2 }
+    limit: { min: r_ds_applicable_lo, max: r_ds_applicable_hi,
+             why: "the working value has to stay inside the band Figure 1's ratio gives" }
+    uncited: true
+
+  v_rail5_typ_lo:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_TYP + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_rail5_typ_nom:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_NOM - 0.01 * V_F_SS36 - (0.99 * R_DS_TYP + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_rail5_6v_max:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_6V_MAX + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_rail5_applicable:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_APPLICABLE + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_rail5_alt_dcr:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_TYP + R_DCR_ALT) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 3 }
+  r_ds_at_buffer_floor:
+    expr: (0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - V_BUFFER_MIN - R_DCR_L1 * I_RAIL5) / (0.99 * I_RAIL5)
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+  margin_buffer_typ:
+    expr: v_rail5_typ_lo - V_BUFFER_MIN
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_buffer_applicable:
+    expr: v_rail5_applicable - V_BUFFER_MIN
+    unit: V
+    display: { unit: mV, digits: 2 }
+
+  # ---- what D14 holds the VBUS pin at ----------------------------------
+
+  shortfall_buffer_applicable:
+    expr: V_BUFFER_MIN - v_rail5_applicable
+    unit: V
+    display: { unit: mV, digits: 2 }
+  shortfall_uv_f0:
+    expr: uv_bound_f0 - v_pin_applicable
+    unit: V
+    display: { unit: V, digits: 2 }
+
+  v_pin_typ:
+    expr: v_rail5_typ_lo - V_D14_DROP
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_pin_applicable:
+    expr: v_rail5_applicable - V_D14_DROP
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_pin_6v_max:
+    expr: v_rail5_6v_max - V_D14_DROP
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_pin_min:
+    expr: v_pin_typ - V_VBUS_PIN_MIN
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_vbprs_typ_at_applicable:
+    expr: v_pin_applicable - V_VBPRS_R_TYP
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_vbprs_max_at_applicable:
+    expr: v_pin_applicable - V_VBPRS_R_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_vbprs_typ_at_typ:
+    expr: v_pin_typ - V_VBPRS_R_TYP
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_vbprs_max_at_typ:
+    expr: v_pin_typ - V_VBPRS_R_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  uv_bound_f1:
+    expr: UV_BAND_F1 * V_VSAFE5V_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+  uv_bound_f0:
+    expr: UV_BAND_F0 * V_VSAFE5V_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_uv_f1_applicable:
+    expr: v_pin_applicable - uv_bound_f1
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_uv_f0_applicable:
+    expr: v_pin_applicable - uv_bound_f0
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_uv_f1_typ:
+    expr: v_pin_typ - uv_bound_f1
+    unit: V
+    display: { unit: V, digits: 2 }
+
+  # ---- logic levels ----------------------------------------------------
+
+  vih_status_chain:
+    expr: VIH_SK6812_RATIO * V_RAIL5_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+  vih_status_at_sag:
+    expr: VIH_SK6812_RATIO * v_rail5_typ_lo
+    unit: V
+    display: { unit: V, digits: 3 }
+  voh_esp32:
+    expr: VOH_ESP32_RATIO * V_RAIL3V3
+    unit: V
+    display: { unit: V, digits: 3 }
+  logic_shortfall:
+    expr: vih_status_chain - voh_esp32
+    unit: V
+    display: { unit: mV, digits: 3 }
+
+  # ---- the 3.3 V rail --------------------------------------------------
+
+  i_eth_module:
+    expr: P_ETH_MODULE / V_RAIL3V3
+    unit: A
+    display: { unit: mA, digits: 3 }
+  i_max3485_pair:
+    expr: N_CHANNELS * (I_MAX3485_ICC + I_MAX3485_LINE)
+    unit: A
+    display: { unit: mA, digits: 2 }
+  i_rail3v3:
+    expr: I_ESP32_TX + i_eth_module + i_max3485_pair + I_HUSB_VDD + I_INA_AND_PULLUPS
+    unit: A
+    display: { unit: mA, digits: 3 }
+  p_rail3v3:
+    expr: i_rail3v3 * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_max3485_total:
+    expr: i_max3485_pair * V_RAIL3V3
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_max3485_termination:
+    expr: N_CHANNELS * I_MAX3485_LINE ** 2 * R_TERM
+    unit: W
+    display: { unit: mW, digits: 2 }
+  share_offboard:
+    expr: p_max3485_termination / p_max3485_total
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  share_onboard:
+    expr: 1 - share_offboard
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_max3485_onboard:
+    expr: p_max3485_total - p_max3485_termination
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_ldo_alternative:
+    expr: (v_rail5_typ_nom - V_RAIL3V3) * I_ESP32_TX
+    unit: W
+    display: { unit: W, digits: 1 }
+
+  loss_cascade_draw:
+    expr: p_rail3v3 * (1 / ETA_CASCADE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  loss_single_draw:
+    expr: p_rail3v3 * (1 / ETA_SINGLE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  penalty_draw:
+    expr: loss_cascade_draw - loss_single_draw
+    unit: W
+    display: { unit: mW, digits: 2 }
+  loss_cascade_sized:
+    expr: P_RAIL3V3_SIZED * (1 / ETA_CASCADE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  loss_single_sized:
+    expr: P_RAIL3V3_SIZED * (1 / ETA_SINGLE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  penalty_sized:
+    expr: loss_cascade_sized - loss_single_sized
+    unit: W
+    display: { unit: mW, digits: 2 }
 
 tables:
 
@@ -579,9 +982,9 @@ tables:
     align: [left, right, right, right]
     rows:
       - ["~5 m, 0.5 mm²", "=R_LOOP_SHORT @ Ω,2", "=bus_share_short",
-         "**+{=ripple_up_short @ ,2} / −{=ripple_down_short @ ,2} A**"]
+         "**+{=ripple_up_short @ ,2} / −{=-ripple_down_short @ ,2} A**"]
       - ["10 m, 0.5 mm²", "=R_LOOP_REF @ Ω,2", "=bus_share_ref",
-         "**+{=ripple_up_ref @ ,2} / −{=ripple_down_ref @ ,2} A**"]
+         "**+{=ripple_up_ref @ ,2} / −{=-ripple_down_ref @ ,2} A**"]
 
   two-channels:
     columns: ["channels", "modules/ch", "fps", "A/ch balanced", "% of 10 A", "A/ch worst case", "%"]
@@ -596,3 +999,56 @@ tables:
       - ["4", "=N_MODULES/4 @ ,2", "=1/(N_MODULES/4*LEDS_PER_MODULE*T_PER_LED+T_RESET) @ ,3",
          "=i_bus_full_white*brightness_20/4 @ A,3", "=i_bus_full_white*brightness_20/4/CONN_RATING @ %,2",
          "=i_bus_full_white*CAP_THERMAL/4 @ A,3", "=i_bus_full_white*CAP_THERMAL/4/CONN_RATING @ %,2"]
+
+  rail5-dropout:
+    columns: ["bus", "5 V rail", "74AHCT541 needs 4.5-5.5 V"]
+    align: [left, right, left]
+    rows:
+      - ["4.75 V (USB-C low tolerance)", "**{=v_rail5_typ_lo @ V,3}**",
+         "{=margin_buffer_typ @ V,1} over the floor"]
+      - ["5.00 V", "=v_rail5_typ_nom", "ok"]
+      - [">= 5.25 V", "=V_RAIL5_NOM @ V,3", "ok"]
+
+  rail3v3-loads:
+    columns: ["Load", "mA", "Note"]
+    align: [left, right, left]
+    rows:
+      - ["ESP32-C6, TX peak", "=I_ESP32_TX @ [mA],3",
+         "datasheet Table 13, 802.11b at 20.5 dBm, 100% duty — pessimistic as a continuous figure"]
+      - ["Ethernet module", "=i_eth_module @ [mA],3", "0.50 W at 3.3 V"]
+      - ["2x MAX3485", "~{=i_max3485_pair @ [mA],2}",
+         "2 mA I_CC each **plus ~12 mA each of line current** — a driver with DE asserted pulls load current 100% of the time"]
+      - ["HUSB238A VDD", "=I_HUSB_VDD @ [mA],2", "active sink"]
+      - ["INA226 + pull-ups", "~{=I_INA_AND_PULLUPS @ [mA],1}", ""]
+      - ["**total**", "**~{=i_rail3v3 @ mA,3} = {=p_rail3v3 @ W,3}**",
+         "inside the ~2.3 W the rail is sized for"]
+
+  cascade-penalty:
+    columns: ["", "efficiency", "lost at the 1.89 W draw", "at the 2.3 W sizing ceiling"]
+    align: [left, right, right, right]
+    rows:
+      - ["cascade, 36 -> 5 -> 3.3 V", "~{=ETA_CASCADE @ %,2}", "=loss_cascade_draw", "=loss_cascade_sized"]
+      - ["hypothetical single 36 -> 3.3 V", "~{=ETA_SINGLE @ %,2}", "=loss_single_draw", "=loss_single_sized"]
+      - ["**penalty**", "", "**{=penalty_draw @ mW,2}**", "**{=penalty_sized @ mW,2}**"]
+
+  cooling-fan:
+    columns: ["fan", "R_DS typ (0.12 Ω)", "6 V-drive max (0.190 Ω)", "**applicable max (≈0.24 Ω)**"]
+    align: [left, right, right, right]
+    rows:
+      - ["none", "=v_rail5_typ_lo @ V,4", "=v_rail5_6v_max @ V,4", "**{=v_rail5_applicable @ V,4}**"]
+      - ["25 mm, ~50 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_25MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_25MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_25MM) @ V,4"]
+      - ["58 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_58) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_58) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_58) @ V,4"]
+      - ["30 mm, ~70 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_30MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_30MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_30MM) @ V,4"]
+      - ["40 mm, ~100 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4"]

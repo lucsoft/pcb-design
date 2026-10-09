@@ -590,7 +590,7 @@ def fmt(value, digits):
 
 def sigfigs(text: str) -> int:
     """Significant figures in a number as the prose writes it."""
-    t = text.strip().lstrip("+-").replace(",", ".")
+    t = text.strip().lstrip("+-−")
     t = re.sub(r"[eE][-+]?\d+$", "", t)
     if "." in t:
         whole, frac = t.split(".", 1)
@@ -611,16 +611,16 @@ TABLE_END = re.compile(r"<!--\s*calc:end\s*-->")
 # and a trailing digit for mm2. Kept short so it cannot swallow the next word.
 U = r"[A-Za-zΩµμ°%×/·^²³]{1,9}\d?"
 TRAILING = re.compile(
-    r"(?P<num>[-+]?\d[\d  ]*(?:[.,]\d+)?(?:[eE][-+]?\d+)?)\s*(?P<unit>" + U + r")?"
+    r"(?P<num>[-+−]?\d[\d  ]*(?:[.,]\d+)?(?:[eE][-+]?\d+)?)\s*(?P<unit>" + U + r")?"
     r"[\s*`~)\]\"']*$")
 RANGE = re.compile(
-    r"(?P<lo>[-+]?\d[\d  ]*(?:[.,]\d+)?)\s*(?P<lounit>" + U + r")?\s*[-–—]\s*"
-    r"(?P<hi>[-+]?\d[\d  ]*(?:[.,]\d+)?)\s*(?P<unit>" + U + r")?"
+    r"(?P<lo>[-+−]?\d[\d  ]*(?:[.,]\d+)?)\s*(?P<lounit>" + U + r")?\s*[-–—]\s*"
+    r"(?P<hi>[-+−]?\d[\d  ]*(?:[.,]\d+)?)\s*(?P<unit>" + U + r")?"
     r"[\s*`~)\]\"']*$")
 
 
 def to_number(text: str) -> float:
-    t = text.strip().replace(" ", "").replace(" ", "")
+    t = text.strip().replace(" ", "").replace(" ", "").replace("−", "-")
     t = re.sub(r",(\d{3})\b", r"\1", t)
     return float(t.replace(",", "."))
 
@@ -791,12 +791,17 @@ def render_cell(model: Model, raw, where, used: set):
                   "escape it as '\\=' if the cell is meant to read as text")
         return text
     unit = clean_unit(unit)
+    # "@ [mA],3" scales to mA and prints the bare number, for a table whose
+    # column heading already carries the unit.
+    silent = unit.startswith("[") and unit.endswith("]")
+    if silent:
+        unit = unit[1:-1]
     try:
         scale, _ = model.unit(unit)
     except UnitError:
         model.add("unchecked", where, f"cell '{raw}' names an unknown unit '{unit}'")
         return "?"
-    return fmt(value / scale, int(digits or 3)) + suffix(unit)
+    return fmt(value / scale, int(digits or 3)) + ("" if silent else suffix(unit))
 
 
 def render_table(model: Model, key, where, used: set):

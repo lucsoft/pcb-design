@@ -549,19 +549,19 @@ Output across the input range at 0.7 A, from the datasheet's p.12 Eq. 1, inverte
 
     V_OUT = 0.99·V_IN + 0.99·V_F − 0.99·R_DS(on)·I_OUT − V_F − R_dc·I_OUT
 
-with R_dc = **0.0725 Ω** — the SPM6530T-100M's DCR — and R_DS(on) = **0.12 Ω**,
+with R_dc = **0.0725 Ω**<!--calc:R_DCR_L1--> — the SPM6530T-100M's DCR — and R_DS(on) = **0.12 Ω**<!--calc:R_DS_TYP-->,
 which is the datasheet's own
 choice for this case (§8.2: *"the BOOT-SW = 3 V curve in Figure 1 was used for
 RDS(on) = 0.12 Ω because the device operates with low drop out"*).
 
 **That 0.12 Ω is a typical, and the maximum that goes with it is not published.**
-The p.5 electrical table gives 92 mΩ typ / **190 mΩ max** — but explicitly at
+The p.5 electrical table gives 92 mΩ typ / **190 mΩ**<!--calc:R_DS_6V_MAX--> max — but explicitly at
 `VIN = 12 V, **BOOT-SW = 6 V**`, which is not the condition §8.2 just told us to
-use. Figure 1 plots both drives: the 3 V curve runs **1.25-1.30×** the 6 V curve
+use. Figure 1 plots both drives: the 3 V curve runs **1.25-1.30×**<!--calc:R_DS_RATIO_LO..R_DS_RATIO_HI--> the 6 V curve
 at every junction temperature. Scaling the 6 V maximum by that ratio puts the
-applicable worst case at **≈0.24 Ω**, and there the rail is **4.48 V** — about
-20 mV **under** the 74AHCT541's 4.5 V minimum, with no fan fitted. The rail
-crosses that floor at 0.212 Ω, so the 6 V-drive 190 mΩ figure (4.515 V) is the
+applicable worst case at **≈0.24 Ω**<!--calc:R_DS_APPLICABLE-->, and there the rail is **4.48 V**<!--calc:v_rail5_applicable--> — about
+20 mV<!--calc:shortfall_buffer_applicable--> **under** the 74AHCT541's 4.5 V<!--calc:V_BUFFER_MIN--> minimum, with no fan fitted. The rail
+crosses that floor at 0.212 Ω<!--calc:r_ds_at_buffer_floor-->, so the 6 V-drive 190 mΩ figure (4.515 V<!--calc:v_rail5_6v_max-->) is the
 only reading that clears it, and it is the wrong reading.
 
 **What that means, and what it does not.** `P1-undervoltage` fires on this
@@ -574,28 +574,30 @@ so §Cooling's 50 mA bound is about the *typical* part, not the worst one. And t
 1.25-1.30× ratio is read off a curve, not published — see Assumptions.
 
 At the applicable 0.24 Ω corner the rail is 4.48 V and D14 then holds the VBUS
-pin at **4.11 V**, which takes `VBUS_OK` to **+0.11 V** on typ and −0.29 V on max,
-and leaves the under-voltage detector at **+0.11 V on the adjacent F1 band,
-0.19 V short on the pessimistic F0 reading** — see *The follower does not reach
+pin at **4.11 V**<!--calc:v_pin_applicable-->, which takes `VBUS_OK` to **+0.11 V**<!--calc:margin_vbprs_typ_at_applicable--> on typ and −0.29 V<!--calc:margin_vbprs_max_at_applicable--> on max,
+and leaves the under-voltage detector at **+0.11 V**<!--calc:margin_uv_f1_applicable--> on the adjacent F1 band,
+**0.19 V**<!--calc:shortfall_uv_f0--> short on the pessimistic F0 reading — see *The follower does not reach
 the thresholds at 5 V*. At the
-non-applicable 190 mΩ reading the rail is 4.515 V and the pin 4.15 V; the 4.56 V
+non-applicable 190 mΩ reading the rail is 4.515 V and the pin 4.15 V<!--calc:v_pin_6v_max-->; the 4.56 V
 row is the typical, not the floor.
 
+<!-- calc:table rail5-dropout -->
 | bus | 5 V rail | 74AHCT541 needs 4.5-5.5 V |
-|---|---|---|
+|---|---:|---|
 | 4.75 V (USB-C low tolerance) | **4.56 V** | 0.06 V over the floor |
 | 5.00 V | 4.81 V | ok |
 | >= 5.25 V | 5.00 V | ok |
+<!-- calc:end -->
 
-The rail is **4.56 V** at the bottom of vSafe5V, and D14 holds the HUSB238A VBUS
-pin at **4.19 V**. Both numbers are sensitive to the inductor: this is the
-SPM6530T-100M's 72 mΩ, and a 163 mΩ part would put the rail at 4.50 V, exactly on
+The rail is **4.56 V**<!--calc:v_rail5_typ_lo--> at the bottom of vSafe5V, and D14 holds the HUSB238A VBUS
+pin at **4.19 V**<!--calc:v_pin_typ-->. Both numbers are sensitive to the inductor: this is the
+SPM6530T-100M's 72 mΩ<!--calc:R_DCR_L1-->, and a 163 mΩ<!--calc:R_DCR_ALT--> part would put the rail at 4.50 V<!--calc:v_rail5_alt_dcr-->, exactly on
 the 74AHCT541's floor.
 
 **Neither is fatal, and here is why.** The 74AHCT541 only drives the status LED
 chain; a marginal rail during the few seconds of the 5 V phase means the
 indicators may misbehave before negotiation, not that the board fails to start.
-And 4.19 V still clears the VBUS pin's 3.15 V minimum by 1.04 V. What it does
+And 4.19 V still clears the VBUS pin's 3.15 V<!--calc:V_VBUS_PIN_MIN--> minimum by 1.04 V<!--calc:margin_pin_min-->. What it does
 erode is the margin against two 4.0 V thresholds — see Known electrical limits.
 
 **The sag at low bus voltage matters locally, not across the cable.** It is
@@ -605,15 +607,15 @@ That argument is void here: the controller's 5 V rail and the modules' 5 V rail
 no longer share a signal path, only a differential pair at 3.3 V logic.
 
 What the sag actually threatens is the **SK6812 status chain on this board**:
-its VIH is 0.6 x VDD, so at a 4.56 V rail the threshold is 2.74 V and the
+its VIH is 0.6 x VDD, so at a 4.56 V rail the threshold is 2.74 V<!--calc:vih_status_at_sag--> and the
 74AHCT541 drives it comfortably. The binding constraint is the buffer's own
-4.5 V supply minimum, which the rail clears by 0.06 V on a **typical** part and
+4.5 V supply minimum, which the rail clears by 0.06 V<!--calc:margin_buffer_typ--> on a **typical** part and
 misses by about 20 mV at the applicable worst-case on-resistance — see
 Rail architecture.
 
 **SY8089** (C479074, SOT-23-5, 100k stock) for 3.3 V rather than an LDO. At 4.81 V in,
-3.3 V out, and the ESP32-C6's **382 mA** worst-case transmit peak, an LDO would
-burn ~0.6 W; a
+3.3 V out, and the ESP32-C6's **382 mA**<!--calc:I_ESP32_TX--> worst-case transmit peak, an LDO would
+burn ~0.6 W<!--calc:p_ldo_alternative-->; a
 synchronous buck burns under 0.1 W and avoids a thermal problem in a small package.
 
 ### Why two conversion stages
@@ -625,50 +627,52 @@ HUSB238A's VDD, and 5 V for the 74AHCT541, the SK6812 status chain and **D14**.
 3.5 V threshold is the tempting number here and it does not apply: this
 controller drives no WS2812. It drives two MAX3485s at 3.3 V, and the
 3.3 -> 5 V shift lives on the converter board, which the module record states
-outright. The governing number is the **status chain's 0.6 x 5.0 = 3.00 V** on the
+outright. The governing number is the **status chain's 0.6 x 5.0 = 3.00 V**<!--calc:vih_status_chain--> on the
 controller's own rail, against the ESP32-C6's *guaranteed* V_OH of 0.8 x VDD =
-**2.64 V**. The GPIO does not clear it at all — not by a thin margin, by 360 mV
+**2.64 V**<!--calc:voh_esp32-->. The GPIO does not clear it at all — not by a thin margin, by 360 mV<!--calc:logic_shortfall-->
 the wrong way. That is what justifies the buffer, and it holds even before the
 rail's own sag is counted.
 
 **What the 3.3 V rail actually carries**, which until now was a bare "~2.3 W":
 
+<!-- calc:table rail3v3-loads -->
 | Load | mA | Note |
-|---|---|---|
+|---|---:|---|
 | ESP32-C6, TX peak | 382 | datasheet Table 13, 802.11b at 20.5 dBm, 100% duty — pessimistic as a continuous figure |
 | Ethernet module | 152 | 0.50 W at 3.3 V |
 | 2x MAX3485 | ~28 | 2 mA I_CC each **plus ~12 mA each of line current** — a driver with DE asserted pulls load current 100% of the time |
 | HUSB238A VDD | 4.5 | active sink |
-| INA226 + pull-ups | ~6 | |
-| **total** | **~573 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
+| INA226 + pull-ups | ~6 |  |
+| **total** | **~572 mA = 1.89 W** | inside the ~2.3 W the rail is sized for |
+<!-- calc:end -->
 
 The transceivers' line current is the row that was missing: it appears in the
 thermal budget as 0.06 W of *board heat*, and the split is worth stating because
 "most of it is burned in the far-end termination" is the natural guess and is
-wrong. 2 × (2 + 12) mA × 3.3 V is 92 mW total and the far-end
-terminations take 2 × (12 mA)² × 120 Ω = **35 mW**, so 38% leaves the board and
-about 60% stays, which is the 0.06 W row. It is a real continuous draw on
+wrong. 2 × (2 + 12) mA × 3.3 V is 92 mW<!--calc:p_max3485_total--> total and the far-end
+terminations take 2 × (12 mA)² × 120 Ω = **35 mW**<!--calc:p_max3485_termination-->, so 37%<!--calc:share_offboard--> leaves the board and
+about 60%<!--calc:share_onboard--> stays, which is the 0.06 W<!--calc:p_max3485_onboard--> row. It is a real continuous draw on
 the SY8089 either way. Note the datasheet gives neither a loaded I_CC nor a V_OD
 at 120 Ω, so this row is estimated and cannot be verified from it.
 
 Cascading costs almost nothing. Two figures are in play and they are different
-things: the rail **draws** 1.89 W by the table above and is **sized** for 2.3 W.
+things: the rail **draws** 1.89 W<!--calc:p_rail3v3--> by the table above and is **sized** for 2.3 W<!--calc:P_RAIL3V3_SIZED-->.
 The penalty scales with whichever is used, so both are given:
 
-| | efficiency | lost at the 1.89 W draw | at the 2.3 W sizing ceiling |
-|---|---|---|---|
-| cascade, 36 -> 5 -> 3.3 V | ~78% | 0.533 W | 0.649 W |
-| hypothetical single 36 -> 3.3 V | ~80% | 0.473 W | 0.575 W |
-| **penalty** | | **60 mW** | **74 mW** |
+<!-- calc:table cascade-penalty -->
+|  | efficiency | lost at the 1.89 W draw | at the 2.3 W sizing ceiling |
+|---|---:|---:|---:|
+| cascade, 36 -> 5 -> 3.3 V | ~78% | 0.532 W | 0.649 W |
+| hypothetical single 36 -> 3.3 V | ~80% | 0.472 W | 0.575 W |
+| **penalty** |  | **61 mW** | **74 mW** |
+<!-- calc:end -->
 
-**60 mW at the real draw**, against saving a second wide-input buck. Earlier
-versions of this passage gave 60, 66 and 74 mW from the same two efficiencies
-and did not say which load they were taken at — which is how the same page came
-to carry "1.89 W" and "the rail delivers ~2.3 W" eight lines apart. The
-alternatives are all worse:
+**61 mW**<!--calc:penalty_draw--> at the real draw, against saving a second wide-input buck. The
+two figures differ only in which load they are taken at, which is why both are
+named rather than one of them standing alone. The alternatives are all worse:
 
 - **Two parallel wide-input bucks** (bus to 5 V, bus to 3.3 V) needs two
-  TPS54360-class parts and two inductors, for that same 74 mW.
+  TPS54360-class parts and two inductors, for that same 74 mW<!--calc:penalty_sized-->.
 - **One bus-to-3.3 V buck plus a charge pump to 5 V** works — the level shifter
   draws only tens of mA — but adds a part and puts switching noise next to the
   data lines.
@@ -1620,13 +1624,15 @@ fan hangs on the 5 V rail unswitched, so it runs whenever the board is powered �
 including at vSafe5V, where that rail is in pass-through and every milliamp costs
 voltage directly. The binding limit is the 74AHCT541's **4.5 V** supply minimum:
 
+<!-- calc:table cooling-fan -->
 | fan | R_DS typ (0.12 Ω) | 6 V-drive max (0.190 Ω) | **applicable max (≈0.24 Ω)** |
-|---|---|---|---|
+|---|---:|---:|---:|
 | none | 4.564 V | 4.515 V | **4.480 V** |
 | 25 mm, ~50 mA | 4.554 V | 4.502 V | 4.465 V |
 | 58 mA | 4.552 V | 4.500 V | 4.462 V |
 | 30 mm, ~70 mA | 4.550 V | 4.497 V | 4.459 V |
 | 40 mm, ~100 mA | 4.544 V | 4.489 V | 4.449 V |
+<!-- calc:end -->
 
 Worked from the same inverted Eq. 1 as the dropout table above, **V_F term
 included** — dropping it moves every row about 5 mV optimistic.
