@@ -25,6 +25,8 @@ meta:
     B: ""
     kB: ""
     bit: ""
+    signals: ""
+    pads: ""
 
 inputs:
 
@@ -1046,6 +1048,231 @@ inputs:
     source: "UDP and IP headers, Ethernet header and FCS, preamble and interframe gap"
     provenance: inferred
 
+  # ---- the mechanical envelope ------------------------------------------
+
+  IPHONE_W:
+    value: 71.6
+    unit: mm
+    source: "iPhone 16, the size target"
+    provenance: measured
+  IPHONE_H:
+    uncited: "stated in the size target beside IPHONE_W, which carries the anchor"
+    value: 147.6
+    unit: mm
+    source: "iPhone 16, the size target"
+    provenance: measured
+  TARGET_H:
+    value: 98
+    unit: mm
+    source: "two thirds of the iPhone's 147.6 mm, rounded"
+    provenance: chosen
+  AREA_ITEMISED:
+    value: 1546
+    unit: mm2
+    source: "the rows of the mechanical table, summed"
+    provenance: calculated
+  AREA_UNITEMISED:
+    value: 900
+    unit: mm2
+    source: "everything the table does not list -- sixteen diodes, three transistors, two inductors, the USB-C receptacle, two transceivers, the buffer, two converters, the PD controller, the current sense, the fan header, and J2/J3 at roughly 100-150 mm2 each"
+    provenance: inferred
+  AREA_ESP32:
+    value: 459
+    unit: mm2
+    source: "ESP32-C6-WROOM-1-N8, 18 x 25.5 mm"
+    provenance: datasheet
+  ANTENNA_W:
+    value: 18
+    unit: mm
+    source: "ESP32-C6-WROOM-1 datasheet Figure 10 p.30, keep-out width"
+    provenance: datasheet
+  ANTENNA_H:
+    value: 6
+    unit: mm
+    source: "ESP32-C6-WROOM-1 datasheet Figure 10 p.30, keep-out height"
+    provenance: datasheet
+  ETH_MODULE_W:
+    value: 25
+    unit: mm
+    source: "W5500 module outline"
+    provenance: measured
+  ETH_MODULE_H:
+    value: 23
+    unit: mm
+    source: "W5500 module outline"
+    provenance: measured
+  AREA_ETH_DISCRETE:
+    value: 496
+    unit: mm2
+    source: "the chip, crystal, jack and support passives the module replaced"
+    provenance: calculated
+  AREA_SMC:
+    value: 50.6
+    unit: mm2
+    source: "SMC package maximum envelope"
+    provenance: datasheet
+  AREA_SMA:
+    value: 26
+    unit: mm2
+    source: "SMA package maximum envelope"
+    provenance: datasheet
+  N_BUS_TVS:
+    value: 3
+    unit: ""
+    source: "D7 to GND, D8/D9 to LED_RTN"
+    provenance: chosen
+  LED_SIDE:
+    value: 2
+    unit: mm
+    source: "SK6812-EC20, 2 x 2 mm top-view"
+    provenance: datasheet
+  UTILISATION_2LAYER:
+    value: 45
+    unit: "%"
+    source: "area utilisation assumed for a relaxed 2-layer board"
+    provenance: assumed
+  UTILISATION_4LAYER:
+    uncited: "the 4-layer dimensions are quoted as a pair, which no single anchor reaches"
+    value: 60
+    unit: "%"
+    source: "area utilisation assumed for a dense 4-layer board"
+    provenance: assumed
+  EDGE_COMMITTED:
+    value: 75
+    unit: mm
+    source: "USB-C, two angled picoMAX and the RJ45, summed"
+    provenance: calculated
+
+  # ---- running from a USB port -------------------------------------------
+
+  I_BUS_FLASHING:
+    value: 80
+    unit: mA
+    source: "WiFi off, Ethernet idle, through two conversions rather than one LDO"
+    provenance: calculated
+  I_BUS_FULL:
+    value: 464
+    unit: mA
+    source: "WiFi TX peak plus Ethernet, through two conversions"
+    provenance: calculated
+  I_USB_LEGACY:
+    value: 500
+    unit: mA
+    source: "legacy USB-A port budget"
+    provenance: datasheet
+  P_USB_PORT:
+    value: 15
+    unit: W
+    source: "a MacBook USB-C port as a source, 5 V at 3 A"
+    provenance: datasheet
+  R_MODULE_PATH:
+    value: 0.175
+    unit: ohm
+    source: "the board's own 55 mOhm, a metre of 0.5 mm2 cable and the module inductor's DCR; reconstructed from the rail table, which it reproduces at every row"
+    provenance: inferred
+  XL1509_VCE_A:
+    value: 0.30
+    unit: V
+    source: "fitted to the single datasheet point, 1.2 V at 2 A -- see Assumptions"
+    provenance: assumed
+  XL1509_VCE_B:
+    value: 0.45
+    unit: ohm
+    source: "fitted to the single datasheet point, 1.2 V at 2 A -- see Assumptions"
+    provenance: assumed
+  V_WS2812_MIN:
+    value: 3.5
+    unit: V
+    source: "WS2812D-F8 supply minimum"
+    provenance: datasheet
+  I_MODULE_HOLDS:
+    value: 1.0
+    unit: A
+    source: "the current at which the module rail still clears 3.5 V at the bottom of vSafe5V"
+    provenance: calculated
+
+  # ---- what each contract buys -------------------------------------------
+
+  V_APPLE_96:
+    value: 20.5
+    unit: V
+    source: "Apple 96 W charger PDO"
+    provenance: datasheet
+  I_APPLE_96:
+    value: 4.7
+    unit: A
+    source: "Apple 96 W charger PDO"
+    provenance: datasheet
+  V_APPLE_140:
+    value: 28
+    unit: V
+    source: "Apple 140 W charger, an EPR fixed PDO"
+    provenance: datasheet
+  I_APPLE_140:
+    value: 5
+    unit: A
+    source: "Apple 140 W charger PDO"
+    provenance: datasheet
+
+  # ---- odds and ends the prose still states ------------------------------
+
+  R44_VENDOR_STEP:
+    value: 4.7
+    unit: kohm
+    source: "the value R44 came down from; the vendor's own figure was 10 kOhm"
+    provenance: chosen
+  C_HOLDUP_PROPOSED:
+    value: 100
+    unit: uF
+    source: "the hold-up capacitor that was designed three times and deleted"
+    provenance: chosen
+  XL1509_VSAT_MAX:
+    value: 1.4
+    unit: V
+    source: "XL1509 datasheet p.7, saturation voltage max at 2 A (1.2 V typ)"
+    provenance: datasheet
+  I_MODULE_SATURATED:
+    uncited: "the 2.5 A the module draws in pass-through; named in the sentence v_module_rail_saturated anchors"
+    value: 2.5
+    unit: A
+    source: "the module's full draw with its buck in pass-through"
+    provenance: calculated
+  N_GPIO_PADS:
+    value: 23
+    unit: ""
+    source: "ESP32-C6-WROOM-1 datasheet Table 3 pp.10-11: 0-13 and 15-23"
+    provenance: datasheet
+  T_FIG13_13W_0C:
+    value: 475
+    unit: ms
+    source: "TPS16630 Figure 13, 13 W boundary at 0 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_13W_25C:
+    value: 120
+    unit: ms
+    source: "TPS16630 Figure 13, 13 W boundary at 25 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_13W_85C:
+    value: 58
+    unit: ms
+    source: "TPS16630 Figure 13, 13 W boundary at 85 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_26W_0C:
+    value: 68
+    unit: ms
+    source: "TPS16630 Figure 13, 26 W boundary at 0 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_26W_25C:
+    value: 38
+    unit: ms
+    source: "TPS16630 Figure 13, 26 W boundary at 25 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_26W_85C:
+    value: 14
+    unit: ms
+    source: "TPS16630 Figure 13, 26 W boundary at 85 C, extracted from the curve"
+    provenance: inferred
+
 derived:
 
   # ---- budget ---------------------------------------------------------
@@ -1182,6 +1409,7 @@ derived:
     unit: A
     display: { unit: A, digits: 3 }
   p_wall_full:
+    uncited: "an intermediate; the contract table cites what it feeds"
     expr: N_MODULES * MODULE_FULL_W
     unit: W
     display: { unit: W, digits: 3 }
@@ -1262,10 +1490,12 @@ derived:
   # ---- cable ----------------------------------------------------------
 
   r_cable_ref:
+    uncited: "an intermediate; the cable table and the power figures cite what it feeds"
     expr: 2 * RHO_CU * L_REF / CSA_REF
     unit: ohm
     display: { unit: Ω, digits: 3 }
   v_drop_ref:
+    uncited: "the 10 m / 0.5 mm2 cell of the generated cable table, which is rendered from the expression"
     expr: i_channel_worst * r_cable_ref
     unit: V
     display: { unit: V, digits: 3 }
@@ -1408,6 +1638,7 @@ derived:
     unit: V
     display: { unit: V, digits: 2 }
   margin_buffer_applicable:
+    uncited: "the prose states this one as a shortfall; see shortfall_buffer_applicable"
     expr: v_rail5_applicable - V_BUFFER_MIN
     unit: V
     display: { unit: mV, digits: 2 }
@@ -2361,6 +2592,158 @@ derived:
     unit: ""
     display: { unit: "", digits: 2 }
 
+  # ---- the mechanical envelope ------------------------------------------
+
+  target_area:
+    expr: IPHONE_W * TARGET_H
+    unit: m2
+    display: { unit: mm2, digits: 4 }
+  area_components:
+    expr: AREA_ITEMISED + AREA_UNITEMISED
+    unit: m2
+    display: { unit: mm2, digits: 4 }
+  area_antenna_keepout:
+    expr: ANTENNA_W * ANTENNA_H
+    unit: m2
+    display: { unit: mm2, digits: 3 }
+  area_eth_module:
+    expr: ETH_MODULE_W * ETH_MODULE_H
+    unit: m2
+    display: { unit: mm2, digits: 3 }
+  area_eth_delta:
+    expr: area_eth_module - AREA_ETH_DISCRETE
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+    uncited: true
+  area_tvs_change_each:
+    expr: AREA_SMC - AREA_SMA
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_tvs_change_total:
+    expr: N_BUS_TVS * area_tvs_change_each
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_led:
+    expr: LED_SIDE ** 2
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_leds_total:
+    expr: N_STATUS_LEDS * area_led
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_board_2layer:
+    expr: area_components / UTILISATION_2LAYER
+    unit: m2
+    display: { unit: mm2, digits: 4 }
+    uncited: true
+  perimeter:
+    expr: 2 * (BOARD_W + BOARD_H)
+    unit: m
+    display: { unit: mm, digits: 3 }
+  edge_share:
+    expr: EDGE_COMMITTED / perimeter
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  # ---- running from a USB port -------------------------------------------
+
+  usb_share_flashing:
+    expr: I_BUS_FLASHING / I_USB_LEGACY
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  usb_share_full:
+    expr: I_BUS_FULL / I_USB_LEGACY
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_usb_for_leds:
+    expr: P_USB_PORT - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  i_usb_for_leds:
+    expr: p_usb_for_leds / V_MODULE_RAIL
+    unit: A
+    display: { unit: A, digits: 2 }
+  v_module_rail_at_1a:
+    expr: V_VSAFE5V_NOM - (XL1509_VCE_A + XL1509_VCE_B * I_MODULE_HOLDS) - I_MODULE_HOLDS * R_MODULE_PATH
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_module_rail_at_1a_lo:
+    expr: V_VSAFE5V_LO - (XL1509_VCE_A + XL1509_VCE_B * I_MODULE_HOLDS) - I_MODULE_HOLDS * R_MODULE_PATH
+    unit: V
+    display: { unit: V, digits: 3 }
+  share_full_white_at_1a:
+    expr: I_MODULE_HOLDS / i_module_full
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_at_1a:
+    expr: share_full_white_at_1a ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_wall_full_bus:
+    expr: p_wall_full / ETA_MODULE
+    unit: W
+    display: { unit: W, digits: 3 }
+
+  # ---- what each contract buys -------------------------------------------
+
+  p_leds_9v:
+    expr: V_PDO_9 * I_CONTRACT_12V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_leds_12v:
+    expr: V_PDO_12 * I_CONTRACT_12V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_leds_apple96:
+    expr: V_APPLE_96 * I_APPLE_96 - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_leds_apple140:
+    expr: V_APPLE_140 * I_APPLE_140 - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+  perceived_9v:
+    expr: min(CAP_THERMAL, p_leds_9v * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_12v:
+    expr: min(CAP_THERMAL, p_leds_12v * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_apple96:
+    expr: min(CAP_THERMAL, p_leds_apple96 * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_apple140:
+    expr: min(CAP_THERMAL, p_leds_apple140 * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  apple96_power_share:
+    expr: p_leds_apple96 / p_modules
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  p_clamp_branch:
+    expr: p_r44_nominal + p_zener
+    unit: W
+    display: { unit: mW, digits: 1 }
+  p_clamp_branch_vendor_step:
+    expr: v_across_r44_nominal ** 2 / R44_VENDOR_STEP + V_ZENER_NOM * v_across_r44_nominal / R44_VENDOR_STEP
+    unit: W
+    display: { unit: mW, digits: 2 }
+  t_holdup_with_leds:
+    expr: C_HOLDUP_PROPOSED * (V_BUS - V_MODULE_RAIL) / I_CONTRACT
+    unit: s
+    display: { unit: ms, digits: 2 }
+  v_module_rail_saturated:
+    expr: V_VSAFE5V_LO - XL1509_VSAT_MAX
+    unit: V
+    display: { unit: V, digits: 3 }
+  n_gpio_used:
+    expr: 4 + 2 + 2 + 2 + 1 + N_CHANNELS + N_CHANNELS + 1 + 1 + 2 + 1
+    unit: ""
+    display: { unit: "", digits: 2 }
+
 tables:
 
   power-budget:
@@ -2566,3 +2949,61 @@ tables:
       - ["20", "=pixel_bytes_20 @ ,4", "=packets_20 @ ,1", "{=packet_rate_20 @ [Hz],3} pkt/s"]
       - ["30", "=pixel_bytes_30 @ ,4", "=ceil(pixel_bytes_30/MTU_BYTES) @ ,1",
          "{=ceil(pixel_bytes_30/MTU_BYTES)*FPS_TARGET @ ,3} pkt/s"]
+
+  module-at-vsafe5v:
+    columns: ["module current", "rail at a 5.0 V bus", "at the 4.75 V corner", "share of full white", "perceived"]
+    align: [right, right, right, right, right]
+    rows:
+      - ["0.6 A",
+         "=V_VSAFE5V_NOM-(XL1509_VCE_A+XL1509_VCE_B*0.6)-0.6*R_MODULE_PATH @ V,3",
+         "=V_VSAFE5V_LO-(XL1509_VCE_A+XL1509_VCE_B*0.6)-0.6*R_MODULE_PATH @ V,3",
+         "=0.6/i_module_full @ %,2", "**{=(0.6/i_module_full)**(1/GAMMA) @ %,2}**"]
+      - ["1.0 A", "=v_module_rail_at_1a @ V,3", "=v_module_rail_at_1a_lo @ V,3",
+         "=share_full_white_at_1a @ %,2", "**{=perceived_at_1a @ %,2}**"]
+      - ["1.5 A",
+         "=V_VSAFE5V_NOM-(XL1509_VCE_A+XL1509_VCE_B*1.5)-1.5*R_MODULE_PATH @ V,3",
+         "=V_VSAFE5V_LO-(XL1509_VCE_A+XL1509_VCE_B*1.5)-1.5*R_MODULE_PATH @ V,3",
+         "=1.5/i_module_full @ %,2", "{=(1.5/i_module_full)**(1/GAMMA) @ %,2}"]
+      - ["2.16 A",
+         "=V_VSAFE5V_NOM-(XL1509_VCE_A+XL1509_VCE_B*i_module_full)-i_module_full*R_MODULE_PATH @ V,3",
+         "=V_VSAFE5V_LO-(XL1509_VCE_A+XL1509_VCE_B*i_module_full)-i_module_full*R_MODULE_PATH @ V,3",
+         "100%", "**dark**"]
+
+  contract-brightness:
+    columns: ["Source", "PDO", "for LEDs", "perceived brightness"]
+    align: [left, left, right, left]
+    rows:
+      - ["MacBook port, as a source", "5 V / 15 W", "~5 W usable",
+         "**~{=perceived_at_1a @ %,2} of one module** — the module buck cannot regulate below 6.5 V in, so the rail sags with current and caps it near 1.0 A, well before the port's 10 W. See Recovery and debug"]
+      - ["9 V PDO", "8.55–9.45 V", "{=p_leds_9v @ W,2}",
+         "**~{=perceived_9v @ %,2}** — 9 V × 3 A less the 5 W controller, on the same basis as the row below. The lowest PDO that clears the module converter's 6.5 V input, so the first one that produces full-colour light"]
+      - ["12 V PDO", "11.4–12.6 V", "{=p_leds_12v @ W,2}", "~{=perceived_12v @ %,2}"]
+      - ["Apple 96 W charger", "20.5 V / 4.7 A", "{=p_leds_apple96 @ W,2}", "**{=perceived_apple96 @ %,2}**"]
+      - ["Apple 140 W charger", "28 V / 5 A", "{=p_leds_apple140 @ W,3}", "**{=perceived_apple140 @ %,2}**"]
+      - ["180 W EPR charger", "36 V / 5 A", "{=p_modules @ W,3}", "{=perceived_20 @ %,2}"]
+
+  fig13-boundary:
+    columns: ["P_D per device", "0 °C", "**25 °C**", "85 °C"]
+    align: [left, right, right, right]
+    rows:
+      - ["13 W (10 modules on the channel)", "=T_FIG13_13W_0C @ ms,3",
+         "**{=T_FIG13_13W_25C @ ms,3}**", "=T_FIG13_13W_85C @ ms,2"]
+      - ["26 W (20 modules on the channel)", "=T_FIG13_26W_0C @ ms,2",
+         "=T_FIG13_26W_25C @ ms,2", "=T_FIG13_26W_85C @ ms,2"]
+
+  gpio-budget:
+    columns: ["Signal", "Count"]
+    align: [left, right]
+    rows:
+      - ["W5500 SPI: SCLK, MOSI, MISO, SCSn", "4"]
+      - ["W5500 RSTn, INTn", "2"]
+      - ["I2C SDA, SCL", "2"]
+      - ["HUSB238A INT_N, EN_N", "2"]
+      - ["INA226 ALERT", "1"]
+      - ["Channel data to MAX3485 DI x2", "=N_CHANNELS @ ,1"]
+      - ["Channel load-switch enables x2", "=N_CHANNELS @ ,1"]
+      - ["SK6812 status chain", "1"]
+      - ["Bus-voltage ADC divider", "1"]
+      - ["USB D-/D+ (GPIO12/13, fixed)", "2"]
+      - ["TPS16630 PGOOD, both channels wire-ORed", "1"]
+      - ["**total**", "**{=n_gpio_used @ ,2}**"]

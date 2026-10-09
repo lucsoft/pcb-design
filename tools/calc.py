@@ -405,7 +405,7 @@ class Model:
         for name, spec in self.entries.items():
             if spec["kind"] == "derived":
                 try:
-                    self.deps[name] = expr_names(spec["expr"])
+                    self.deps[name] = expr_names(spec.get("expr") or "0")
                 except (SyntaxError, ValueError) as e:
                     self.add("error", name, f"expr does not parse: {e}")
                     self.deps[name] = set()
@@ -444,7 +444,7 @@ class Model:
                     continue
             else:
                 try:
-                    self.values[name] = float(eval_expr(spec["expr"], self.values))
+                    self.values[name] = float(eval_expr(spec.get("expr") or "0", self.values))
                 except Exception as e:  # noqa: BLE001 - any failure is a finding
                     self.add("error", name, f"expr failed: {type(e).__name__}: {e}")
                     continue
@@ -468,7 +468,7 @@ class Model:
                 continue
             bare = []
             try:
-                got = infer_dims(parse_expr(spec["expr"]), self.dims, bare)
+                got = infer_dims(parse_expr(spec.get("expr") or "0"), self.dims, bare)
             except BareLiteral:
                 continue
             except (UnitError, SyntaxError, ValueError) as e:
@@ -670,12 +670,24 @@ def check_documents(model: Model, write=False):
                 path.write_text(new, encoding="utf-8")
                 rewritten.append(str(doc.rel))
 
+    # A derived value nothing cites is dead weight -- it was computed for a
+    # sentence that has since changed. An INPUT nothing cites is ordinary:
+    # it exists to feed the expressions, and the prose often states it in a
+    # form no matcher can reach ("732 kOhm / 255 kOhm / 30.0 kOhm"). So an
+    # input is only reported when nothing downstream uses it either, which
+    # is the case that really is dead weight.
     for name in model.order:
-        if name in cited or model.entries[name].get("uncited"):
+        spec = model.entries[name]
+        if name in cited or spec.get("uncited"):
             continue
-        model.add("info", name, "is in the model and cited nowhere in the document",
-                  "cite it, or drop it if nothing depends on it; "
-                  "set uncited: true when it exists only as an intermediate")
+        if spec["kind"] == "input" and model.dependents(name):
+            continue
+        what = ("is in the model and cited nowhere in the document"
+                if spec["kind"] == "derived" else
+                "is an input that nothing cites and nothing derives from")
+        model.add("info", name, what,
+                  "cite it, or drop it; set uncited: true when it exists "
+                  "only as an intermediate")
     return rewritten
 
 

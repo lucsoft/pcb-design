@@ -123,6 +123,12 @@ def t_unknown_name():
     expect(m, "error", "unknown 'V_RAIL'")
 
 
+@case("a derived entry with no expr is reported, not crashed on")
+def t_no_expr():
+    m, _ = run(MODEL.replace("    expr: V_BUS * I_LOAD\n", ""))
+    expect(m, "error", "no expr")
+
+
 @case("a dependency cycle is reported, not recursed into")
 def t_cycle():
     m, _ = run(MODEL.replace("expr: V_BUS * I_LOAD", "expr: p_bus * 2"))
@@ -338,6 +344,22 @@ def t_uncited():
     m, _ = run(doc="x **487 mW**<!--calc:p_fet-->\n")
     expect(m, "info", "cited nowhere")
     expect_no(m, "error", "cited nowhere")
+
+
+@case("an input nothing cites is not reported while something derives from it")
+def t_uncited_input():
+    # R_DS feeds p_fet, so the prose need not name it. An input nothing uses
+    # either is dead weight and still gets reported.
+    m, _ = run(doc="x **487 mW**<!--calc:p_fet--> and **144 W**<!--calc:p_bus-->\n")
+    expect_no(m, "info", "R_DS")
+    orphan = MODEL.replace("derived:", """  I_SPARE:
+    value: 1.0
+    unit: A
+    source: "nothing uses this"
+    provenance: chosen
+derived:""")
+    m2, _ = run(orphan, doc="x **487 mW**<!--calc:p_fet--> and **144 W**<!--calc:p_bus-->\n")
+    expect(m2, "info", "I_SPARE")
 
 
 @case("uncited: true silences exactly that one")
