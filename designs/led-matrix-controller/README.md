@@ -72,14 +72,14 @@ fatigue. Affected, and still to be revisited:
 | Decision | Choice | Why |
 |---|---|---|
 | Bus voltage | **36 V** | highest EPR PDO the modules survive; XL1509 is 40 V operating / 45 V absolute |
-| Power budget | **180 W** (36 V x 5 A) | EPR fixed PDO; matches the original brief |
+| Power budget | **180 W**<!--calc:p_budget--> (36 V x 5 A) | EPR fixed PDO; matches the original brief |
 | PD controller | **HUSB238A-BB001-QN16R** (C24833806) | I2C variant |
-| PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W |
+| PD mode | **I2C**, ADDR to GND = 0x42 | GPIO mode caps at 28 V/3.25 A = 91 W<!--calc:p_gpio_mode--> |
 | PD front end | **p.16 Figure 6 topology** | 36 V exceeds the 33 V VBUS absolute max, so the chip sits behind an emitter follower. It carries **no power path**: VBUS feeds the bus directly and the channels switch downstream |
 | Channel switching | **TPS16630** (C1849461) x2 | 60 V / 6 A eFuse with an integrated FET. Works from **4.5 V**, so the LED output follows the rails down instead of dying below a 12 V contract |
 | External part ratings | **60 V class throughout** | the channel eFuse is 67 V absolute, which the TVS reaches only at 27 A of surge; the 60 V TPS54360B and SS36 are reached at 16.5 A, which is what sets the real limit. Still no room for a future 48 V/240 W bus, which would need every module respun anyway |
-| Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps |
-| Target scale | **20 modules**, 80% perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
+| Channels | **2**, 10 modules each | fps depends only on modules per channel; 10/ch = 90 fps<!--calc:fps_design--> |
+| Target scale | **20 modules**<!--calc:N_MODULES-->, 80%<!--calc:perceived_20--> perceived brightness | what 180 W supports before brightness falls off; 10 per channel |
 | UART bridge | **none** | ESP32-C6 has native USB Serial/JTAG, and PD runs on CC not D+/D- |
 | MCU | ESP32-C6-WROOM-1-N8 (C5366877) | from brief |
 | Ethernet | **W5500 module** (W5500 Lite / WIZ850io class), soldered down | the brief said W5500; this design first read that as the bare chip. A finished module carries the PHY front end, the crystal and the magnetics, which retires two blocking open questions and the hardest routing on the board |
@@ -183,25 +183,27 @@ anyway, the door is closed by the modules, not by this board.
 
 ### Why not 28 V
 
-At 14 modules, 140 W and 180 W are nearly indistinguishable (83% vs 85% perceived) —
+At 14 modules, 140 W and 180 W are nearly indistinguishable (83%<!--calc:perceived_14_at_28v--> vs 85%<!--calc:perceived_14--> perceived) —
 the 180 W case is thermally capped there, the 140 W case just barely
-power-limited at 67%. At 20 modules the gap is real: 71% vs 80%. 20 modules is
+power-limited at 67%<!--calc:brightness_14_at_28v-->. At 20 modules the gap is real: 71%<!--calc:perceived_20_at_28v--> vs 80%<!--calc:perceived_20-->. 20 modules is
 the target,
 so the extra front-end complexity is worth it.
 
 ## Power budget
 
-180 W, less **5 W** for the controller, leaves **175 W** for modules. 5 W is the
+180 W<!--calc:p_budget-->, less **5 W**<!--calc:P_CONTROLLER_ALLOWANCE--> for the controller, leaves **175 W**<!--calc:p_modules--> for modules. 5 W is the
 figure every calculation and `figures.py` actually use; the thermal budget's
 4.02 W is the computed total and the 1.0 W difference is deliberate headroom.
-Perceived brightness applies a gamma of 2.2.
+Perceived brightness applies a gamma of 2.2<!--calc:GAMMA-->.
 
+<!-- calc:table power-budget -->
 | Modules | Power | Perceived | fps (2 ch) | Binds on |
-|---|---|---|---|---|
+|---:|---:|---:|---:|---|
 | 10 | 70% | 85% | 176 | thermal |
 | 14 | 70% | 85% | 128 | thermal |
 | 20 | 61% | 80% | 90 | power |
 | 24 | 51% | 73% | 76 | power |
+<!-- calc:end -->
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="figures/brightness-vs-modules-dark.svg">
@@ -224,8 +226,8 @@ modules sit adjacent and chain board-to-board like a snake, so **only the
 controller-to-first-module cable has any length.** Everything after it is a
 short board-to-board link whose drop is negligible.
 
-That single cable carries the whole channel: 2.43 A sustained when both are lit,
-2.80 A when one is dark and the other is at the cap, 4.0 A on a
+That single cable carries the whole channel: 2.43 A<!--calc:i_channel_balanced--> sustained when both are lit,
+2.80 A<!--calc:i_channel_worst--> when one is dark and the other is at the cap, 4.0 A<!--calc:i_channel_flash--> on a
 full-white flash.
 
 <picture>
@@ -233,44 +235,46 @@ full-white flash.
   <img alt="Drop in the controller-to-first-module cable" src="figures/cable-drop-vs-hop-length.svg">
 </picture>
 
-Cross-sections per **IEC 60228**, loop resistance 2ρ/A with ρ(Cu) = 0.0172
+Cross-sections per **IEC 60228**, loop resistance 2ρ/A with ρ(Cu) = 0.0172<!--calc:RHO_CU-->
 Ω·mm²/m at 20 °C:
 
-Worked at **2.80 A**, which is the real per-channel worst case — one channel at
+Worked at **2.80 A**<!--calc:i_channel_worst-->, which is the real per-channel worst case — one channel at
 the 70% thermal cap while the other is dark, since PD caps the total and not the
-split. The balanced 2.43 A would be 13% kinder and is not what sizes a cable.
+split. The balanced 2.43 A<!--calc:i_channel_balanced--> would be 13%<!--calc:i_channel_balanced_margin--> kinder and is not what sizes a cable.
 
+<!-- calc:table cable-drop -->
 | mm² | 5 m | 10 m | 15 m | max at 5% |
-|---|---|---|---|---|
+|---|---:|---:|---:|---:|
 | 0.25 | 1.93 V | 3.85 V | 5.78 V | 4.7 m |
 | 0.34 | 1.42 V | 2.83 V | 4.25 V | 6.4 m |
 | **0.50** | **0.96 V** | **1.93 V** | 2.89 V | **9.3 m** |
 | 0.75 | 0.64 V | 1.28 V | 1.93 V | 14.0 m |
 | 1.00 | 0.48 V | 0.96 V | 1.44 V | 18.7 m |
+<!-- calc:end -->
 
 The 5% is an efficiency choice rather than a functional limit — the converter
 needs only 6.5 V in — so past it the recommendation changes and the feasibility
 does not: **0.5 mm² up to 9 m, 0.75 mm² beyond**.
 
-**Power is not the constraint.** The converter needs only 6.5 V in (5 V out plus
-1.5 V dropout), so from 36 V there is 29.5 V of headroom — the cable would have
+**Power is not the constraint.** The converter needs only 6.5 V<!--calc:V_MODULE_IN_MIN--> in (5 V out plus
+1.5 V dropout), so from 36 V there is 29.5 V<!--calc:v_module_headroom--> of headroom — the cable would have
 to be absurd before the converter stopped regulating. The 5% line above is an
 efficiency choice, not a functional limit. At 0.5 mm² and 10 m the cable burns
-**4.06 W** per channel at the balanced 2.43 A, and **5.39 W** at the 2.80 A worst case. That is the real cost.
+**4.06 W**<!--calc:p_cable_balanced--> per channel at the balanced 2.43 A, and **5.39 W**<!--calc:p_cable_worst--> at the 2.80 A worst case. That is the real cost.
 
 **Data is no longer the limit.** Going differential removed it. A differential
 pair is good for tens of metres at 800 kbps, well past anything power
 allows, and it is far more tolerant of a room full of switching converters than
 a single-ended line would have been.
 
-So **power is now the only constraint: 0.5 mm², up to about 9 m** at 5% drop —
-10.8 m on the balanced 2.43 A, 9.3 m at the 2.80 A one channel actually draws
+So **power is now the only constraint: 0.5 mm², up to about 9 m**<!--calc:l_max_worst--> at 5% drop —
+10.8 m<!--calc:l_max_balanced--> on the balanced 2.43 A, 9.3 m<!--calc:l_max_worst--> at the 2.80 A one channel actually draws
 with the other dark.
 That is a real gain over the ~5 m the single-ended link would have been held to.
 
 **The design's reference run is 10 m on 0.5 mm².** The 11 m that the ESD and
 edge-rate sections work at is deliberately the *longer* case, and therefore the
-conservative one for EMC. It is not a limit: 0.75 mm² reaches 14.0 m.
+conservative one for EMC. It is not a limit: 0.75 mm² reaches 14.0 m<!--calc:l_max_alt-->.
 
 Practice for the pair:
 
@@ -280,7 +284,7 @@ Practice for the pair:
 - Keep the pair away from the +36 V conductor and its converter switching noise.
 
 Worth noting this is a dividend of the 36 V decision. At a 5 V bus a 1.6 V drop
-would be 32% of the supply; at 36 V it is 4.5%.
+would be 32%<!--calc:drop_share_5v--> of the supply; at 36 V it is 4.4%<!--calc:drop_share_36v-->.
 
 ## Status indication
 
@@ -393,21 +397,21 @@ The model needs three terms:
            + controller overhead
 
 - **The sum is amperes at the module's 5 V rail**, and the contract is amperes at
-  the **negotiated** bus voltage. The divisor is `V_negotiated × η / 5` — **5.4**
-  at 36 V and 75% efficiency, but **3.0** at 20 V and **1.8** at 12 V. Hard-wiring
-  36 V here would under-predict bus current by **3×** on a 12 V contract, which is
+  the **negotiated** bus voltage. The divisor is `V_negotiated × η / 5` — **5.4**<!--calc:limiter_divisor-->
+  at 36 V and 75%<!--calc:ETA_MODULE--> efficiency, but **3.0**<!--calc:limiter_divisor_20V--> at 20 V and **1.8**<!--calc:limiter_divisor_12V--> at 12 V. Hard-wiring
+  36 V here would under-predict bus current by **3×**<!--calc:limiter_divisor_error_12V--> on a 12 V contract, which is
   the least forgiving one the board accepts. Dividing by η *raises* the bus current, so it belongs in the
-  numerator of that ratio, not the denominator. Writing 9.6 (= 7.2/0.75) instead
-  **under-predicts bus current by 44%**, in the one computation whose whole
+  numerator of that ratio, not the denominator. Writing 9.6<!--calc:limiter_divisor_wrong--> (= 7.2/0.75) instead
+  **under-predicts bus current by 44%**<!--calc:limiter_underprediction-->, in the one computation whose whole
   purpose is to stop the source cutting VBUS.
   Sanity check against this document's own numbers: 20 modules at full white is
-  43.2 A at 5 V, and 43.2/5.4 = **8.0 A**, which is exactly the 2 × 4.0 A per
+  43.2 A<!--calc:i_wall_full_5v--> at 5 V, and 43.2/5.4 = **8.0 A**<!--calc:i_bus_full_white-->, which is exactly the 2 × 4.0 A<!--calc:i_channel_flash--> per
   channel stated in Cabling.
 - **An all-black frame does not draw zero.** The WS2812D-F8 specifies no
   quiescent current; the sibling SK6812 gives 0.6 mA per IC and the family runs
-  0.5-1 mA. At 720 ICs that is 0.36-0.72 A at 5 V, i.e. **2.4-4.8 W off the
-  bus** — 1.3-2.7% of a budget this document already computes at 5.2 A against a
-  5.0 A contract. The floor is not optional headroom; it is always present.
+  0.5-1 mA. At 720 ICs<!--calc:n_ics--> that is 0.36-0.72 A<!--calc:i_quiescent_lo..i_quiescent_hi--> at 5 V,
+  i.e. **2.4-4.8 W**<!--calc:p_quiescent_lo..p_quiescent_hi--> off the bus — 1.3-2.7%<!--calc:quiescent_share_lo..quiescent_share_hi--> of a budget this
+  document already computes at 5.2 A<!--calc:i_contract_with_cable--> against a 5.0 A<!--calc:I_CONTRACT--> contract. The floor is not optional headroom; it is always present.
 - η is the same optimistic 75% the whole power budget rests on, characterised at
   28 V rather than 36 V. The limiter inherits that error and should carry a
   margin for it rather than trusting the figure.
@@ -418,33 +422,35 @@ instantaneously — which is what makes a predictive limiter viable at all, and 
 worth stating because the earlier wording argued the opposite way.
 
 **And "61% brightness" is not 61% of the current, continuously.** The WS2812
-dims by duty-cycling its constant-current sinks at roughly **400 Hz**, so at 61%
-a channel draws its *full-white* 4.0 A for 61% of each 2.5 ms period and nothing
+dims by duty-cycling its constant-current sinks at roughly **400 Hz**<!--calc:F_PWM-->, so at 61%<!--calc:brightness_20-->
+a channel draws its *full-white* 4.0 A<!--calc:i_channel_flash--> for 61% of each 2.5 ms<!--calc:t_pwm_period--> period and nothing
 for the rest. What reaches the bus is set by a current divider, and it is a
 **phasor** divider
 — adding the resistance to the reactance as scalars gives the wrong
-fraction. The channel's 3.3 mF bank is **0.121 Ω** at
+fraction. The channel's 3.3 mF<!--calc:c_channel_bank--> bank is **0.121 Ω**<!--calc:z_bank--> at
 400 Hz; the path is cable, switch and sense resistance:
 
     bus share = |Z_C| / |R + Z_C| = 0.121 / sqrt(R² + 0.121²)
 
+<!-- calc:table pwm-ripple -->
 | cable | R (loop) | bus share | ripple seen |
-|---|---|---|---|
-| ~5 m, 0.5 mm² | 0.35 Ω | 32.7% | **+0.51 / −0.79 A** |
-| 10 m, 0.5 mm² | 0.69 Ω | 17.3% | **+0.27 / −0.42 A** |
+|---|---:|---:|---:|
+| ~5 m, 0.5 mm² | 0.35 Ω | 32.6% | **+0.51 / −0.79 A** |
+| 10 m, 0.5 mm² | 0.69 Ω | 17.2% | **+0.27 / −0.42 A** |
+<!-- calc:end -->
 
 The two shares do not sum to one with the capacitor's — they are orthogonal
 components, which is exactly what the scalar version got wrong. **The document's
-own worked case is 10 m**, so +0.27 A is the figure that matches the rest of the
-design; −0.79 A applies to a short cable and is the conservative end.
+own worked case is 10 m**, so +0.27 A<!--calc:ripple_up_ref--> is the figure that matches the rest of the
+design; −0.79 A<!--calc:ripple_down_short--> applies to a short cable and is the conservative end.
 
 Every current figure in this document is a frame average, which is the right
 basis for the thermal and contract budgets and the wrong one for the INA226's
 alert threshold and for anything about PD source behaviour. **Whether the ripple
 adds or averages across a chain depends on whether the modules' PWM phases stay
 correlated** — they re-latch every frame, so they plausibly do — and nothing here
-establishes which. Treat +0.27 / −0.42 A as the working figure at the 10 m
-reference run, and +0.5 / −0.8 A as the short-cable bound and the correlation
+establishes which. Treat +0.27<!--calc:ripple_up_ref--> / −0.42 A<!--calc:ripple_down_ref--> as the working figure at the 10 m
+reference run, and +0.5<!--calc:ripple_up_short--> / −0.8 A<!--calc:ripple_down_short--> as the short-cable bound and the correlation
 as
 unverified.
 
@@ -1250,15 +1256,17 @@ transistors left on this net are the two FAULT interlocks.
 
 Checked rather than assumed. At the 20-module target:
 
+<!-- calc:table two-channels -->
 | channels | modules/ch | fps | A/ch balanced | % of 10 A | A/ch worst case | % |
-|---|---|---|---|---|---|---|
+|---:|---:|---:|---:|---:|---:|---:|
 | **2** | **10** | **90** | **2.43 A** | **24%** | 2.80 A | 28% |
 | 3 | 6.7 | 134 | 1.62 A | 16% | 1.87 A | 19% |
-| 4 | 5 | 176 | 1.22 A | 12% | 1.40 A | 14% |
+| 4 | 5.0 | 176 | 1.22 A | 12% | 1.40 A | 14% |
+<!-- calc:end -->
 
 "Worst case" is one channel sustained at the 70% thermal cap while the other is
 dark — PD limits the *total* to 5 A, not how it splits. Percentages are against
-the picoMAX's 10 A rating; at two channels the connector has 3.6x margin and is
+the picoMAX's 10 A<!--calc:CONN_RATING--> rating; at two channels the connector has 3.6x<!--calc:conn_margin--> margin and is
 nowhere near binding.
 
 <picture>
@@ -1274,7 +1282,7 @@ Two boundaries worth knowing rather than discovering:
 
 - **An unbalanced load is no longer a connector problem.** PD caps the total at
   5 A but says nothing about the split, so one channel at the thermal cap while
-  the other is dark draws 2.80 A — 28% of the picoMAX's 10 A. This was a real
+  the other is dark draws 2.80 A<!--calc:i_channel_worst--> — 28%<!--calc:conn_share_worst--> of the picoMAX's 10 A. This was a real
   constraint at the old 3 A connector and is not one now.
 - **Growth is no longer capped by start-up.** The LM5069 that preceded the
   TPS16630 had a fault timer that expired during the ramp above ~12.7 modules per
@@ -1286,7 +1294,7 @@ inrush scales, and at the headline 20-module
   constraint is power again.
 
 - **Frame rate past ~24 modules degrades too**, if the capacitance problem were
-  solved: 24 -> 76 fps, 30 -> 61 fps (at the floor), 40 -> 46 fps (below it).
+  solved: 24 -> 76 fps<!--calc:fps_at_12-->, 30 -> 61 fps<!--calc:fps_at_15--> (at the floor), 40 -> 46 fps<!--calc:fps_at_20--> (below it).
   Beyond ~24 is a board revision with 3-4
   channels, not a software change.
 

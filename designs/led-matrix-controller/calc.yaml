@@ -1,0 +1,598 @@
+# The derived numbers this design rests on.
+#
+#   ./tools/calc.py eval     designs/led-matrix-controller
+#   ./tools/calc.py check    designs/led-matrix-controller
+#   ./tools/calc.py affected designs/led-matrix-controller MODULE_FULL_W
+#
+# Every `inputs:` entry says where its number came from; everything under
+# `derived:` is computed, never typed. README.md cites these by name, so a
+# changed input moves the document rather than contradicting it.
+
+meta:
+  design: led-matrix-controller
+  documents: [README.md]
+  # Count labels the prose writes as if they were units. All dimensionless;
+  # they exist so "20 modules" can be checked without the matcher guessing
+  # which trailing word is a unit and which is a noun.
+  units:
+    modules: ""
+    LEDs: ""
+    ICs: ""
+    pkt: "Hz"
+    fps: "Hz"
+
+inputs:
+
+  # ---- the PD contract ------------------------------------------------
+
+  V_BUS:
+    value: 36
+    unit: V
+    source: "EPR fixed PDO, chosen as the highest the modules survive (XL1509 40 V operating)"
+    provenance: chosen
+  I_CONTRACT:
+    value: 5.0
+    unit: A
+    source: "the 36 V EPR fixed PDO's current, matching the brief's 180 W"
+    provenance: chosen
+  PDO_TOLERANCE:
+    value: 5
+    unit: "%"
+    source: "USB PD: a compliant fixed PDO may sit +/-5% of nominal"
+    provenance: datasheet
+  V_PDO_9:
+    value: 9
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  V_PDO_12:
+    value: 12
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  V_PDO_15:
+    value: 15
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  V_PDO_20:
+    value: 20
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  P_BUDGET_28V:
+    value: 140
+    unit: W
+    source: "the 28 V / 5 A EPR PDO, the alternative weighed in Why not 240 W"
+    provenance: datasheet
+  P_BUDGET_48V:
+    value: 240
+    unit: W
+    source: "the 48 V / 5 A EPR PDO, the alternative rejected in Why not 240 W"
+    provenance: datasheet
+  CONN_RATING:
+    value: 10
+    unit: A
+    source: "Wago picoMAX 3.5 (2091 series) contact rating"
+    provenance: datasheet
+  V_GPIO_MODE:
+    value: 28
+    unit: V
+    source: "HUSB238A datasheet: GPIO mode's highest PDO"
+    provenance: datasheet
+  I_GPIO_MODE:
+    value: 3.25
+    unit: A
+    source: "HUSB238A datasheet: GPIO mode's current at 28 V"
+    provenance: datasheet
+  P_CONTROLLER_ALLOWANCE:
+    value: 5
+    unit: W
+    source: "chosen allowance for the controller board; the thermal budget's computed 4.02 W plus deliberate headroom"
+    provenance: chosen
+
+  # ---- the module -----------------------------------------------------
+
+  MODULE_FULL_W:
+    value: 10.8
+    unit: W
+    source: "20 mA per LED channel x 3 x 36 LEDs x 5 V; the 20 mA is the WS2812D-F8 p.3 TEST CONDITION for V_F and I_v, not a rating of the internal sink -- see Assumptions, the single most load-bearing unsourced number here"
+    provenance: assumed
+  ETA_MODULE:
+    value: 75
+    unit: "%"
+    source: "XL1509 buck efficiency, characterised at 28 V and applied at 36 V -- see Assumptions"
+    provenance: assumed
+  CAP_THERMAL:
+    value: 70
+    unit: "%"
+    source: "the module's own sustained thermal ceiling"
+    provenance: assumed
+  GAMMA:
+    value: 2.2
+    unit: ""
+    source: "perceptual gamma; the standard figure for apparent brightness"
+    provenance: chosen
+  LEDS_PER_MODULE:
+    value: 36
+    unit: ""
+    source: "V3 module, 6x6"
+    provenance: measured
+  T_PER_LED:
+    value: 30
+    unit: us
+    source: "24 bits at 800 kbps"
+    provenance: datasheet
+  T_RESET:
+    value: 0.28
+    unit: ms
+    source: "WS2812 latch time between frames"
+    provenance: datasheet
+  V_MODULE_RAIL:
+    value: 5
+    unit: V
+    source: "the module's own regulated rail, XL1509 output"
+    provenance: datasheet
+  V_MODULE_IN_MIN:
+    value: 6.5
+    unit: V
+    source: "XL1509 5 V out plus its 1.5 V minimum dropout, datasheet p.1"
+    provenance: datasheet
+  C_MODULE_BULK:
+    value: 330
+    unit: uF
+    source: "the module's bulk electrolytic, 220-330 uF radial; the upper bound is used"
+    provenance: measured
+  I_Q_PER_IC_LO:
+    value: 0.5
+    unit: mA
+    source: "SK6812 family quiescent current, low end of 0.5-1 mA; the WS2812D-F8 specifies none"
+    provenance: inferred
+  I_Q_PER_IC_HI:
+    value: 1.0
+    unit: mA
+    source: "SK6812 family quiescent current, high end of 0.5-1 mA"
+    provenance: inferred
+
+  # ---- the wall -------------------------------------------------------
+
+  N_MODULES:
+    value: 20
+    unit: ""
+    source: "design target: what 180 W supports before brightness falls off"
+    provenance: chosen
+  N_CHANNELS:
+    value: 2
+    unit: ""
+    source: "chosen; see Why two channels"
+    provenance: chosen
+
+  # ---- cable ----------------------------------------------------------
+
+  RHO_CU:
+    value: 0.0172
+    unit: ohm*mm2/m
+    source: "resistivity of copper at 20 C, IEC 60228"
+    provenance: datasheet
+  CSA_025:
+    value: 0.25
+    unit: mm2
+    source: "IEC 60228 cross-section, swept in the cable table"
+    provenance: chosen
+  CSA_034:
+    value: 0.34
+    unit: mm2
+    source: "IEC 60228 cross-section, swept in the cable table"
+    provenance: chosen
+  CSA_100:
+    value: 1.0
+    unit: mm2
+    source: "IEC 60228 cross-section, swept in the cable table"
+    provenance: chosen
+  CSA_REF:
+    value: 0.5
+    unit: mm2
+    source: "chosen reference cross-section for the controller-to-first-module run"
+    provenance: chosen
+  CSA_ALT:
+    value: 0.75
+    unit: mm2
+    source: "the next IEC 60228 size up, recommended past 9 m"
+    provenance: chosen
+  L_REF:
+    value: 10
+    unit: m
+    source: "the design's reference run, controller to first module"
+    provenance: chosen
+  DROP_BUDGET:
+    value: 5
+    unit: "%"
+    source: "chosen efficiency limit on cable drop, not a functional one"
+    provenance: chosen
+  V_DROP_EXAMPLE:
+    value: 1.6
+    unit: V
+    source: "illustrative cable drop, for the comparison against a 5 V bus"
+    provenance: chosen
+  F_PWM:
+    value: 400
+    unit: Hz
+    source: "WS2812 constant-current sink duty-cycling rate, approximate"
+    provenance: inferred
+  R_LOOP_SHORT:
+    value: 0.35
+    unit: ohm
+    source: "loop resistance of the ~5 m short-cable case including switch and sense"
+    provenance: calculated
+  R_LOOP_REF:
+    value: 0.69
+    unit: ohm
+    source: "loop resistance at the 10 m reference run including switch and sense"
+    provenance: calculated
+
+derived:
+
+  # ---- budget ---------------------------------------------------------
+
+  p_budget:
+    expr: V_BUS * I_CONTRACT
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_modules:
+    expr: p_budget - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_gpio_mode:
+    expr: V_GPIO_MODE * I_GPIO_MODE
+    unit: W
+    display: { unit: W, digits: 2 }
+  v_bus_max:
+    expr: V_BUS * (1 + PDO_TOLERANCE)
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_bus_min:
+    expr: V_BUS * (1 - PDO_TOLERANCE)
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  p_modules_48v:
+    expr: P_BUDGET_48V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+    uncited: true
+  conn_share_balanced:
+    expr: i_channel_balanced / CONN_RATING
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  conn_share_worst:
+    expr: i_channel_worst / CONN_RATING
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  conn_margin:
+    expr: CONN_RATING / i_channel_worst
+    unit: ""
+    display: { unit: "x", digits: 2 }
+
+  # ---- brightness and frame rate --------------------------------------
+
+  modules_per_channel:
+    expr: N_MODULES / N_CHANNELS
+    unit: ""
+    display: { unit: "", digits: 2 }
+  brightness_10:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (10 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  brightness_14:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (14 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  brightness_20:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (N_MODULES * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  brightness_24:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (24 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_10:
+    expr: brightness_10 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_14:
+    expr: brightness_14 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_20:
+    expr: brightness_20 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_24:
+    expr: brightness_24 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  fps_at_5:
+    expr: 1 / (5 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 3 }
+  fps_at_7:
+    expr: 1 / (7 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 3 }
+  fps_design:
+    expr: 1 / (modules_per_channel * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+  fps_at_12:
+    expr: 1 / (12 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+  fps_at_15:
+    expr: 1 / (15 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+  fps_at_20:
+    expr: 1 / (20 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+
+  # the 140 W / 28 V alternative, for Why not 28 V
+  p_modules_28v:
+    expr: P_BUDGET_28V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+    uncited: true
+  brightness_14_at_28v:
+    expr: min(CAP_THERMAL, p_modules_28v * ETA_MODULE / (14 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_14_at_28v:
+    expr: brightness_14_at_28v ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_20_at_28v:
+    expr: min(CAP_THERMAL, p_modules_28v * ETA_MODULE / (N_MODULES * MODULE_FULL_W)) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  # ---- current --------------------------------------------------------
+
+  i_module_full:
+    expr: MODULE_FULL_W / V_MODULE_RAIL
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_wall_full_5v:
+    expr: N_MODULES * i_module_full
+    unit: A
+    display: { unit: A, digits: 3 }
+  p_wall_full:
+    expr: N_MODULES * MODULE_FULL_W
+    unit: W
+    display: { unit: W, digits: 3 }
+  limiter_divisor:
+    expr: V_BUS * ETA_MODULE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_divisor_20V:
+    expr: V_PDO_20 * ETA_MODULE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_divisor_12V:
+    expr: V_PDO_12 * ETA_MODULE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_divisor_error_12V:
+    expr: limiter_divisor / limiter_divisor_12V
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  limiter_divisor_wrong:
+    expr: V_BUS / V_MODULE_RAIL / ETA_MODULE
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_underprediction:
+    expr: 1 - limiter_divisor / limiter_divisor_wrong
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  i_bus_full_white:
+    expr: i_wall_full_5v / limiter_divisor
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_channel_flash:
+    expr: i_bus_full_white / N_CHANNELS
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_channel_balanced:
+    expr: i_channel_flash * brightness_20
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_channel_worst:
+    expr: i_channel_flash * CAP_THERMAL
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_channel_balanced_margin:
+    expr: 1 - i_channel_balanced / i_channel_worst
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  n_ics:
+    expr: N_MODULES * LEDS_PER_MODULE
+    unit: ""
+    display: { unit: "", digits: 3 }
+  i_quiescent_lo:
+    expr: n_ics * I_Q_PER_IC_LO
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_quiescent_hi:
+    expr: n_ics * I_Q_PER_IC_HI
+    unit: A
+    display: { unit: A, digits: 2 }
+  p_quiescent_lo:
+    expr: i_quiescent_lo * V_MODULE_RAIL / ETA_MODULE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_quiescent_hi:
+    expr: i_quiescent_hi * V_MODULE_RAIL / ETA_MODULE
+    unit: W
+    display: { unit: W, digits: 2 }
+  quiescent_share_lo:
+    expr: p_quiescent_lo / p_budget
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  quiescent_share_hi:
+    expr: p_quiescent_hi / p_budget
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  # ---- cable ----------------------------------------------------------
+
+  r_cable_ref:
+    expr: 2 * RHO_CU * L_REF / CSA_REF
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+  v_drop_ref:
+    expr: i_channel_worst * r_cable_ref
+    unit: V
+    display: { unit: V, digits: 3 }
+  p_cable_balanced:
+    expr: i_channel_balanced ** 2 * r_cable_ref
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_cable_worst:
+    expr: i_channel_worst ** 2 * r_cable_ref
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_cable_total:
+    expr: N_CHANNELS * p_cable_balanced
+    unit: W
+    display: { unit: W, digits: 2 }
+  i_contract_with_cable:
+    expr: (p_budget + p_cable_total) / V_BUS
+    unit: A
+    display: { unit: A, digits: 2 }
+  v_drop_allowed:
+    expr: DROP_BUDGET * V_BUS
+    unit: V
+    display: { unit: V, digits: 2 }
+  l_max_worst:
+    expr: v_drop_allowed * CSA_REF / (2 * RHO_CU * i_channel_worst)
+    unit: m
+    display: { unit: m, digits: 2 }
+  l_max_balanced:
+    expr: v_drop_allowed * CSA_REF / (2 * RHO_CU * i_channel_balanced)
+    unit: m
+    display: { unit: m, digits: 3 }
+  l_max_alt:
+    expr: v_drop_allowed * CSA_ALT / (2 * RHO_CU * i_channel_worst)
+    unit: m
+    display: { unit: m, digits: 3 }
+  v_module_headroom:
+    expr: V_BUS - V_MODULE_IN_MIN
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # ---- the PWM ripple divider -----------------------------------------
+
+  c_channel_bank:
+    expr: modules_per_channel * C_MODULE_BULK
+    unit: F
+    display: { unit: mF, digits: 2 }
+  z_bank:
+    expr: 1 / (2 * pi * F_PWM * c_channel_bank)
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+  bus_share_short:
+    expr: z_bank / sqrt(R_LOOP_SHORT ** 2 + z_bank ** 2)
+    unit: ""
+    display: { unit: "%", digits: 3 }
+  bus_share_ref:
+    expr: z_bank / sqrt(R_LOOP_REF ** 2 + z_bank ** 2)
+    unit: ""
+    display: { unit: "%", digits: 3 }
+  ripple_up_short:
+    expr: (i_channel_flash - i_channel_balanced) * bus_share_short
+    unit: A
+    display: { unit: A, digits: 2 }
+  ripple_down_short:
+    expr: i_channel_balanced * bus_share_short
+    unit: A
+    display: { unit: A, digits: 2 }
+  ripple_up_ref:
+    expr: (i_channel_flash - i_channel_balanced) * bus_share_ref
+    unit: A
+    display: { unit: A, digits: 2 }
+  ripple_down_ref:
+    expr: i_channel_balanced * bus_share_ref
+    unit: A
+    display: { unit: A, digits: 2 }
+
+  t_pwm_period:
+    expr: 1 / F_PWM
+    unit: s
+    display: { unit: ms, digits: 2 }
+  drop_share_5v:
+    expr: V_DROP_EXAMPLE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  drop_share_36v:
+    expr: V_DROP_EXAMPLE / V_BUS
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+tables:
+
+  power-budget:
+    columns: ["Modules", "Power", "Perceived", "fps (2 ch)", "Binds on"]
+    align: [right, right, right, right, left]
+    rows:
+      - ["10", "=brightness_10", "=perceived_10", "=fps_at_5 @ ,3", "thermal"]
+      - ["14", "=brightness_14", "=perceived_14", "=fps_at_7 @ ,3", "thermal"]
+      - ["20", "=brightness_20", "=perceived_20", "=fps_design @ ,2", "power"]
+      - ["24", "=brightness_24", "=perceived_24", "=fps_at_12 @ ,2", "power"]
+
+  cable-drop:
+    columns: ["mm²", "5 m", "10 m", "15 m", "max at 5%"]
+    align: [left, right, right, right, right]
+    rows:
+      - ["0.25", "=i_channel_worst*2*RHO_CU*5/CSA_025 @ V,3",
+                "=i_channel_worst*2*RHO_CU*10/CSA_025 @ V,3",
+                "=i_channel_worst*2*RHO_CU*15/CSA_025 @ V,3",
+                "=v_drop_allowed*CSA_025/(2*RHO_CU*i_channel_worst) @ m,2"]
+      - ["0.34", "=i_channel_worst*2*RHO_CU*5/CSA_034 @ V,3",
+                "=i_channel_worst*2*RHO_CU*10/CSA_034 @ V,3",
+                "=i_channel_worst*2*RHO_CU*15/CSA_034 @ V,3",
+                "=v_drop_allowed*CSA_034/(2*RHO_CU*i_channel_worst) @ m,2"]
+      - ["**0.50**", "**{=i_channel_worst*2*RHO_CU*5/CSA_REF @ V,2}**",
+                     "**{=i_channel_worst*2*RHO_CU*10/CSA_REF @ V,3}**",
+                     "{=i_channel_worst*2*RHO_CU*15/CSA_REF @ V,3}",
+                     "**{=l_max_worst @ m,2}**"]
+      - ["0.75", "=i_channel_worst*2*RHO_CU*5/CSA_ALT @ V,2",
+                "=i_channel_worst*2*RHO_CU*10/CSA_ALT @ V,3",
+                "=i_channel_worst*2*RHO_CU*15/CSA_ALT @ V,3",
+                "=l_max_alt @ m,3"]
+      - ["1.00", "=i_channel_worst*2*RHO_CU*5/CSA_100 @ V,2",
+                "=i_channel_worst*2*RHO_CU*10/CSA_100 @ V,2",
+                "=i_channel_worst*2*RHO_CU*15/CSA_100 @ V,3",
+                "=v_drop_allowed*CSA_100/(2*RHO_CU*i_channel_worst) @ m,3"]
+
+  pwm-ripple:
+    columns: ["cable", "R (loop)", "bus share", "ripple seen"]
+    align: [left, right, right, right]
+    rows:
+      - ["~5 m, 0.5 mm²", "=R_LOOP_SHORT @ Ω,2", "=bus_share_short",
+         "**+{=ripple_up_short @ ,2} / −{=ripple_down_short @ ,2} A**"]
+      - ["10 m, 0.5 mm²", "=R_LOOP_REF @ Ω,2", "=bus_share_ref",
+         "**+{=ripple_up_ref @ ,2} / −{=ripple_down_ref @ ,2} A**"]
+
+  two-channels:
+    columns: ["channels", "modules/ch", "fps", "A/ch balanced", "% of 10 A", "A/ch worst case", "%"]
+    align: [right, right, right, right, right, right, right]
+    rows:
+      - ["**2**", "**{=modules_per_channel @ ,2}**", "**{=fps_design @ ,2}**",
+         "**{=i_channel_balanced @ A,3}**", "**{=conn_share_balanced @ %,2}**",
+         "{=i_channel_worst @ A,3}", "{=conn_share_worst @ %,2}"]
+      - ["3", "=N_MODULES/3 @ ,2", "=1/(N_MODULES/3*LEDS_PER_MODULE*T_PER_LED+T_RESET) @ ,3",
+         "=i_bus_full_white*brightness_20/3 @ A,3", "=i_bus_full_white*brightness_20/3/CONN_RATING @ %,2",
+         "=i_bus_full_white*CAP_THERMAL/3 @ A,3", "=i_bus_full_white*CAP_THERMAL/3/CONN_RATING @ %,2"]
+      - ["4", "=N_MODULES/4 @ ,2", "=1/(N_MODULES/4*LEDS_PER_MODULE*T_PER_LED+T_RESET) @ ,3",
+         "=i_bus_full_white*brightness_20/4 @ A,3", "=i_bus_full_white*brightness_20/4/CONN_RATING @ %,2",
+         "=i_bus_full_white*CAP_THERMAL/4 @ A,3", "=i_bus_full_white*CAP_THERMAL/4/CONN_RATING @ %,2"]

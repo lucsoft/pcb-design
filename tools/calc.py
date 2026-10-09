@@ -146,14 +146,16 @@ def dim_str(d):
     return (pos or "1") + (f"/{neg}" if neg else "")
 
 
-def unit_atom(sym: str):
+def unit_atom(sym: str, extra=None):
     """One symbol with an optional prefix -> (scale, dims)."""
+    if extra and sym in extra:
+        return extra[sym]
     if sym in UNIT:
         return UNIT[sym]
     # mm2 and friends: a trailing integer is an exponent on the symbol
     m = re.fullmatch(r"(.+?)(\d+)", sym)
     if m:
-        scale, dims = unit_atom(m.group(1))
+        scale, dims = unit_atom(m.group(1), extra)
         e = int(m.group(2))
         return scale ** e, {k: v * e for k, v in dims.items()}
     if len(sym) > 1 and sym[0] in PREFIX:
@@ -164,8 +166,14 @@ def unit_atom(sym: str):
     raise UnitError(sym)
 
 
-def parse_unit(text: str):
-    """'ohm*mm2/m' -> (scale, dims). Raises UnitError on anything unknown."""
+def parse_unit(text: str, extra=None):
+    """'ohm*mm2/m' -> (scale, dims). Raises UnitError on anything unknown.
+
+    `extra` is a design's own table of count labels -- "modules", "LEDs" --
+    declared under meta.units. They are dimensionless and exist so the prose
+    can write what it means without the checker having to guess which trailing
+    words are units and which are nouns.
+    """
     text = (text or "").strip()
     if text in ("", "1", "-"):
         return 1.0, {}
@@ -182,7 +190,7 @@ def parse_unit(text: str):
         m = re.fullmatch(r"([^\^]+)(?:\^(-?\d+))?", tok)
         if not m:
             raise UnitError(tok)
-        s, d = unit_atom(m.group(1))
+        s, d = unit_atom(m.group(1), extra)
         e = int(m.group(2) or 1)
         if op == "/":
             e = -e
@@ -311,6 +319,7 @@ class Model:
         self.deps: dict[str, set] = {}
         self.order: list[str] = []
         self.tables: dict[str, dict] = {}
+        self.units: dict[str, tuple] = {}
         self.documents: list[str] = ["README.md"]
         self._load()
 
@@ -329,6 +338,12 @@ class Model:
         if meta.get("documents"):
             self.documents = list(meta["documents"])
         self.tables = data.get("tables") or {}
+        for label, as_unit in (meta.get("units") or {}).items():
+            try:
+                self.units[label] = parse_unit(as_unit or "")
+            except UnitError as e:
+                self.add("error", f"meta.units.{label}",
+                         f"is declared as '{as_unit}', which is not a unit ({e})")
 
         for name, spec in (data.get("inputs") or {}).items():
             spec = dict(spec or {})
@@ -367,9 +382,12 @@ class Model:
             scale, dims = self._unit_of(name, spec)
             spec["_scale"], spec["_dims"] = scale, dims
 
+    def unit(self, text):
+        return parse_unit(text, self.units)
+
     def _unit_of(self, name, spec):
         try:
-            return parse_unit(spec.get("unit", ""))
+            return self.unit(spec.get("unit", ""))
         except UnitError as e:
             self.add("error", name, f"unit '{spec.get('unit')}' is not understood ({e})",
                      "spell it from V A s m g K and the usual derived symbols, "
@@ -510,7 +528,7 @@ class Model:
         unit = d.get("unit", spec.get("unit", ""))
         digits = int(d.get("digits", 3))
         try:
-            scale, _ = parse_unit(unit)
+            scale, _ = self.unit(unit)
         except UnitError:
             scale, unit = 1.0, spec.get("unit", "")
         return unit, digits, scale
@@ -520,7 +538,7 @@ class Model:
         v = self.values.get(name) if value is None else value
         if v is None:
             return "?"
-        return f"{fmt(v / scale, digits)}{' ' + unit if unit else ''}"
+        return fmt(v / scale, digits) + suffix(unit)
 
     # -- dependency graph -------------------------------------------------
 
@@ -535,6 +553,18 @@ class Model:
                     nxt.add(cand)
             frontier = nxt
         return out
+
+
+# Prose writes "70%" and "1.19x" closed up and "36 V" with a space, so the
+# rendered form has to as well -- otherwise regenerating a table rewrites its
+# typography, and the diff stops being about the numbers.
+TIGHT = {"%", "x", "×", "°C"}
+
+
+def suffix(unit):
+    if not unit:
+        return ""
+    return unit if unit in TIGHT else " " + unit
 
 
 def fmt(value, digits):
@@ -579,7 +609,7 @@ TABLE_END = re.compile(r"<!--\s*calc:end\s*-->")
 
 # A unit as the prose writes it: letters, the symbols that are not letters,
 # and a trailing digit for mm2. Kept short so it cannot swallow the next word.
-U = r"[A-Za-zΩµμ°%×/·^²³]{1,6}\d?"
+U = r"[A-Za-zΩµμ°%×/·^²³]{1,9}\d?"
 TRAILING = re.compile(
     r"(?P<num>[-+]?\d[\d  ]*(?:[.,]\d+)?(?:[eE][-+]?\d+)?)\s*(?P<unit>" + U + r")?"
     r"[\s*`~)\]\"']*$")
@@ -700,7 +730,7 @@ def compare(model: Model, where, name, shown, shown_unit, raw):
     model_unit, digits, scale = model.display(name)
     if unit_text:
         try:
-            scale, dims = parse_unit(unit_text)
+            scale, dims = model.unit(unit_text)
         except UnitError:
             model.add("unchecked", where,
                       f"'{name}' is shown in '{shown_unit}', which is not a unit "
@@ -762,11 +792,11 @@ def render_cell(model: Model, raw, where, used: set):
         return text
     unit = clean_unit(unit)
     try:
-        scale, _ = parse_unit(unit)
+        scale, _ = model.unit(unit)
     except UnitError:
         model.add("unchecked", where, f"cell '{raw}' names an unknown unit '{unit}'")
         return "?"
-    return f"{fmt(value / scale, int(digits or 3))}{' ' + unit if unit else ''}"
+    return fmt(value / scale, int(digits or 3)) + suffix(unit)
 
 
 def render_table(model: Model, key, where, used: set):

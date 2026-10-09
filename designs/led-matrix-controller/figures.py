@@ -12,13 +12,22 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "tools"))
 from plot import figure, save, build, limit_line, annotate
 
-FULL_W, EFF, CAP = 10.8, 0.75, 0.70      # per-module full-white W, buck eff, thermal cap
-LEDS, US, RESET = 36, 30.0, 0.28         # per module; 24 bits @ 800 kbps; latch
-CONN_A, V = 10.0, 36.0   # picoMAX 3.5 contact rating
-# IEC 60228 cross-sections, ohm/m for ONE conductor: rho_Cu / A at 20 C.
-# Metric throughout - this is a German project and AWG has no place in it.
-RHO_CU = 0.0172                                    # ohm*mm2/m at 20 C
-CSA = [0.25, 0.34, 0.5, 0.75, 1.0]                 # mm2
+# Every constant comes from calc.yaml, which is also what README.md's numbers
+# are checked against. Holding them here as well is how a figure and its
+# caption come to disagree -- the figures were drawn from one copy of these
+# values and the prose from another for most of this design's life.
+from calc import values                                        # noqa: E402
+
+Q = values("led-matrix-controller")                # SI base units throughout
+FULL_W = Q["MODULE_FULL_W"]
+EFF, CAP = Q["ETA_MODULE"], Q["CAP_THERMAL"]
+LEDS = Q["LEDS_PER_MODULE"]
+US, RESET = Q["T_PER_LED"] * 1e6, Q["T_RESET"] * 1e3           # us, ms
+CONN_A, V = Q["CONN_RATING"], Q["V_BUS"]
+AVAIL = Q["p_modules"]                             # 180 W less the controller
+RHO_CU = Q["RHO_CU"] * 1e6                         # SI ohm*m to ohm*mm2/m
+CSA = [Q["CSA_025"], Q["CSA_034"], Q["CSA_REF"], Q["CSA_ALT"], Q["CSA_100"]]
+CSA = [a * 1e6 for a in CSA]                       # SI m2 to mm2
 OUT = Path(__file__).resolve().parent / "figures"
 
 
@@ -33,8 +42,9 @@ def fps(per_chain):
 def fig_brightness(ax, pal):
     xs = list(range(4, 41))
     for i, (avail, label) in enumerate(
-            ((135.0, "28 V / 140 W"), (175.0, "36 V / 180 W  (chosen)"),
-             (235.0, "48 V / 240 W  (kills modules)"))):
+            ((Q["p_modules_28v"], "28 V / 140 W"),
+             (AVAIL, "36 V / 180 W  (chosen)"),
+             (Q["p_modules_48v"], "48 V / 240 W  (kills modules)"))):
         ax.plot(xs, [brightness(x, avail) * 100 for x in xs],
                 color=pal[i], label=label,
                 linestyle="--" if avail > 200 else "-")
@@ -68,7 +78,7 @@ def fig_fps(ax, pal):
 def fig_current(ax, pal):
     """Per-channel current against the picoMAX contact rating."""
     xs = list(range(4, 25))
-    ax.plot(xs, [min(175.0 / 2, x / 2 * FULL_W * CAP / EFF) / V for x in xs],
+    ax.plot(xs, [min(AVAIL / 2, x / 2 * FULL_W * CAP / EFF) / V for x in xs],
             color=pal[0], label="per channel, 2 channels")
     ax.set_title("Per-channel current against the connector rating")
     ax.set_xlabel("modules on the controller")
@@ -78,6 +88,12 @@ def fig_current(ax, pal):
     limit_line(ax, CONN_A, "picoMAX 3.5 contact rating 10 A", side="right")
     annotate(ax, 12, 3.2, "20 modules:\n2.43 A balanced = 24%\n2.80 A worst case = 28%", color=pal[0])
     ax.legend(loc="upper left")
+
+
+def csa(a):
+    """A cross-section as IEC 60228 writes it: 0.25, 0.5, 1.0 -- never 1."""
+    out = f"{a:.2f}".rstrip("0")
+    return out + "0" if out.endswith(".") else out
 
 
 def fig_cable(ax, pal):
@@ -92,13 +108,15 @@ def fig_cable(ax, pal):
     L = [x / 2 for x in range(1, 41)]
     for i, a in enumerate(CSA):
         rt = 2 * RHO_CU / a
-        ax.plot(L, [2.80 * rt * x for x in L], color=pal[i], label=f"{a} mm\u00b2")
-    ax.set_title("Drop in the controller-to-first-module cable (2.80 A worst case)")
+        ax.plot(L, [Q["i_channel_worst"] * rt * x for x in L],
+                color=pal[i], label=f"{csa(a)} mm\u00b2")
+    ax.set_title("Drop in the controller-to-first-module cable "
+                 f"({Q['i_channel_worst']:.2f} A worst case)")
     ax.set_xlabel("cable length (m)")
     ax.set_ylabel("voltage drop (V)")
     ax.set_ylim(0, 4)
     ax.set_xlim(0, 20)
-    limit_line(ax, 0.05 * V, "5% of 36 V", side="left")
+    limit_line(ax, Q["v_drop_allowed"], "5% of 36 V", side="left")
     limit_line(ax, 0.02 * V, "2%", side="left")
     ax.legend(loc="upper left")
 

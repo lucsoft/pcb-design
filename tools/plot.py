@@ -49,6 +49,10 @@ _DARK = {"surface": "#1a1a19", "text": "#ffffff", "muted": "#c3c2b7",
 
 def _style(theme: dict) -> None:
     plt.rcParams.update({
+        # Without a fixed salt matplotlib names its clip paths from a random
+        # id, so re-running figures.py rewrites every SVG whether or not a
+        # number moved -- and a figure commit stops saying anything.
+        "svg.hashsalt": "pcb-design",
         "figure.facecolor": theme["surface"],
         "axes.facecolor": theme["surface"],
         "savefig.facecolor": theme["surface"],
