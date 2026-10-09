@@ -193,7 +193,7 @@ so the extra front-end complexity is worth it.
 
 180 W<!--calc:p_budget-->, less **5 W**<!--calc:P_CONTROLLER_ALLOWANCE--> for the controller, leaves **175 W**<!--calc:p_modules--> for modules. 5 W is the
 figure every calculation and `figures.py` actually use; the thermal budget's
-4.02 W is the computed total and the 1.0 W difference is deliberate headroom.
+4.01 W<!--calc:p_board_total--> is the computed total and the 0.99 W<!--calc:p_controller_slack--> difference is deliberate headroom.
 Perceived brightness applies a gamma of 2.2<!--calc:GAMMA-->.
 
 <!-- calc:table power-budget -->
@@ -296,9 +296,9 @@ ones for the bar, and it does not pay:
 
 | | power | GPIOs | parts | cost |
 |---|---|---|---|---|
-| **8 addressable + 74AHCT541 (chosen)** | **0.120 W** | 1 | **19-20** | $1.11 |
-| 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W | 1 | 18 | **$0.15** |
-| 2 addressable + 6 plain, driven directly | 0.070 W | 7 — none spare | 14 | — |
+| **8 addressable + 74AHCT541 (chosen)** | **0.120 W**<!--calc:p_status_leds--> | 1 | **19-20** | $1.11 |
+| 8 plain 0805 + 74HC595 + 8 resistors | 0.053 W<!--calc:p_status_leds_plain--> | 1 | 18 | **$0.15** |
+| 2 addressable + 6 plain, driven directly | 0.070 W<!--calc:p_status_leds_mixed--> | 7 — none spare | 14 | — |
 
 **GPIO count is a tie, not a win.** A 74HC595 shares SCLK and MOSI with the Ethernet module and needs only
 a latch pin — exactly what the addressable chain costs — and it would replace the
@@ -317,11 +317,11 @@ is dark or the supply is small; without colour there is no way to tell those
 apart. That did not matter while 36 V was the only normal case — since the UVLO
 change, 12, 20, 28 and 36 V all are.
 
-Power is not the deciding factor: 67 mW is 1.7% of a budget sitting at 1.19×.
+Power is not the deciding factor: 67 mW<!--calc:p_status_led_premium--> is 1.7%<!--calc:status_led_share--> of a budget sitting at 1.19×.
 
 **A real simplification does exist and is not taken:** three addressable LEDs
 showing two colours each would encode the same six power levels, so five parts
-instead of eight at 0.075 W. It is rejected on readability — a bar is read at a
+instead of eight at 0.075 W<!--calc:p_status_leds_three-->. It is rejected on readability — a bar is read at a
 glance and a colour-coded bar is read twice.
 
 - **6 as a power bar** - watts, not volts, at 30 W per LED across the 180 W budget.
@@ -1039,13 +1039,13 @@ port. The TPS16630 works from **4.5 V**.
 | inrush | 1.05 A rising to a 5.5 A plateau | **constant 0.72 A** |
 | two channels at once | 11 A — needed staggering | **1.44 A** |
 | ramp vs module count | capacitance-limited at 12.7/channel | **bounded by the eFuse's 1.1 s thermal timeout, not by a fault timer** |
-| switched-path dissipation | 0.35 W | 0.66 W |
+| switched-path dissipation | 0.35 W<!--calc:P_SWITCHED_DISCRETE--> | 0.66 W<!--calc:p_switched_path--> |
 
 The last row is the cost and it is real. It is the whole **switched path**, not
-the FET alone: the conduction half is 45 mΩ max integrated against 9.5 mΩ
-discrete plus a 10 mΩ shunt, which is 0.53 W against 0.23 W, and each column
-carries its own controller's quiescent and divider draw on top — 0.13 W here,
-0.12 W there. Thermal headroom falls from 1.29x to **1.19x**, on a board
+the FET alone: the conduction half is 45 mΩ<!--calc:R_DS_EFUSE_85C_MAX--> max integrated against 9.5 mΩ
+discrete plus a 10 mΩ shunt, which is 0.53 W<!--calc:p_efuse_fets--> against 0.23 W<!--calc:p_switched_discrete_conduction-->, and each column
+carries its own controller's quiescent and divider draw on top — 0.13 W<!--calc:p_efuse_quiescent--> here,
+0.12 W there. Thermal headroom falls from 1.29x to **1.19x**<!--calc:thermal_headroom-->, on a board
 whose thermal section already calls 45 °C ambient over budget.
 
 **What it buys back is three of this document's own known limits.** The inrush is
@@ -1237,9 +1237,9 @@ transistors left on this net are the two FAULT interlocks.
   enabled. The part also brings an **IMON** current-monitor output per channel,
   which would give the per-channel sensing the shared shunt cannot — unused for
   now because there are no spare ADC pins.
-- **The low-side shunt wants Kelvin connection.** R1 is 5 mΩ carrying the full
-  return current, so 0.125 W at the 5 A the limiter holds it to and 0.62 W at the
-  11.1 A the two eFuses can pass — the **range** is sized for the second figure
+- **The low-side shunt wants Kelvin connection.** R1 is 5 mΩ<!--calc:R_SHUNT--> carrying the full
+  return current, so 0.125 W<!--calc:p_shunt--> at the 5 A the limiter holds it to and 0.62 W<!--calc:p_shunt_fault--> at the
+  11.1 A<!--calc:i_two_efuses--> the two eFuses can pass — the **range** is sized for the second figure
   and the **dissipation** quoted at the first, because one is a fault lasting
   milliseconds and the other is continuous. Its sense traces are not a routing
   afterthought, and they now have **R49/R50 in them** — take the Kelvin tap
@@ -1617,7 +1617,7 @@ The largest items are where any further shrink comes from:
 ### Cooling
 
 **A fan is not in the thermal budget and the board is not designed to need one.**
-4.02 W against 4.80 W of free-air capacity is 1.19x at 25 °C ambient — and that
+4.01 W<!--calc:p_board_total--> against 4.80 W of free-air capacity is 1.19x<!--calc:thermal_headroom--> at 25 °C ambient — and that
 margin is gone by 45 °C, which an enclosure on a wall can reach without trying.
 The enclosure is not designed. **J4** is the cheap insurance against finding that
 out after the boards arrive: a 1x2 2.54 mm header across the 5 V rail, not fitted
@@ -1838,9 +1838,9 @@ The TPS16630's integrated FET is **33 mΩ min / 45 mΩ max at T_J = 85 °C** —
 p.7's 85 °C row is the one with **no typ column** — against 26 / 30.44 / 34.5
 mΩ at 25 °C and 19 / 30.44 / 53 mΩ over −40…+125 °C. The 31 mΩ on the front
 page is the headline figure and matches no row. At
-2.43 A per channel it dissipates **0.27 W each**, 0.53 W for the pair. That is
-0.31 W more than the discrete 9.5 mΩ FET plus 10 mΩ shunt it replaced, and it is
-the price of the part — thermal headroom goes from 1.29x to **1.19x**.
+2.43 A per channel it dissipates **0.266 W**<!--calc:p_efuse_each--> each, 0.53 W<!--calc:p_efuse_fets--> for the pair. That is
+0.31 W<!--calc:p_switched_delta--> more than the discrete 9.5 mΩ<!--calc:R_DS_DISCRETE--> FET plus 10 mΩ<!--calc:R_SHUNT_DISCRETE--> shunt it replaced, and it is
+the price of the part — thermal headroom goes from 1.29x to **1.19x**<!--calc:thermal_headroom-->.
 
 **The ramp is the device's own problem now, by design.** There is no SOA
 calculation to do and no power limit to set: the part regulates its own junction
@@ -2419,10 +2419,11 @@ and the module's header footprint and mechanical retention.
 
 ## Thermal budget
 
-At the 72 x 74 mm envelope the board is 53.3 cm2.
+At the 72 x 74 mm envelope the board is 53.3 cm2<!--calc:board_area-->.
 
+<!-- calc:table thermal-budget -->
 | Source | W | Note |
-|---|---|---|
+|---|---:|---|
 | ESP32-C6 (TX peak) | 1.26 | 382 mA at 3.3 V, module datasheet |
 | W5500 module | 0.50 | module draws the same as the bare PHY |
 | TPS54360B catch diode | 0.30 | 0.60 A average at 0.7 A out, conducts 86% of the cycle |
@@ -2430,18 +2431,19 @@ At the 72 x 74 mm envelope the board is 53.3 cm2.
 | 2x TPS16630 FET | 0.53 | 45 mΩ max at 85 °C, 2.43 A each |
 | 2x TPS16630 IQ + dividers | 0.13 | 1.7 mA max at 37.8 V, plus the 1 MΩ strings |
 | shunt 5 mΩ | 0.125 | at full 5 A |
-| SY8089 + inductor | 0.19 | |
+| SY8089 + inductor | 0.19 |  |
 | 10 µH inductor DCR | 0.04 | 72 mΩ at 0.7 A |
-| MMBT5551 follower + 3.24 kΩ + D1 | 0.11 | 8.4 mW collector at the 800 µA the pin draws with VDD tied; the 27 V clamp draws 2.78 mA through R44, so 25 mW in the resistor and 75 mW in the Zener |
+| MMBT5551 follower + 3.24 kΩ + D1 | 0.11 | 7.8 mW collector at the 800 µA the pin draws with VDD tied; the 27 V clamp draws 2.78 mA through R44, so 25 mW in the resistor and 75 mW in the Zener |
 | 2x MAX3485 driving 120 Ω | 0.06 | DE tied high, line never idle |
-| 74AHCT541 | 0.02 | |
+| 74AHCT541 | 0.02 |  |
 | R2 bus bleeder | 0.13 | 36 V across 10 kΩ, continuous |
 | D15/D16 leakage | ~0.004 | 2 × 50 µA at 25 °C and 36 V, which is 36% of the part's 100 V rating. A reverse-biased diode drawing µA self-heats by nothing, so it sits at ambient and the 5 mA 125 °C figure does not apply. Two SS36 here would have been 0.036 W |
 | status LEDs, capped | 0.12 | eight at one colour, 25% — see below |
-| **total** | **4.02** | TVS leakage not counted; D15/D16 are |
+| **total** | **4.01** | TVS leakage not counted; D15/D16 are |
+<!-- calc:end -->
 
-The rows sum to 4.02 W against **4.80 W** of capacity at 0.09 W/cm² over
-53.3 cm², so **1.19x headroom** — down from 1.29x. The eFuse is most of that
+The rows sum to 4.01 W<!--calc:p_board_total--> against **4.80 W**<!--calc:thermal_capacity--> of capacity at 0.09 W/cm²<!--calc:W_PER_CM2--> over
+53.3 cm², so **1.19x**<!--calc:thermal_headroom--> headroom — down from 1.29x. The eFuse is most of that
 change but not all of it, and two of the five terms pull the other way: of the
 0.31 W added, **+0.31 W** is the eFuse's 45 mΩ
 max against the 9.5 mΩ discrete FET plus a 10 mΩ shunt it replaced, **−0.04 W** is the
@@ -2456,12 +2458,12 @@ them. And that is
 at **25 °C ambient**. Inside an
 enclosure on a soundwall it is worse; at 45 °C ambient the margin is gone. This
 still needs resolving before layout, but the power path is no longer the reason:
-the switched path is 0.66 W, and the two largest rows are the MCU and that path.
+the switched path is 0.66 W<!--calc:p_switched_path-->, and the two largest rows are the MCU and that path.
 
 ### Status LEDs: why addressable, and why capped
 
 **They are not plain SMD LEDs.** Each SK6812 contains a controller and
-three 12 mA constant-current drivers, which is where the power goes — and what
+three 12 mA<!--calc:I_LED_CHANNEL--> constant-current drivers, which is where the power goes — and what
 buys the thing the GPIO budget cannot otherwise afford: **eight indicators on one
 pin.** Eight discrete LEDs would need eight pins, and the assignment table has
 none spare. (An I²C LED driver on the bus that already exists would also cost
@@ -2471,43 +2473,45 @@ but it is the alternative if the budget ever tightens.)
 **The brightness cap is a hard firmware requirement with a number**, not a
 preference:
 
-| Case | Power | |
-|---|---|---|
+<!-- calc:table status-led-cap -->
+| Case | Power |  |
+|---|---:|---|
 | all eight, three colours, 100% | 1.44 W | above the datasheet's own limit |
 | all eight, three colours, **70%** | **1.01 W** | the datasheet's ceiling (p.3: "when illuminating the tricolor light, use 70% greyscale") |
-| all eight, one colour, 100% | 0.48 W | |
+| all eight, one colour, 100% | 0.48 W |  |
 | **all eight, one colour, 25%** | **0.12 W** | **the budgeted case** |
+<!-- calc:end -->
 
-The budget carries **0.12 W**, giving a board total of **4.02 W against 4.80 W —
-1.19× headroom**. Budgeting the 70% tricolour case instead **replaces** that row
-rather than adding to it — 4.02 − 0.12 + 1.01 = **4.91 W**, or **1.02× over
-capacity**. That case is a floodlight,
+The budget carries **0.12 W**<!--calc:p_status_leds-->, giving a board total of **4.01 W**<!--calc:p_board_total--> against **4.80 W** —
+**1.19×**<!--calc:thermal_headroom--> headroom. Budgeting the 70% tricolour case instead **replaces** that row
+rather than adding to it — 4.01 − 0.12 + 1.01 = **4.90 W**<!--calc:p_board_total_70pc-->, or **1.02×**<!--calc:thermal_overrun_70pc--> over
+capacity. That case is a floodlight,
 not a status display, and nothing about indicating six power levels and two fault
 states needs white at 70%.
 
 **What makes this safe is that firmware cannot be allowed to produce the
 uncapped case**, since it would be a single API call away. The cap belongs in the
-LED driver, not in the display logic that calls it. The board survives 1.01 W
+LED driver, not in the display logic that calls it. The board survives 1.01 W<!--calc:p_status_leds_70pc-->
 briefly — it is 1.02× of a steady-state figure, not an absolute maximum — but not
 as an operating point, and certainly not at the 45 °C ambient this section
 already calls over budget.
 
 Hot spots need local copper rather than relying on the board average: the
-ESP32-C6 (1.26 W), the Ethernet module and the TPS54360B (0.50 W each), the catch diode
-(0.30 W) and the shunt (0.125 W). The channel eFuses are now among the hot
-spots — 0.265 W each at the balanced 2.43 A, and **0.353 W** on the one device
+ESP32-C6 (1.26 W<!--calc:p_esp32-->), the Ethernet module and the TPS54360B (0.50 W each), the catch diode
+(0.30 W<!--calc:p_catch_diode-->) and the shunt (0.125 W<!--calc:p_shunt-->). The channel eFuses are now among the hot
+spots — 0.266 W<!--calc:p_efuse_each--> each at the balanced 2.43 A, and **0.353 W**<!--calc:p_efuse_worst--> on the one device
 that carries the 2.80 A worst case while the other channel is dark — they
 dissipate more than the discrete FET and shunt they replaced. The two bucks
 should not share a thermal zone with the module or
 the Ethernet controller.
 
-The eFuse costs 0.31 W more than the discrete FET and shunt it replaced, which is
+The eFuse costs 0.31 W<!--calc:p_switched_delta--> more than the discrete FET and shunt it replaced, which is
 the single largest change to this budget and is recorded in Channel switching and
 inrush as the price of working from 4.5 V.
 
 **The TPS54360B needs an external catch diode** (datasheet p.26) — this was
 missing from the BOM until the thermal pass. SS36 covers it: 60 V blocks the
-36 V input, 3 A against **0.60 A** average at the 0.7 A rail load used
+36 V input, 3 A against **0.60 A**<!--calc:I_CATCH_AVG--> average at the 0.7 A<!--calc:I_RAIL5--> rail load used
 everywhere else in this document.
 
 ## Assumptions

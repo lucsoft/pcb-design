@@ -93,7 +93,7 @@ inputs:
   P_CONTROLLER_ALLOWANCE:
     value: 5
     unit: W
-    source: "chosen allowance for the controller board; the thermal budget's computed 4.02 W plus deliberate headroom"
+    source: "chosen allowance for the controller board; the thermal budget's computed 4.01 W plus deliberate headroom"
     provenance: chosen
 
   # ---- the module -----------------------------------------------------
@@ -757,6 +757,117 @@ inputs:
     unit: mohm
     source: "TPS16630 p.7, integrated FET at T_J = 85 C, max (the 85 C row has no typ column)"
     provenance: datasheet
+
+  # ---- the thermal budget ---------------------------------------------
+
+  BOARD_W:
+    value: 72
+    unit: mm
+    source: "estimated envelope at 45% utilisation, 2-layer"
+    provenance: calculated
+  BOARD_H:
+    value: 74
+    unit: mm
+    source: "estimated envelope at 45% utilisation, 2-layer"
+    provenance: calculated
+  W_PER_CM2:
+    value: 0.09
+    unit: W/cm2
+    source: "free-air rule of thumb for a 40 C rise from 25 C ambient, per cm2 -- see Assumptions"
+    provenance: assumed
+  P_TPS54360B_IC:
+    value: 0.5
+    unit: W
+    source: "conduction plus switching at ~1 MHz, estimated"
+    provenance: inferred
+  I_CATCH_AVG:
+    value: 0.60
+    unit: A
+    source: "SS36 catch-diode average current at 0.7 A out, conducting 86% of the cycle"
+    provenance: calculated
+  P_SY8089:
+    value: 0.19
+    unit: W
+    source: "SY8089 and its inductor, estimated"
+    provenance: inferred
+  P_74AHCT541:
+    value: 0.02
+    unit: W
+    source: "74AHCT541 driving the status chain, estimated"
+    provenance: inferred
+  R_SHUNT:
+    value: 5
+    unit: mohm
+    source: "R1, the low-side current-sense shunt"
+    provenance: chosen
+  I_EFUSE_IQ:
+    value: 1.7
+    unit: mA
+    source: "TPS16630 quiescent current, max"
+    provenance: datasheet
+  R2_BLEEDER:
+    value: 10
+    unit: kohm
+    source: "R2, the bus bleeder, continuous across 36 V"
+    provenance: chosen
+  I_D15_LEAK:
+    value: 50
+    unit: uA
+    source: "MBRS3100T3G reverse leakage at 25 C and 36 V, which is 36% of its 100 V rating"
+    provenance: datasheet
+  P_SWITCHED_DISCRETE:
+    value: 0.35
+    unit: W
+    source: "the discrete NSS085N100S plus a 10 mOhm shunt this eFuse replaced"
+    provenance: calculated
+  R_DS_DISCRETE:
+    value: 9.5
+    unit: mohm
+    source: "NSS085N100S R_DS(on), the discrete FET the eFuse replaced"
+    provenance: datasheet
+  R_SHUNT_DISCRETE:
+    value: 10
+    unit: mohm
+    source: "the per-channel sense resistor the discrete arrangement needed"
+    provenance: calculated
+
+  # ---- the status chain ------------------------------------------------
+
+  N_STATUS_LEDS:
+    value: 8
+    unit: ""
+    source: "chosen: six as a power bar, one for power limiting, one for thermal"
+    provenance: chosen
+  LED_COLOURS:
+    value: 3
+    unit: ""
+    source: "SK6812 has three 12 mA constant-current drivers"
+    provenance: datasheet
+  I_LED_CHANNEL:
+    value: 12
+    unit: mA
+    source: "SK6812-EC20 I_DOUT per channel, typ"
+    provenance: datasheet
+  LED_CAP_BUDGETED:
+    value: 25
+    unit: "%"
+    source: "chosen firmware cap: one colour at 25% greyscale"
+    provenance: chosen
+  LED_CAP_DATASHEET:
+    value: 70
+    unit: "%"
+    source: "SK6812 p.3: when illuminating the tricolor light, use 70% greyscale"
+    provenance: datasheet
+  N_LEDS_THREE_OPTION:
+    value: 5
+    unit: ""
+    source: "the rejected alternative: three bar LEDs showing two colours each, plus the two fault indicators"
+    provenance: chosen
+  I_PLAIN_LED:
+    value: 2
+    unit: mA
+    source: "a plain 0805 indicator LED through a series resistor"
+    provenance: chosen
 
 derived:
 
@@ -1740,6 +1851,138 @@ derived:
     unit: A
     display: { unit: mA, digits: 2 }
 
+  # ---- the thermal budget ---------------------------------------------
+
+  board_area:
+    expr: BOARD_W * BOARD_H
+    unit: mm2
+    display: { unit: cm2, digits: 3 }
+  thermal_capacity:
+    expr: W_PER_CM2 * board_area
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_esp32:
+    expr: I_ESP32_TX * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_catch_diode:
+    expr: I_CATCH_AVG * V_F_SS36
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_efuse_each:
+    expr: i_channel_balanced ** 2 * R_DS_EFUSE_85C_MAX
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_efuse_worst:
+    expr: i_channel_worst ** 2 * R_DS_EFUSE_85C_MAX
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_efuse_fets:
+    expr: N_CHANNELS * p_efuse_each
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_efuse_quiescent:
+    expr: N_CHANNELS * (I_EFUSE_IQ * v_bus_max + v_bus_max ** 2 / r_divider_total)
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_switched_path:
+    expr: p_efuse_fets + p_efuse_quiescent
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_switched_discrete_conduction:
+    expr: N_CHANNELS * i_channel_balanced ** 2 * (R_DS_DISCRETE + R_SHUNT_DISCRETE)
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_switched_delta:
+    expr: p_switched_path - P_SWITCHED_DISCRETE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_shunt:
+    expr: I_CONTRACT ** 2 * R_SHUNT
+    unit: W
+    display: { unit: W, digits: 3 }
+  i_two_efuses:
+    expr: N_CHANNELS * i_limit
+    unit: A
+    display: { unit: A, digits: 3 }
+  p_shunt_fault:
+    expr: i_two_efuses ** 2 * R_SHUNT
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_inductor:
+    expr: I_RAIL5 ** 2 * R_DCR_L1
+    unit: W
+    display: { unit: W, digits: 1 }
+  p_r2_bleeder:
+    expr: V_BUS ** 2 / R2_BLEEDER
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_d15_leak:
+    expr: N_CHANNELS * I_D15_LEAK * V_BUS
+    unit: W
+    display: { unit: W, digits: 1 }
+
+  p_status_leds:
+    expr: N_STATUS_LEDS * I_LED_CHANNEL * V_RAIL5_NOM * LED_CAP_BUDGETED
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_full_colour:
+    expr: N_STATUS_LEDS * LED_COLOURS * I_LED_CHANNEL * V_RAIL5_NOM
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_status_leds_70pc:
+    expr: p_status_leds_full_colour * LED_CAP_DATASHEET
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_status_leds_one_colour:
+    expr: N_STATUS_LEDS * I_LED_CHANNEL * V_RAIL5_NOM
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_plain:
+    expr: N_STATUS_LEDS * I_PLAIN_LED * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_mixed:
+    expr: 2 * I_LED_CHANNEL * V_RAIL5_NOM * LED_CAP_BUDGETED + 6 * I_PLAIN_LED * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_three:
+    expr: N_LEDS_THREE_OPTION * I_LED_CHANNEL * V_RAIL5_NOM * LED_CAP_BUDGETED
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_status_led_premium:
+    expr: p_status_leds - p_status_leds_plain
+    unit: W
+    display: { unit: mW, digits: 2 }
+
+  p_board_total:
+    expr: p_esp32 + P_ETH_MODULE + p_catch_diode + P_TPS54360B_IC + p_efuse_fets
+          + p_efuse_quiescent + p_shunt + P_SY8089 + p_inductor + p_front_end
+          + p_max3485_onboard + P_74AHCT541 + p_r2_bleeder + p_d15_leak
+          + p_status_leds
+    unit: W
+    display: { unit: W, digits: 3 }
+  thermal_headroom:
+    expr: thermal_capacity / p_board_total
+    unit: ""
+    display: { unit: "x", digits: 3 }
+  p_controller_slack:
+    expr: P_CONTROLLER_ALLOWANCE - p_board_total
+    unit: W
+    display: { unit: W, digits: 2 }
+  status_led_share:
+    expr: p_status_led_premium / p_board_total
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_board_total_70pc:
+    expr: p_board_total - p_status_leds + p_status_leds_70pc
+    unit: W
+    display: { unit: W, digits: 3 }
+  thermal_overrun_70pc:
+    expr: p_board_total_70pc / thermal_capacity
+    unit: ""
+    display: { unit: "x", digits: 3 }
+
 tables:
 
   power-budget:
@@ -1883,3 +2126,36 @@ tables:
          "=0.95*V_PDO_12-I_VBUS_PIN_MID/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
          "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_TYP/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
          "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_MAX/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3"]
+
+  thermal-budget:
+    columns: ["Source", "W", "Note"]
+    align: [left, right, left]
+    rows:
+      - ["ESP32-C6 (TX peak)", "=p_esp32 @ [W],3", "382 mA at 3.3 V, module datasheet"]
+      - ["W5500 module", "=P_ETH_MODULE @ [W],2", "module draws the same as the bare PHY"]
+      - ["TPS54360B catch diode", "=p_catch_diode @ [W],2", "0.60 A average at 0.7 A out, conducts 86% of the cycle"]
+      - ["TPS54360B IC", "~{=P_TPS54360B_IC @ [W],1}", "conduction + switching at ~1 MHz"]
+      - ["2x TPS16630 FET", "=p_efuse_fets @ [W],2", "45 mΩ max at 85 °C, 2.43 A each"]
+      - ["2x TPS16630 IQ + dividers", "=p_efuse_quiescent @ [W],2", "1.7 mA max at 37.8 V, plus the 1 MΩ strings"]
+      - ["shunt 5 mΩ", "=p_shunt @ [W],3", "at full 5 A"]
+      - ["SY8089 + inductor", "=P_SY8089 @ [W],2", ""]
+      - ["10 µH inductor DCR", "=p_inductor @ [W],1", "72 mΩ at 0.7 A"]
+      - ["MMBT5551 follower + 3.24 kΩ + D1", "=p_front_end @ [W],2",
+         "{=p_q3_collector @ mW,2} collector at the 800 µA the pin draws with VDD tied; the 27 V clamp draws {=i_zener @ mA,3} through R44, so {=p_r44_nominal @ mW,2} in the resistor and {=p_zener @ mW,2} in the Zener"]
+      - ["2x MAX3485 driving 120 Ω", "=p_max3485_onboard @ [W],1", "DE tied high, line never idle"]
+      - ["74AHCT541", "=P_74AHCT541 @ [W],1", ""]
+      - ["R2 bus bleeder", "=p_r2_bleeder @ [W],2", "36 V across 10 kΩ, continuous"]
+      - ["D15/D16 leakage", "~{=p_d15_leak @ [W],1}",
+         "2 × 50 µA at 25 °C and 36 V, which is 36% of the part's 100 V rating. A reverse-biased diode drawing µA self-heats by nothing, so it sits at ambient and the 5 mA 125 °C figure does not apply. Two SS36 here would have been 0.036 W"]
+      - ["status LEDs, capped", "=p_status_leds @ [W],2", "eight at one colour, 25% — see below"]
+      - ["**total**", "**{=p_board_total @ [W],3}**", "TVS leakage not counted; D15/D16 are"]
+
+  status-led-cap:
+    columns: ["Case", "Power", ""]
+    align: [left, right, left]
+    rows:
+      - ["all eight, three colours, 100%", "=p_status_leds_full_colour @ W,3", "above the datasheet's own limit"]
+      - ["all eight, three colours, **70%**", "**{=p_status_leds_70pc @ W,3}**",
+         "the datasheet's ceiling (p.3: \"when illuminating the tricolor light, use 70% greyscale\")"]
+      - ["all eight, one colour, 100%", "=p_status_leds_one_colour @ W,2", ""]
+      - ["**all eight, one colour, 25%**", "**{=p_status_leds @ W,2}**", "**the budgeted case**"]
