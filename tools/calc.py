@@ -160,8 +160,9 @@ def unit_atom(sym: str, extra=None):
         return scale ** e, {k: v * e for k, v in dims.items()}
     if len(sym) > 1 and sym[0] in PREFIX:
         rest = sym[1:]
-        if rest in UNIT:
-            scale, dims = UNIT[rest]
+        base = (extra or {}).get(rest) or UNIT.get(rest)
+        if base is not None:
+            scale, dims = base
             return scale * PREFIX[sym[0]], dims
     raise UnitError(sym)
 
@@ -365,6 +366,10 @@ class Model:
                 self.add("error", name, "not a usable identifier")
             if name in FUNCS:
                 self.add("error", name, "shadows a built-in function")
+            if spec.get("dim") not in (None, "empirical"):
+                self.add("error", name,
+                         f"dim: {spec['dim']!r} is not understood; the only "
+                         "value is 'empirical'")
             if spec["kind"] == "input":
                 if "value" not in spec:
                     self.add("error", name, "input has no value")
@@ -454,6 +459,12 @@ class Model:
         for name in self.order:
             spec = self.entries[name]
             if spec["kind"] != "derived" or spec["_dims"] is None:
+                continue
+            if spec.get("dim") == "empirical":
+                # An empirical fit -- IPC-2221's trace width, a curve-fitted
+                # V_CE -- has no dimensions to check, because its constants
+                # carry units nobody publishes. Saying so is better than a
+                # standing warning everyone learns to scroll past.
                 continue
             bare = []
             try:

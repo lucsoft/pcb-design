@@ -153,6 +153,23 @@ def t_dimension_clean():
     expect_no(m, "warning")
 
 
+@case("dim: empirical silences the dimension check for that entry only")
+def t_dim_empirical():
+    bad = MODEL.replace("expr: V_BUS * I_LOAD", "expr: V_BUS / I_LOAD")
+    m, _ = run(bad)
+    expect(m, "warning", "expression gives")
+    ok = bad.replace("    unit: W\n    display: { unit: W, digits: 3 }",
+                     "    unit: W\n    dim: empirical\n    display: { unit: W, digits: 3 }")
+    m2, _ = run(ok)
+    expect_no(m2, "warning")
+
+
+@case("an unrecognised dim value is an error, not a silent skip")
+def t_dim_unknown():
+    m, _ = run(MODEL.replace("  p_bus:\n", "  p_bus:\n    dim: maybe\n"))
+    expect(m, "error", "not understood")
+
+
 @case("a unit the checker does not know is an error on the entry")
 def t_unknown_unit():
     m, _ = run(MODEL.replace("unit: W\n    display: { unit: mW", "unit: furlong\n    display: { unit: mW"))

@@ -20,6 +20,11 @@ meta:
     ICs: ""
     pkt: "Hz"
     fps: "Hz"
+    # Byte counts. Each entry states its own scale in its source, so these are
+    # plain labels: a quantity recorded in kB is cited in kB.
+    B: ""
+    kB: ""
+    bit: ""
 
 inputs:
 
@@ -868,6 +873,178 @@ inputs:
     unit: mA
     source: "a plain 0805 indicator LED through a series resistor"
     provenance: chosen
+
+  # ---- surge protection -------------------------------------------------
+
+  V_BR_SMCJ40_LO:
+    value: 44.4
+    unit: V
+    source: "SMCJ40CA breakdown, low corner"
+    provenance: datasheet
+  V_BR_SMCJ40_HI:
+    value: 49.1
+    unit: V
+    source: "SMCJ40CA breakdown, high corner"
+    provenance: datasheet
+  V_C_SMCJ40:
+    value: 64.5
+    unit: V
+    source: "SMCJ40CA clamping voltage at its rated 23.3 A surge"
+    provenance: datasheet
+  I_PP_SMCJ40:
+    value: 23.3
+    unit: A
+    source: "SMCJ40CA rated peak pulse current, 1.5 kW SMC"
+    provenance: datasheet
+  V_BR_SMAJ36_HI:
+    value: 44.2
+    unit: V
+    source: "SMAJ36CA breakdown, high corner"
+    provenance: datasheet
+  V_C_SMAJ36:
+    value: 58.1
+    unit: V
+    source: "SMAJ36CA clamping voltage at its rated 6.9 A surge"
+    provenance: datasheet
+  I_PP_SMAJ36:
+    value: 6.9
+    unit: A
+    source: "SMAJ36CA rated peak pulse current, 400 W SMA"
+    provenance: datasheet
+  V_EFUSE_ABS_MAX:
+    value: 67
+    unit: V
+    source: "TPS16630 absolute maximum (75 V for 10 ms)"
+    provenance: datasheet
+  V_60V_CLASS:
+    value: 60
+    unit: V
+    source: "the TPS54360B and SS36 rating, which is what the surge has to stay under"
+    provenance: datasheet
+  V_J1_RATING:
+    value: 48
+    unit: V
+    source: "CX90B-16P USB-C receptacle, rated 48 V AC/DC"
+    provenance: datasheet
+  I_SURGE_REF:
+    value: 10
+    unit: A
+    source: "a reference surge current, for comparing the two TVS parts on equal terms"
+    provenance: chosen
+
+  # ---- the bus-voltage ADC divider --------------------------------------
+
+  R31:
+    value: 470
+    unit: kohm
+    source: "chosen: upper leg of the bus-voltage divider into an ESP32-C6 ADC"
+    provenance: chosen
+  R32:
+    value: 27
+    unit: kohm
+    source: "chosen: lower leg, sized against the SAR's usable ceiling rather than the rail"
+    provenance: chosen
+  C_ADC_TAP:
+    value: 100
+    unit: nF
+    source: "chosen: fixes the source impedance the SAR sees"
+    provenance: chosen
+  V_ADC_USABLE:
+    value: 3.1
+    unit: V
+    source: "ESP32-C6 SAR usable top at 12 dB attenuation"
+    provenance: inferred
+  V_ADC_POINT_50:
+    value: 50
+    unit: V
+    source: "an illustrative overvoltage event, for the ADC's scaling"
+    provenance: chosen
+  V_ADC_POINT_60:
+    value: 60
+    unit: V
+    source: "an illustrative overvoltage event, for the ADC's scaling"
+    provenance: chosen
+  FPS_TARGET:
+    value: 90
+    unit: Hz
+    source: "the design's frame rate at 10 modules per channel, rounded; what the protocol table is worked at"
+    provenance: chosen
+  R31_ALT:
+    value: 330
+    unit: kohm
+    source: "the obvious divider pick this one was chosen over"
+    provenance: chosen
+  R32_ALT:
+    value: 33
+    unit: kohm
+    source: "the obvious divider pick this one was chosen over"
+    provenance: chosen
+
+  # ---- IPC-2221 trace width ---------------------------------------------
+
+  IPC_K_EXTERNAL:
+    value: 0.048
+    unit: ""
+    source: "IPC-2221 constant for an external layer"
+    provenance: datasheet
+  OZ_COPPER_UM:
+    value: 35
+    unit: um
+    source: "1 oz copper = 35 um"
+    provenance: datasheet
+
+  # ---- the UDP frame protocol -------------------------------------------
+
+  BYTES_PER_LED:
+    value: 3
+    unit: ""
+    source: "one byte per colour channel"
+    provenance: chosen
+  MTU_BYTES:
+    value: 1400
+    unit: ""
+    source: "chosen datagram ceiling, under the usual 1500 B MTU"
+    provenance: chosen
+  W5500_PACKET_INFO:
+    value: 8
+    unit: ""
+    source: "W5500 prepends an 8-byte PACKET-INFO header per datagram"
+    provenance: datasheet
+  W5500_RX_TOTAL:
+    value: 16
+    unit: ""
+    source: "W5500 RX buffer, kB shared across eight sockets (§3.3 p.30)"
+    provenance: datasheet
+  W5500_RX_DEFAULT:
+    value: 2
+    unit: ""
+    source: "W5500 default Sn_RXBUF_SIZE per socket, kB (p.52)"
+    provenance: datasheet
+  W5500_RX_PIXEL:
+    value: 8
+    unit: ""
+    source: "chosen Sn_RXBUF_SIZE for the pixel socket, kB"
+    provenance: chosen
+  SPI_CLOCK_FAST:
+    value: 80
+    unit: MHz
+    source: "W5500 SPI maximum"
+    provenance: datasheet
+  SPI_CLOCK_SLOW:
+    value: 40
+    unit: MHz
+    source: "a conservative SPI clock"
+    provenance: chosen
+  LINK_RATE:
+    value: 100
+    unit: MHz
+    source: "100 Mbit/s Ethernet link, bits per second"
+    provenance: datasheet
+  ETH_WIRE_OVERHEAD:
+    value: 70
+    unit: ""
+    source: "UDP and IP headers, Ethernet header and FCS, preamble and interframe gap"
+    provenance: inferred
 
 derived:
 
@@ -1983,6 +2160,207 @@ derived:
     unit: ""
     display: { unit: "x", digits: 3 }
 
+  # ---- surge: what the node actually clamps at --------------------------
+  #
+  # A headline clamping voltage is quoted at that part's own rated surge, so
+  # comparing two parts' headlines compares two different currents. What
+  # decides the board is the dynamic resistance, R_d = (Vc - Vbr) / Ipp.
+
+  rd_smcj40:
+    expr: (V_C_SMCJ40 - V_BR_SMCJ40_HI) / I_PP_SMCJ40
+    unit: ohm
+    display: { unit: Ω, digits: 2 }
+  rd_smaj36:
+    expr: (V_C_SMAJ36 - V_BR_SMAJ36_HI) / I_PP_SMAJ36
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+  clamp_smcj40_at_10a:
+    expr: V_BR_SMCJ40_HI + rd_smcj40 * I_SURGE_REF
+    unit: V
+    display: { unit: V, digits: 3 }
+  clamp_smaj36_at_10a:
+    expr: V_BR_SMAJ36_HI + rd_smaj36 * I_SURGE_REF
+    unit: V
+    display: { unit: V, digits: 3 }
+  i_smcj40_at_60v:
+    expr: (V_60V_CLASS - V_BR_SMCJ40_HI) / rd_smcj40
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_smaj36_at_60v:
+    expr: (V_60V_CLASS - V_BR_SMAJ36_HI) / rd_smaj36
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_smcj40_at_efuse_max:
+    expr: (V_EFUSE_ABS_MAX - V_BR_SMCJ40_HI) / rd_smcj40
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_smaj36_at_efuse_max:
+    expr: (V_EFUSE_ABS_MAX - V_BR_SMAJ36_HI) / rd_smaj36
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_at_j1_rating:
+    expr: (V_J1_RATING - V_BR_SMCJ40_LO) / rd_smcj40
+    unit: A
+    display: { unit: A, digits: 2 }
+  r_cable_return:
+    expr: RHO_CU * L_REF / CSA_REF
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+    uncited: true
+  v_return_ir_balanced:
+    expr: i_channel_balanced * r_cable_return
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_return_ir_flash:
+    expr: i_channel_flash * r_cable_return
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # ---- the ADC divider ---------------------------------------------------
+
+  adc_ratio:
+    expr: R32 / (R31 + R32)
+    unit: ""
+    display: { unit: "", digits: 4 }
+    uncited: true
+  v_adc_at_36v:
+    expr: V_BUS * adc_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_adc_at_50v:
+    expr: V_ADC_POINT_50 * adc_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_adc_at_60v:
+    expr: V_ADC_POINT_60 * adc_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_bus_at_adc_ceiling:
+    expr: V_ADC_USABLE / adc_ratio
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_adc_alt_at_36v:
+    expr: V_BUS * R32_ALT / (R31_ALT + R32_ALT)
+    unit: V
+    display: { unit: V, digits: 3 }
+  r_adc_source:
+    expr: R31 * R32 / (R31 + R32)
+    unit: ohm
+    display: { unit: kohm, digits: 3 }
+  tau_adc:
+    expr: r_adc_source * C_ADC_TAP
+    unit: s
+    display: { unit: ms, digits: 3 }
+
+  # ---- IPC-2221, external layer -----------------------------------------
+  #
+  #   A[mil^2] = (I / (k * dT^0.44))^(1/0.725),  w = A / (1.378 * oz)
+  #
+  # An empirical fit: its constants carry units nobody publishes, so the
+  # dimension check is switched off here rather than left to warn forever.
+
+  w_bus_1oz_20c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_bus_1oz_10c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_bus_2oz_20c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  w_bus_2oz_10c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_ch_1oz_20c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  w_ch_1oz_10c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_ch_2oz_20c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  w_ch_2oz_10c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  copper_2oz_um:
+    expr: 2 * OZ_COPPER_UM
+    unit: m
+    display: { unit: um, digits: 2 }
+
+  # ---- the UDP frame protocol -------------------------------------------
+
+  bytes_per_module:
+    expr: LEDS_PER_MODULE * BYTES_PER_LED
+    unit: ""
+    display: { unit: "", digits: 3 }
+    uncited: true
+  pixel_bytes_10:
+    expr: 10 * bytes_per_module
+    unit: ""
+    display: { unit: "", digits: 4 }
+  pixel_bytes_20:
+    expr: N_MODULES * bytes_per_module
+    unit: ""
+    display: { unit: "", digits: 4 }
+  pixel_bytes_30:
+    expr: 30 * bytes_per_module
+    unit: ""
+    display: { unit: "", digits: 4 }
+  packets_20:
+    expr: ceil(pixel_bytes_20 / MTU_BYTES)
+    unit: ""
+    display: { unit: "", digits: 1 }
+    uncited: true
+  packet_rate_20:
+    expr: packets_20 * FPS_TARGET
+    unit: Hz
+    display: { unit: pkt, digits: 3 }
+  bitrate_20:
+    expr: pixel_bytes_20 * 8 * FPS_TARGET
+    unit: Hz
+    display: { unit: MHz, digits: 3 }
+  packet_occupancy:
+    expr: pixel_bytes_20 / packets_20 + W5500_PACKET_INFO
+    unit: ""
+    display: { unit: "", digits: 4 }
+  rx_free_after_packet:
+    expr: W5500_RX_DEFAULT * 1024 - packet_occupancy
+    unit: ""
+    display: { unit: "", digits: 3 }
+  spi_drain_fast:
+    expr: packet_occupancy * 8 / SPI_CLOCK_FAST
+    unit: s
+    display: { unit: us, digits: 3 }
+  spi_drain_slow:
+    expr: packet_occupancy * 8 / SPI_CLOCK_SLOW
+    unit: s
+    display: { unit: us, digits: 3 }
+  packet_gap:
+    expr: (pixel_bytes_20 / packets_20 + ETH_WIRE_OVERHEAD) * 8 / LINK_RATE
+    unit: s
+    display: { unit: us, digits: 2 }
+  rx_allocation_wrong:
+    expr: W5500_RX_PIXEL + 7 * W5500_RX_DEFAULT
+    unit: ""
+    display: { unit: "", digits: 2 }
+
 tables:
 
   power-budget:
@@ -2159,3 +2537,32 @@ tables:
          "the datasheet's ceiling (p.3: \"when illuminating the tricolor light, use 70% greyscale\")"]
       - ["all eight, one colour, 100%", "=p_status_leds_one_colour @ W,2", ""]
       - ["**all eight, one colour, 25%**", "**{=p_status_leds @ W,2}**", "**the budgeted case**"]
+
+  trace-width:
+    columns: ["", "5 A bus", "2.80 A channel (worst case)"]
+    align: [left, right, right]
+    rows:
+      - ["1 oz, 20 °C rise", "=w_bus_1oz_20c", "=w_ch_1oz_20c"]
+      - ["1 oz, 10 °C rise", "=w_bus_1oz_10c", "=w_ch_1oz_10c"]
+      - ["**2 oz, 20 °C rise**", "**{=w_bus_2oz_20c @ mm,2}**", "**{=w_ch_2oz_20c @ mm,2}**"]
+      - ["2 oz, 10 °C rise", "=w_bus_2oz_10c", "=w_ch_2oz_10c"]
+
+  tvs-comparison:
+    columns: ["", "SMAJ36CA (SMA, 400 W)", "**SMCJ40CA (SMC, 1.5 kW)**"]
+    align: [left, right, right]
+    rows:
+      - ["Vrwm", "36 V — **under the 37.8 V bus**", "**40 V**"]
+      - ["R_d", "=rd_smaj36", "**{=rd_smcj40 @ Ω,2}**"]
+      - ["clamp at 10 A", "=clamp_smaj36_at_10a", "**{=clamp_smcj40_at_10a @ V,3}**"]
+      - ["reaches 60 V at", "=i_smaj36_at_60v", "**{=i_smcj40_at_60v @ A,3}**"]
+      - ["reaches the eFuse's 67 V at", "=i_smaj36_at_efuse_max", "**{=i_smcj40_at_efuse_max @ A,3}**"]
+
+  udp-frames:
+    columns: ["Modules", "Pixel bytes", "Packets at 1400 B MTU", "packets/s **if run at 90 fps**"]
+    align: [right, right, right, right]
+    rows:
+      - ["10", "=pixel_bytes_10 @ ,4", "=ceil(pixel_bytes_10/MTU_BYTES) @ ,1",
+         "{=ceil(pixel_bytes_10/MTU_BYTES)*FPS_TARGET @ ,2} pkt/s"]
+      - ["20", "=pixel_bytes_20 @ ,4", "=packets_20 @ ,1", "{=packet_rate_20 @ [Hz],3} pkt/s"]
+      - ["30", "=pixel_bytes_30 @ ,4", "=ceil(pixel_bytes_30/MTU_BYTES) @ ,1",
+         "{=ceil(pixel_bytes_30/MTU_BYTES)*FPS_TARGET @ ,3} pkt/s"]

@@ -1460,24 +1460,26 @@ fixtures.
 
 A plain UDP frame protocol is simpler and smaller:
 
+<!-- calc:table udp-frames -->
 | Modules | Pixel bytes | Packets at 1400 B MTU | packets/s **if run at 90 fps** |
-|---|---|---|---|
+|---:|---:|---:|---:|
 | 10 | 1080 | 1 | 90 pkt/s |
 | 20 | 2160 | 2 | 180 pkt/s |
 | 30 | 3240 | 3 | 270 pkt/s |
+<!-- calc:end -->
 
-Trivial *bandwidth* for a W5500 — 1.56 Mbit/s at the target — but **not trivial
+Trivial *bandwidth* for a W5500 — 1.56 Mbit/s<!--calc:bitrate_20--> at the target — but **not trivial
 buffering, and the default allocation drops half of every frame.** The W5500 has
-16 kB of RX split **2 kB per socket by default** (§3.3 p.30, `Sn_RXBUF_SIZE`
-p.52), and it prepends an 8-byte PACKET-INFO header per datagram. Packet 1 of a
-20-module frame occupies 1088 B; packet 2 arrives about 92 µs later on a 100 Mbit
-link, while draining packet 1 over SPI costs 109 µs at 80 MHz and 218 µs at
-40 MHz before interrupt latency. With 960 B free the W5500 **discards a datagram
+16 kB<!--calc:W5500_RX_TOTAL--> of RX split **2 kB**<!--calc:W5500_RX_DEFAULT--> per socket by default (§3.3 p.30, `Sn_RXBUF_SIZE`
+p.52), and it prepends a PACKET-INFO header of 8 B<!--calc:W5500_PACKET_INFO--> per datagram. Packet 1 of a
+20-module frame occupies 1088 B<!--calc:packet_occupancy-->; packet 2 arrives about 92 µs<!--calc:packet_gap--> later on a 100 Mbit
+link, while draining packet 1 over SPI costs 109 µs<!--calc:spi_drain_fast--> at 80 MHz and 218 µs<!--calc:spi_drain_slow--> at
+40 MHz before interrupt latency. With 960 B<!--calc:rx_free_after_packet--> free the W5500 **discards a datagram
 that does not fit**. The fix is **eight** register writes at init, not one: the
 W5500's 16 kB of RX
 is shared, and the sum over all eight sockets must not exceed it. Setting
 `Sn_RXBUF_SIZE = 8` on the pixel socket while sockets 1-7 keep their 2 kB default
-allocates **22 kB** and aliases buffer memory. Write 8 for the pixel socket and
+allocates **22 kB**<!--calc:rx_allocation_wrong--> and aliases buffer memory. Write 8 for the pixel socket and
 0 or 1 for the rest.
 
 Keep each datagram under the ~1400 byte MTU rather than relying on IP
@@ -1514,14 +1516,14 @@ parts:
 | Interface | Part | Qty | Why that one |
 |---|---|---|---|
 | USB-C D+/D-, CC1/CC2 | H5VL10B | 4 | 5 V class, and low capacitance matters on USB 2.0 full speed |
-| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMCJ40CA** | 3 | **Vrwm 40 V**, so it is genuinely off at the PDO's +5%; Vbr 44.4-49.1 V, R_d 0.66 Ω. Stays under the 60 V TPS54360B and SS36 to 16.5 A of surge and under the eFuse's 67 V to 27 A. The residual is **J1 at 48 V**, which no 37.8 V-standoff TVS can protect. See below |
+| USB-C VBUS, both output +36 V — **D7 to GND, D8/D9 to `LED_RTN`** | **SMCJ40CA** | 3 | **Vrwm 40 V**, so it is genuinely off at the PDO's +5%; Vbr 44.4-49.1 V<!--calc:V_BR_SMCJ40_LO..V_BR_SMCJ40_HI-->, R_d 0.66 Ω<!--calc:rd_smcj40-->. Stays under the 60 V TPS54360B and SS36 to 16.5 A of surge and under the eFuse's 67 V to 27 A. The residual is **J1 at 48 V**, which no 37.8 V-standoff TVS can protect. See below |
 | Differential A and B, both outputs | **SMAJ7.0CA** | 4 | 7 V bidirectional, clamps at 12 V — under the MAX3485's ±15 V |
 
 **The A/B pair needed its own part, not the 5 V one.** The RS-485 electrical
 standard these drivers follow defines a
 common-mode range of −7 V to +12 V, so a 5 V clamp would conduct during normal
 operation and corrupt the bus. The fitted **SMAJ7.0CA** has a 7 V standoff, which
-clears the 0.84-1.38 V of return IR drop this cable actually imposes — that
+clears the 0.84-1.38 V<!--calc:v_return_ir_balanced..v_return_ir_flash--> of return IR drop this cable actually imposes — that
 −7/+12 V figure is the transceiver's *capability*, not the excursion seen here,
 because both ends share GND inside one shell. See Resolved. Bidirectional is
 required because the lines swing both polarities.
@@ -1539,31 +1541,33 @@ potentially mA at 85 °C — meaning standby draw and self-heating on three part
 A 40 V standoff clears it outright, and `P1-overvoltage` fires on a 36 V part
 here precisely because the knowledge base records Vrwm rather than Vc.
 
-The objection to a 40 V part was its headline **64.5 V** clamp against the 36 V
-part's 58.1 V. That comparison is invalid: **each figure is quoted at that
-part's own rated surge** — 6.9 A for a 400 W SMA, 23.3 A for a 1.5 kW SMC. What
+The objection to a 40 V part was its headline **64.5 V**<!--calc:V_C_SMCJ40--> clamp against the 36 V
+part's 58.1 V<!--calc:V_C_SMAJ36-->. That comparison is invalid: **each figure is quoted at that
+part's own rated surge** — 6.9 A<!--calc:I_PP_SMAJ36--> for a 400 W SMA, 23.3 A<!--calc:I_PP_SMCJ40--> for a 1.5 kW SMC. What
 decides the board is the clamp at the current the node can actually deliver, and
 that follows the dynamic resistance R_d = (Vc − Vbr) / Ipp:
 
-| | SMAJ36CA (SMA, 400 W) | **SMCJ40CA (SMC, 1.5 kW)** |
-|---|---|---|
+<!-- calc:table tvs-comparison -->
+|  | SMAJ36CA (SMA, 400 W) | **SMCJ40CA (SMC, 1.5 kW)** |
+|---|---:|---:|
 | Vrwm | 36 V — **under the 37.8 V bus** | **40 V** |
 | R_d | 2.01 Ω | **0.66 Ω** |
 | clamp at 10 A | 64.3 V | **55.7 V** |
 | reaches 60 V at | 7.8 A | **16.5 A** |
 | reaches the eFuse's 67 V at | 11.3 A | **27.1 A** |
+<!-- calc:end -->
 
 **Fitted: SMCJ40CA (C19077610).** It is the better part on every axis that
 decides this board — it stands off the bus, and it stays under the 60 V
-TPS54360B and SS36 to **16.5 A** where the SMA part crossed at 7.8 A. It costs
+TPS54360B and SS36 to **16.5 A**<!--calc:i_smcj40_at_60v--> where the SMA part crossed at 7.8 A<!--calc:i_smaj36_at_60v-->. It costs
 0.12 against 0.04, a larger SMC footprint on three placements, and a V_BR that
 starts 4 V higher. It also has **more** stock, which is not why it was chosen but
 is worth knowing.
 
 **J1 is the part this does not fully rescue.** The CX90B-16P is rated **48 V
 AC/DC**, and where the node reaches it depends on which breakdown corner the
-part lands at: at the SMCJ40CA's **low** corner, 44.4 V, 48 V arrives at
-**5.4 A** of surge; at its **high** corner, 49.1 V, the part does not conduct
+part lands at: at the SMCJ40CA's **low** corner, 44.4 V, 48 V<!--calc:V_J1_RATING--> arrives at
+**5.4 A**<!--calc:i_at_j1_rating--> of surge; at its **high** corner, 49.1 V, the part does not conduct
 until the node is already past J1's rating. No 37.8 V-standoff avalanche TVS can protect a
 48 V connector, because its own breakdown has to sit above the bus and below
 nothing in particular. The event is 10/1000 µs on a connector with no
@@ -1771,19 +1775,21 @@ rather than an option.
 For a board carrying 5 A next to a differential pair and an ADC, copper weight,
 trace width and return path decide more than the area utilisation factor does.
 
-**Copper weight: 2 oz (70 µm), and it is not a preference.** Trace widths per IPC-2221,
+**Copper weight: 2 oz (70 µm<!--calc:copper_2oz_um-->), and it is not a preference.** Trace widths per IPC-2221,
 external layer:
 
-| | 5 A bus | 2.80 A channel (worst case) |
-|---|---|---|
+<!-- calc:table trace-width -->
+|  | 5 A bus | 2.80 A channel (worst case) |
+|---|---:|---:|
 | 1 oz, 20 °C rise | 1.82 mm | 0.82 mm |
 | 1 oz, 10 °C rise | 2.77 mm | 1.24 mm |
 | **2 oz, 20 °C rise** | **0.91 mm** | **0.41 mm** |
 | 2 oz, 10 °C rise | 1.38 mm | 0.62 mm |
+<!-- calc:end -->
 
-Both the feed and the return need it. On 1 oz a 10 °C-rise bus trace is 2.8 mm
+Both the feed and the return need it. On 1 oz a 10 °C-rise bus trace is 2.8 mm<!--calc:w_bus_1oz_10c-->
 wide, which on a 72 × 74 mm board with four committed edges is awkward; on 2 oz
-it is 1.4 mm and routine. 2 oz (70 µm) also halves the copper's contribution to the FET
+it is 1.4 mm<!--calc:w_bus_2oz_10c--> and routine. 2 oz (70 µm) also halves the copper's contribution to the FET
 thermal path.
 
 **The eFuse's PowerPAD is now the thermal path, and it is not optional.** The
@@ -1884,15 +1890,15 @@ SHDN pin; two BSS138 at $0.027 is the cheaper of the two.
 Supporting pieces:
 
 - **Bus voltage sense**: **470 k / 27 k** divider into an ESP32-C6 ADC, plus
-  **100 nF** at the tap. Gives **1.96 V at 36 V** and 2.72 V at 50 V, so events up to ~57 V are on-scale (3.26 V at 60 V is above the SAR's usable ceiling) —
+  **100 nF**<!--calc:C_ADC_TAP--> at the tap. Gives **1.96 V**<!--calc:v_adc_at_36v--> at 36 V and 2.72 V<!--calc:v_adc_at_50v--> at 50 V, so events up to ~57 V<!--calc:v_bus_at_adc_ceiling--> are on-scale (3.26 V<!--calc:v_adc_at_60v--> at 60 V is above the SAR's usable ceiling) —
   which matters because this divider is now the only overvoltage measurement the
-  system has. The obvious 330 k/33 k pick gives 3.27 V, above the SAR ADC's
+  system has. The obvious 330 k/33 k pick gives 3.27 V<!--calc:v_adc_alt_at_36v-->, above the SAR ADC's
   ~3.1 V usable top at 12 dB, which pins the reading at full scale **at the
   normal operating point** — check the divider against the ADC ceiling, not just
   against the rail. The INA226 cannot do this job: its VBUS pin is specified
   0-36 V against a 36 V bus, so no margin. The 100 nF fixes the source
-  impedance, which an ESP32 SAR wants nearer 10 kΩ — but 25.5 kΩ with 100 nF is
-  **τ = 2.55 ms**, so this cannot see an OV event faster than ~10 ms. It is a
+  impedance, which an ESP32 SAR wants nearer 10 kΩ — but 25.5 kΩ<!--calc:r_adc_source--> with 100 nF is
+  **τ = 2.55 ms**<!--calc:tau_adc-->, so this cannot see an OV event faster than ~10 ms. It is a
   slow check, not fast protection, which matters because it is carrying the OVP
   role the HUSB238A lost.
 - **No hold-up capacitor.** Three versions of one were designed and all three
