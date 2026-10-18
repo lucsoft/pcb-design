@@ -1,0 +1,416 @@
+{
+  "gge1": {
+    "props": {
+      "Designator": "J1",
+      "device_name": "CX90B-16P",
+      "value": "USB-C 16P",
+      "Supplier Part": "C3198004"
+    },
+    "pins": {
+      "A1": "GND",
+      "A4": "VBUS",
+      "A5": "CC1",
+      "A6": "USB_DP",
+      "A7": "USB_DM",
+      "A8": "NC_USB_SBU1",
+      "A9": "VBUS",
+      "A12": "GND",
+      "B1": "GND",
+      "B4": "VBUS",
+      "B5": "CC2",
+      "B6": "USB_DP",
+      "B7": "USB_DM",
+      "B8": "NC_USB_SBU2",
+      "B9": "VBUS",
+      "B12": "GND",
+      "0": "GND",
+      "1": "GND",
+      "2": "GND",
+      "3": "GND"
+    }
+  },
+  "gge2": {
+    "props": {
+      "Designator": "D3",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "USB_DP",
+      "2": "GND"
+    }
+  },
+  "gge3": {
+    "props": {
+      "Designator": "D4",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "USB_DM",
+      "2": "GND"
+    }
+  },
+  "gge4": {
+    "props": {
+      "Designator": "D5",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "CC1",
+      "2": "GND"
+    }
+  },
+  "gge5": {
+    "props": {
+      "Designator": "D6",
+      "device_name": "H5VL10B",
+      "value": "ESD 5V",
+      "Supplier Part": "C7420372"
+    },
+    "pins": {
+      "1": "CC2",
+      "2": "GND"
+    }
+  },
+  "gge6": {
+    "props": {
+      "Designator": "C33",
+      "device_name": "FS32X225K101EGG",
+      "value": "2.2uF 100V",
+      "Supplier Part": "C153036"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge7": {
+    "props": {
+      "Designator": "R2",
+      "device_name": "1206W4F1002T5E",
+      "value": "10k 1206",
+      "Supplier Part": "C17902"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge8": {
+    "props": {
+      "Designator": "D7",
+      "device_name": "SMCJ40CA",
+      "value": "TVS 40V",
+      "Supplier Part": "C19077610"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "GND"
+    }
+  },
+  "gge9": {
+    "props": {
+      "Designator": "U1",
+      "device_name": "HUSB238A-BB001-QN16R",
+      "value": "PD sink",
+      "Supplier Part": "C24833806"
+    },
+    "pins": {
+      "1": "NC_PD_DP",
+      "2": "NC_PD_DM",
+      "3": "CC1",
+      "4": "CC2",
+      "5": "BUS_3V3",
+      "6": "PD_DEBUG_N",
+      "7": "PD_EN_HVDCP",
+      "8": "PD_ADDR",
+      "9": "I2C_SDA",
+      "10": "I2C_SCL",
+      "11": "PD_INT_N",
+      "12": "PD_EN_N",
+      "13": "PD_FAULT",
+      "14": "GND",
+      "15": "NC_PD_GATE",
+      "16": "PD_VBUS_SENSE",
+      "17": "GND"
+    }
+  },
+  "gge10": {
+    "props": {
+      "Designator": "R21",
+      "device_name": "0402WGF9103TCE",
+      "value": "910k",
+      "Supplier Part": "C25800"
+    },
+    "pins": {
+      "1": "PD_ADDR",
+      "2": "GND"
+    }
+  },
+  "gge11": {
+    "props": {
+      "Designator": "R22",
+      "device_name": "0402WGF9103TCE",
+      "value": "910k",
+      "Supplier Part": "C25800"
+    },
+    "pins": {
+      "1": "PD_DEBUG_N",
+      "2": "GND"
+    }
+  },
+  "gge12": {
+    "props": {
+      "Designator": "R23",
+      "device_name": "0402WGF9103TCE",
+      "value": "910k",
+      "Supplier Part": "C25800"
+    },
+    "pins": {
+      "1": "PD_EN_HVDCP",
+      "2": "GND"
+    }
+  },
+  "gge13": {
+    "props": {
+      "Designator": "R19",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "PD_INT_N",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge14": {
+    "props": {
+      "Designator": "C18",
+      "device_name": "HGC0402R5105K500NTEJ",
+      "value": "1uF",
+      "Supplier Part": "C7472948"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge15": {
+    "props": {
+      "Designator": "C19",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge16": {
+    "props": {
+      "Designator": "R44",
+      "device_name": "0402WGF3241TCE",
+      "value": "3.24k",
+      "Supplier Part": "C11457"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "PD_BASE"
+    }
+  },
+  "gge17": {
+    "props": {
+      "Designator": "D1",
+      "device_name": "BZT52C27",
+      "value": "27V zener",
+      "Supplier Part": "C173421"
+    },
+    "pins": {
+      "1": "PD_BASE",
+      "2": "GND"
+    }
+  },
+  "gge18": {
+    "props": {
+      "Designator": "Q3",
+      "device_name": "MMBT5551",
+      "value": "NPN 160V",
+      "Supplier Part": "C7420357"
+    },
+    "pins": {
+      "1": "PD_BASE",
+      "2": "PD_VBUS_SENSE",
+      "3": "VBUS"
+    }
+  },
+  "gge19": {
+    "props": {
+      "Designator": "D14",
+      "device_name": "RB751V-40",
+      "value": "schottky 40V",
+      "Supplier Part": "C7502691"
+    },
+    "pins": {
+      "1": "PD_VBUS_SENSE",
+      "2": "BUS_5V"
+    }
+  },
+  "gge20": {
+    "props": {
+      "Designator": "R48",
+      "device_name": "0402WGF0000TCE",
+      "value": "0R DNF",
+      "Supplier Part": "C17168"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "PD_VBUS_SENSE"
+    }
+  },
+  "gge21": {
+    "props": {
+      "Designator": "U6",
+      "device_name": "INA226AIDGSR",
+      "value": "current sense",
+      "Supplier Part": "C49851"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "GND",
+      "3": "INA_ALERT",
+      "4": "I2C_SDA",
+      "5": "I2C_SCL",
+      "6": "BUS_3V3",
+      "7": "GND",
+      "8": "BUS_3V3",
+      "9": "INA_IN_N",
+      "10": "INA_IN_P"
+    }
+  },
+  "gge22": {
+    "props": {
+      "Designator": "R1",
+      "device_name": "RLP25FEGMR005",
+      "value": "5mR 2512",
+      "Supplier Part": "C393074"
+    },
+    "pins": {
+      "1": "LED_RTN",
+      "2": "GND"
+    }
+  },
+  "gge23": {
+    "props": {
+      "Designator": "R49",
+      "device_name": "RC0402FR-0710RL",
+      "value": "10R",
+      "Supplier Part": "C138066"
+    },
+    "pins": {
+      "1": "LED_RTN",
+      "2": "INA_IN_P"
+    }
+  },
+  "gge24": {
+    "props": {
+      "Designator": "R50",
+      "device_name": "RC0402FR-0710RL",
+      "value": "10R",
+      "Supplier Part": "C138066"
+    },
+    "pins": {
+      "1": "GND",
+      "2": "INA_IN_N"
+    }
+  },
+  "gge25": {
+    "props": {
+      "Designator": "R45",
+      "device_name": "0402WGF1002TCE",
+      "value": "10k",
+      "Supplier Part": "C25744"
+    },
+    "pins": {
+      "1": "INA_ALERT",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge26": {
+    "props": {
+      "Designator": "C20",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "BUS_3V3",
+      "2": "GND"
+    }
+  },
+  "gge27": {
+    "props": {
+      "Designator": "R17",
+      "device_name": "0402WGF4701TCE",
+      "value": "4.7k",
+      "Supplier Part": "C25900"
+    },
+    "pins": {
+      "1": "I2C_SDA",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge28": {
+    "props": {
+      "Designator": "R18",
+      "device_name": "0402WGF4701TCE",
+      "value": "4.7k",
+      "Supplier Part": "C25900"
+    },
+    "pins": {
+      "1": "I2C_SCL",
+      "2": "BUS_3V3"
+    }
+  },
+  "gge29": {
+    "props": {
+      "Designator": "R31",
+      "device_name": "0402WGF4703TCE",
+      "value": "470k",
+      "Supplier Part": "C25790"
+    },
+    "pins": {
+      "1": "VBUS",
+      "2": "VBUS_ADC"
+    }
+  },
+  "gge30": {
+    "props": {
+      "Designator": "R32",
+      "device_name": "0402WGF2702TCE",
+      "value": "27k",
+      "Supplier Part": "C25771"
+    },
+    "pins": {
+      "1": "VBUS_ADC",
+      "2": "GND"
+    }
+  },
+  "gge31": {
+    "props": {
+      "Designator": "C36",
+      "device_name": "CC0402KRX7R9BB104",
+      "value": "100nF",
+      "Supplier Part": "C131394"
+    },
+    "pins": {
+      "1": "VBUS_ADC",
+      "2": "GND"
+    }
+  }
+}

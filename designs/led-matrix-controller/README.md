@@ -2896,6 +2896,535 @@ eventually, a board.
 
 **1. Import.** Netlist Rebuild in EasyEDA Pro, select `netlist.json`.
 
+**1a. Arrange it.** The importer places all 129 symbols in netlist order
+with a labelled stub on every pin, which is electrically complete and reads
+as a parts list. Three tools turn that into a sheet:
+
+    ./tools/arrange.py  <export.epro2> netlist.json --layout star --columns 0 \
+        --flow --upright --gap 20 --stagger 30 --block-gap 120 -o a.epro2
+    ./tools/netflags.py a.epro2 --donor reference/"Module V3 schematic_2026-10-04.epro2" \
+        --nets 'GND,LED_RTN=GND,BUS_5V=+5V,BUS_3V3=+5V,VBUS=+5V,CH1_36V=+5V,CH2_36V=+5V,PD_VBUS_SENSE=+5V' \
+        --one-per-part -o b.epro2
+    ./tools/schwire.py  b.epro2 netlist.json --max-span 1200 --detour 45 \
+        --clearance 5 --end-clearance 6 --labels-outward \
+        --priority-nets 'CH1_36V,CH2_36V,SW_5V,LX_3V3,PD_VBUS_SENSE,USB_DP,USB_DM,CC1,CC2' \
+        -o c.epro2
+    ./tools/fixparts.py c.epro2 --complete -o d.epro2
+    ./tools/blocktitles.py d.epro2 netlist.json --sheet-title 'LED Matrix Controller' \
+        --doc-number LMC-SCH-001 --sheet '1 of 1' --revision A --date 2026-10-05 \
+        --drawn-by 'pcb-design toolchain' --sheet-size A1 -o final.epro2
+
+![The arranged schematic: two columns, each functional block a cluster of its IC with the passives that belong to it](figures/schematic-arranged.png)
+
+Each band is one of the twelve functional blocks, with its hub IC centred
+and the parts that belong to it above and below. Measured against the
+importer's order, in the star model — every net the centroid of the parts
+on it, every part a spoke to that centroid, rails left out: **net-spoke
+crossings 180 → 113**, total spoke length 124,316 → 58,608 units. Both
+numbers come from `arrange.py` itself, so they cannot go stale the way the
+hand-measured pair they replace did.
+
+The sheet is **578 × 741 mm**, inside A1 portrait.
+
+`--columns 0` is what gets it there. The column dealer gives every band
+the width of the widest one in its column, so a band of two parts takes
+as much room as a band of twenty — on one sheet that was R48 and D14
+alone setting a third of the width. Shelf packing gives each band its
+own width and wraps when the row is full, which takes the sheet from
+813 × 547 mm down, and the colinear pairs from 9 to 4.
+
+**Order survives it**, which is the property the column model was built
+for: consecutive bands land side by side or on the next shelf, so the two
+eFuse channels stay comparable. A packer that dealt by size would undo
+that.
+
+The shelf width is searched rather than asked for, and the score is area
+weighted by distance from a sheet's shape. Minimising area alone makes
+ribbons — one variant came out 699 × 133 mm, which packs tightly and
+fits no paper.
+
+**32 of the 57 routable nets are drawn**, against 8 before, and no drawn
+segment crosses another net or passes within half a grid of a foreign
+stub's free end.
+
+**Three attempts at the remaining findings all measured as no-ops or
+regressions, and that is the finding.** Reviewers have asked, repeatedly
+and rightly, for the two eFuse channels side by side, for the leftover
+shelf width to be filled, and for series chains to be placed end to end.
+Each was built and each was removed:
+
+| Attempt | Measured |
+|---|---|
+| glue same-depth bands into pairs | channels 388 → 535 mm apart, crossings 114 → 138, spoke length 60,540 → 80,151 |
+| first-fit a band into leftover shelf width | fires zero times; the sheet extent is set by flags and labels, not by the placement |
+| order a satellite row by series-chain adjacency | finds zero chained parts in any row |
+
+The last one says why the other two also failed. Satellites connect to
+their **hub**, not to each other — where two parts really are in series,
+one owns the other and they never land in the same row. A divider reads
+as three unrelated resistors because the star model has no relation that
+says otherwise. These are not tuning misses: the objective minimises
+distance to a net's centroid, and *comprehensibility* is a different
+objective. Closing the gap needs a different placement model, and three
+rounds of trying it with this one bought nothing.
+
+`--flow` gives the layout the one thing the star objective has none of:
+**direction.** Minimising distance to a net's centroid says nothing
+about a signal going somewhere, which is why the Ethernet controller
+came out above the MCU rather than beside it. Direction that can be
+derived rather than declared is breadth-first depth from the block
+holding the lowest-numbered connector, across the nets two blocks share
+— rails excluded, because GND touches everything and would put every
+block one hop from every other. Bands then sort by depth, and ties keep
+declaration order, which is what keeps the two eFuse channels adjacent:
+they are the same distance from the input and nothing else separates
+them.
+
+Order: USB-C inlet → 36 V→5 V → 5 V→3.3 V → MCU → Ethernet → current
+sense → bus ADC → status chain → Channel 1 → Channel 2 → differential
+link → fan header. In, converted, decided, out.
+
+**Three things had to be right for that, and two of them were wrong when
+`--flow` first shipped.**
+
+*Only the grounds are excluded from the graph, not every rail.* GND
+touches 117 parts and would put every block one hop from every other,
+but dropping the supply rails too takes both switching regulators out of
+the graph entirely — VBUS, BUS_5V and BUS_3V3 are the only nets they
+share with anything. They then sorted as unreachable and landed ninth
+and tenth of twelve: the conversion that belongs behind the inlet ended
+up at the far end of the sheet.
+
+*Shelf 0 goes at the top.* `pack()` and the column path both reverse
+their stacking and both carry the comment saying why — netlist order put
+the USB-C inlet at the bottom and the flow read backwards. The shelf
+path was written without it and reproduced exactly that. Reversing costs
+16 net-spoke crossings, 97 to 113, and buys a sheet that reads downward.
+
+*A shelf may not break between two bands at the same flow depth, if the
+overflow is modest.* Three reviewers have asked for Channel 1 and
+Channel 2 to end up side by side — they are 388 mm apart — and two
+attempts at forcing it both measured worse. Capping the glued run at two
+bands put them 535 mm apart, with crossings 114 → 138 and spoke length
+60,540 → 80,151. The width search dominates shelf composition, so a
+local gluing rule moves everything else; the honest state is that this
+model cannot hold two named bands together without paying for it
+elsewhere. Channel 1 and Channel 2 are equally far from the
+input and nothing else separates them; a wrap between them put one at
+the end of a shelf and the other at the start of the next. Making it an
+absolute rule chained every same-depth band onto one shelf and produced
+a sheet 1795 × 199 mm, so it is a preference worth half a shelf of
+overflow. The two channels are 359 mm apart, down from 472 — closer, not
+yet side by side.
+
+Measured against the column model it replaces: net-spoke crossings 113
+→ 111, total spoke length 58,608 → 60,980 units, occupied cells 17.5 →
+18.4 %.
+
+**The power nets are drawn first, not last.** Shortest-first is best
+for crossing-freedom and wrong for reading: it spends the clear space on
+short signals and leaves the power path as text. On a 36 V board that is
+the one thing that has to be drawn. `--priority-nets` names the local
+power nets, draws them before anything else and exempts them from
+`--max-pins` — CH1_36V, CH2_36V, LX_3V3 and PD_VBUS_SENSE are wires now,
+where they were labels. Four of five; SW_5V has no path that both
+crosses nothing and keeps its distance.
+
+The three board-wide rails stay flags and should: VBUS has 26 pins,
+BUS_5V 28, BUS_3V3 31. A 31-pin wire tree is not a drawing of a rail,
+it is the reason flag symbols exist.
+
+**Two flag overlaps remain, down from six.** A reviewer corrected the
+reasoning here and was right: "the flag cannot be moved" is true and
+attacks the wrong object — the *component* can be, and `arrange.py`
+moves one with all its stubs under a proof. `--stagger 30` separates the
+two pairs of flags on different nets that were drawn into each other, at
+no cost in sheet size or colinear pairs.
+
+What is left is two ground flags inside the body of **J4 and U4**, and
+that is not a spacing problem: those symbols draw their pins *inward*,
+so the free end of the stub — where the flag has to sit — is inside the
+package. Fixing it means editing the library symbol, which this project
+does not do. Reported with coordinates on every run.
+
+**A stack of satellites is not a column.** Centring each stacked
+satellite on its owner put C11, C10 and L1 on one x with a ground symbol
+between each pair, which reads as a series chain from the rail down to
+`SW_5V` — in the buck converter, where the topology is the thing being
+read. They are offset half a stagger each way now: columns holding three
+or more parts go from 3 to 1, and colinear stub pairs from 4 to 1. The
+one column left holds U9 and two of its own satellites, which is a hub
+with parts above it and not a chain.
+
+**The flags are placed before the wires, not after**, and that order is
+load-bearing. `bodies()` keyed on the designator, which a flag has none
+of, so all 180 were invisible to the router — it drew straight across
+their bars, six times through the ground spikes of the LED chain alone.
+Every such touch reads as a junction, and this project's own argument
+makes it one: if nothing crosses, a touch is a node. A flag that is not
+an obstacle turns that argument from a defence into a liability. Nine
+wires through a foreign flag became zero, for one drawn net.
+
+**A pin that loses its flag keeps its name.** Hiding the label as well
+was tried for exactly one round and reverted: it left **53 pins with a
+bare stub ending in nothing** — J1 ten of them, U2 ten, U9 nine — and a
+stub carrying neither symbol nor name reads as *not connected*. The
+argument for it was "the part has a flag a few pins along", and that is
+not a drawing argument: proximity carries no net. Overlapping text is
+the lesser fault.
+
+The overlap is handled where it belongs instead: labels that would land
+on each other are pushed further out, one after another, which takes
+text-on-text from 25 to 19. Bucketing them on the single axis they
+"should" stack along was tried and measured *worse*, 22 against 19,
+because the collisions are not all column-shaped.
+
+**And the overlap count is now reported on every run**, which it was not
+before. The checks here covered label-against-body and flag-against-flag
+and both read zero — predicates that already held. Label against label
+was never asked, and a reviewer counting by eye found it. That is the
+fail-open shape this project warns about everywhere else: a check that
+asks the question whose answer is already yes.
+
+`--labels-outward` moves each net label past the free end of its stub
+and aligns it away from the part. A stub is three pin pitches long and
+`NC_EFUSE1_MODE` is not; 46 of the 261 visible labels overlapped a
+symbol body, almost all on the multi-pin ICs. Now none do. Moving text
+is safe where moving a wire is not — the net is carried by the
+attribute's *value* on the wire, not by where its text sits — and it is
+the one thing in `schwire.py` that changes an existing record, so the
+append-only proof **names the exception** rather than being loosened:
+only a `NET` attribute, only `x`, `y` and `align`.
+
+`--clearance 5` is what buys the second half. Not touching is not the
+same as reading apart: at clearance 0 the maze takes the only free
+corridor and that runs flush along the body, which put **42 segments
+exactly on a symbol outline** — three of LED1's four edges came out
+green, so the border and the wire were the same line. Five units is half
+a pin pitch and takes that to zero, at 13 of the 48 nets. A wire lying
+on an outline is worse than a label, because it asserts something.
+
+`--end-clearance 6` answers the finding that followed, and it is the
+same argument turned around. If "nothing crosses, so every meeting is a
+node" holds, then a trunk running a millimetre clear of ten foreign stub
+ends **is** ten T-junctions — and a reader can dismiss a crossing as
+overlap where a line lying alongside cannot be dismissed. Measured: 70
+drawn segments passed within half a grid of a foreign stub end, most of
+them down the flanks of the two eFuse ICs. At clearance 6 there is one,
+and the rest sit 2.5 to 3 mm out.
+
+The rule is **asymmetric on purpose**: a full allowance at a stub's free
+*end*, none along its flank. The end is what reads as a node; a wire
+beside a stub for part of its length reads as two wires. A symmetric
+band over the whole stub was tried first and costs 18 further nets and
+ten times the runtime for something nobody had complained about. The 51 left as labels are the ones
+that should be: 32 are a single pin or deliberately open, 7 are rails or
+buses that get flag symbols, and 12 span more than 1200 units, where a
+wire across the sheet is worse than a name at each end. The other 22 are
+drawable but have no path that both crosses nothing and keeps its
+distance, and a label is the better answer for those.
+
+**Not crossing is the whole point, because nothing here can draw a
+junction dot.** This format has no junction record — the hand-drawn
+module reference contains none, so EasyEDA renders the dot itself and
+no tool here can ask for one. A crossing and a T are therefore the same
+picture, and a reader cannot tell connected from merely overlapping.
+Routing against that constraint costs 9 nets and removes 283 ambiguous
+crossings, which is the right side of that trade.
+
+Three things were needed. A foreign stub is an obstacle along its whole
+length, not just at the pin on its end. Every net already drawn becomes
+an obstacle for the next, so the maze routes around it instead of being
+rejected afterwards. And nets are routed **shortest first**, because a
+short net boxed out by a long one is the worse trade — that alone is 3
+more nets.
+
+**The supply-to-ground two-pin parts stand up.** 76 of them, ground pin at
+the bottom, which with the flags makes the canonical rail–part–ground
+picture. Which rotation that is has to be measured per part: 61 take 90°
+and 15 take 270°, because the symbol-local offset carrying the ground net
+is not the same one on every symbol. Rotating a cluster is as safe as translating one and checked the
+same way: every pin, recomputed from its component's new stored rotation,
+must still land on a stub endpoint.
+
+**The two channels sit under each other.** Bands are dealt into columns as
+contiguous runs of the netlist order rather than greedily by height, so
+Channel 1 and Channel 2 — the same circuit twice — can be compared side by
+side instead of being 430 mm apart in different columns.
+
+**10 pairs of foreign stubs still lie colinear within 10 mm**, and that is
+reported on every run rather than left to be noticed. Each reads as one
+wire when it is two.
+
+**Two stubs still end up inside another component's symbol**, both on J4,
+and that is reported too. Placement cannot prevent this by itself:
+`extents` folds the stubs into each box, so non-overlapping boxes keep
+them clear — and then `--upright` turns a two-pin part's stubs from
+horizontal to vertical, after the boxes were measured. The rotation is
+therefore decided before placement and the box reserved turned, which took
+it from nine to two.
+
+Three things got the count there, and the first was admitting the check was
+measuring the wrong thing. It called its pairs *foreign* but compared only
+net names, so an upright decoupling capacitor — supply stub above, ground
+stub below, its own body in between — counted as a misreading. That was 97
+of the 99 it used to report. A pair now counts only when no component body
+lies in the gap, which is what makes two segments read as one wire in the
+first place. It also runs last, on the file that is written, rather than
+before the `--upright` pass that turns horizontal stubs vertical.
+
+What remained was real, and spacing was the wrong lever for it: `--gap`
+widens the whole sheet to fix pairs that sit a fixed distance apart.
+`--stagger 20` offsets alternate neighbours in a row *inward*, toward their
+hub, so their stubs stop sharing a line without the band growing. And two
+parts side by side now never stand closer than the detection limit, because
+at that spacing their facing stubs are colinear by construction — that
+alone was 20 of the 30 left, 14 of them the LED chain.
+
+**The rails get symbols, not text.** 180 ground and supply flags replace
+the floating net names the importer leaves on rail pins — 90 GND, 28
+BUS_5V, 25 BUS_3V3, 17 VBUS and the rest, hiding 180 net names.
+
+The 90 GND flags carry no text: an unlabelled ground symbol means GND by
+convention, and the triangle already says it. Every other net keeps its
+name — LED_RTN especially, which uses the same ground symbol and is a
+different net.
+
+`--one-per-part` is why it is 180 and not 226: **one flag per component
+and net, not per pin.** U9 has ten GND pins and got ten ground symbols
+stacked on its pin pitch, their bars overlapping into a single black
+ladder — the ugliest thing on the sheet once the wires were sorted out.
+The pins that lose their flag keep their net label, so nothing becomes
+nameless, and the flag bars ending on a foreign stub drop from 20 to
+14. A capacitor now reads as a
+capacitor between a supply and ground rather than as a capacitor with two
+words beside it.
+
+Each flag shows its net name — that is the attribute a reader sees, and
+hiding it would leave 101 identical bare supply bars with BUS_3V3, VBUS and
+CH1_36V indistinguishable.
+
+**Fourteen flag bars end on a foreign stub's endpoint, and whether that
+matters is the one open question on this sheet.** A flag connects at its
+pin's *root*: every root sits on a stub endpoint of its own net and none
+on a foreign one, which is measured rather than assumed. The bar is
+the drawn far end. Whether EasyEDA joins a net along a pin's graphic or
+only at its root cannot be decided from this file, and the flag cannot be
+moved out of the way either — the root has to stay on the stub or the flag
+connects to nothing. Spacing does not reach it either — the count was 20
+at every `--gap` tried, because the bar is as long as the pin pitch and
+so reaches the *neighbouring pin's* stub on the same IC. That is also why
+`--one-per-part` took it to 14: most of those bars were reaching another
+pin of the part they already serve.
+
+`netflags.py` reports each one by net and coordinate. **Re-export after
+importing and run `epro.py diff`**: if EasyEDA joined them, nets have
+merged and the pin counts move. That is the only thing that settles it,
+and it must be settled before the board is ordered.
+
+The symbols are **copied, not drawn**: a flag is a placed component pointing
+at a `SYMBOL` and a `DEVICE` document, and both are lifted out of the
+hand-drawn module reference, which already uses them. They carry no
+designator and no supplier part, so they stay out of the BOM and out of
+`epro.py diff`'s part check, and they add no wire, so its 441 pin
+connections are untouched.
+
+**Each block says its name**, which three reviewers in a row asked for
+and the second corrected me on: it is not blocked by the format. The
+flags already place arbitrary visible text, and the importer's own
+`Designator` and `Name` attributes carry absolute x/y — a positioned,
+visible string is an attested shape in this file.
+
+So a title is **one more `ATTR` on a component the block already has**:
+no new symbol, no new component, nothing invented. It is anchored on the
+block's widest part, because anchoring on an arbitrary member would move
+the title with a capacitor. Twelve titles, appended, with every existing
+record checked unchanged and in order afterwards — a title is not worth
+a changed record.
+
+The title sits at the block's **left edge**, every one the same
+distance above its block. Centred, it lands above whatever happens to be
+in the middle of a wide block — which put "Channel 1 eFuse" over the
+current-sense row.
+
+**`--block-gap 120` against `--gap 20`** is what makes the blocks read
+as blocks. At 48/20 the space between two blocks was 12 mm against 5,
+which no reader takes for a section break; at 120 it is 30 mm against 5.
+Earlier it was 20/20, so grouping by proximity was *inverted* — it could
+not work and had never been measured.
+
+**There is a title block**, bottom right, seven lines: title, drawing
+number, sheet, revision, date, who drew it and the paper size. EN ISO 7200 asks for a
+drawing to say that much, and the text is the part it asks for. The box
+it normally sits in is not drawable — every `LINE` on this canvas
+carries a `lineGroup` pointing at a `WIRE`, so a border would be a wire.
+The date is an argument and never a clock read: a date this tool
+invented would be the date it ran, which is not when the drawing was
+made. **What is not settled is whether EasyEDA keeps an attribute
+whose key it does not know.** Nothing in the two exports available here
+answers that, and guessing would be inventing library behaviour. Import
+it and look; if the titles are gone, the key is what to change, not the
+method.
+
+`tools/schpreview.py` draws that picture from the export, so a layout can be
+looked at without a round trip through the editor.
+
+**1b. Or split it over four sheets.** Two reviewers graded the single
+sheet independently, at 3,5 and 4,0, and put its ceiling at 3,0 to 3,5
+with every remaining single-sheet fix applied. Both named the same step
+as worth a full grade, and neither of this format's hard limits — no
+junction record, no free text — stands in its way:
+
+    ./tools/split.py designs/led-matrix-controller --dry-run
+    ./tools/split.py designs/led-matrix-controller -o designs/led-matrix-controller/sheets
+
+The reason is not room. **A cross-sheet net is a label by right**, where
+a cross-block net on one sheet is a wire somebody failed to draw. The
+seams follow the power path — what comes in, what converts it, what
+decides, what goes out — so a reader with one of those four questions
+opens one sheet.
+
+| Sheet | Parts | Pins | Nets of its own | Crossing |
+|---|---|---|---|---|
+| Input and PD | 31 | 104 | 14 | 14 |
+| Supply | 23 | 56 | 10 | 4 |
+| Control | 47 | 185 | 43 | 15 |
+| Outputs | 28 | 96 | 24 | 8 |
+
+**Only 17 of the 108 nets cross a sheet boundary.** 91 live entirely on
+one sheet, which is the number that matters: on the single sheet 51 nets
+stay labels and most of them span blocks, so the same nets divided along
+these seams stop being a shortfall.
+
+The map lives in `design.yaml` under `sheets:`, naming the same blocks
+`arrange.py` reads. A block on no sheet is an error and so is a block on
+two — the first drops components off the board and the second places
+them twice, and **neither shows up anywhere downstream**, because each
+sheet is checked on its own and looks complete. `split.py` counts
+components and pin connections on both sides and refuses to write unless
+they match: 129 of 129 and 441 of 441 here.
+
+**Each sheet lists the signals that continue on another one.** That is
+what a sheet set owes a reader and a single sheet does not — DIN EN
+61082-1 calls it signal continuation, and without it the split trades
+one problem for another: `BUS_3V3` on sheet 3 saying nothing about where
+it comes from is worse than the same net being a long wire on one sheet.
+`blocktitles.py --xref-sheets` reads the per-sheet netlists, works out
+which nets touch more than one, and writes the list as text. 14, 4, 15
+and 8 signals.
+
+A list rather than a note on each label: 17 nets against 17 more strings
+scattered among 250. And **one document number with a sheet index**, not
+four numbers for one four-sheet document.
+
+**The sheet numbers come from one place.** The first version numbered
+them `sorted(dirname)` while the title block counted by `design.yaml` —
+`control` was 1 against the title block's 3, and every one of the 41
+cross-references then pointed at the wrong sheet. Internally consistent,
+so nothing complained, and every statement false: a missing reference is
+a visible gap, a wrong one gets followed. The number now comes from
+`design.yaml`, the tool **refuses to write** if `--sheet` disagrees with
+it, and each entry carries the sheet's name beside its number —
+`CH1_EN -> sheet 3 (Control)` — because a wrong number next to the right
+name is obvious and a bare wrong number never is.
+
+**Each sheet carries a field grid, and each reference names the field.**
+ISO 5457 wants a frame with centring marks and a grid; the frame is not
+drawable — every `LINE` on this canvas is a wire — but the grid *marks*
+are text, and they are the half a cross-reference needs. "sheet 3" on a
+430 × 390 mm sheet with 47 parts is a search; `CH1_EN -> sheet 3
+(Control) / B9` is a place.
+
+**The marks are checked against every other string on the sheet**, and
+the tool refuses to write if one lands on text. The first version put a
+field number inside the title block on all four sheets — it took its
+extent from the components, and the title block and the reference list
+are appended at the same edge afterwards. The title block is the one
+zone a drawing standard protects, so that is the worst place this tool
+can put a character. The extent now includes what the run has just
+added, and the overlap is measured rather than assumed.
+
+**That costs a second pass**, and the reason is worth stating: naming
+the field a signal lands in needs the *other* sheet's geometry, which
+exists only once that sheet is built. So the chain runs twice — once to
+build all four, once more with `--xref-built` pointing at the first
+run's output. Nothing else about the second pass differs, so a sheet
+that gained no reference comes out byte-identical.
+
+**The paper size is derived, never given.** It was the bare extent, which
+is what this document warns about two paragraphs up, and two of four
+sheets said A3 where they needed A2. It is measured against the ISO 5457
+*drawing* areas and reported as a **floor**: a flag's name has no
+coordinates, EasyEDA places it, so the true extent is not knowable from
+the file.
+
+**A block title is never further from its own block than from another
+one.** It used to sit a fixed distance above, which put "Fan header" 400
+units over J4 with a different block's title directly below it — so the
+one part on that sheet read as belonging to the wrong group. That is a
+false statement, not an untidy one. The offset now halves until nothing
+else is nearer.
+
+Each sheet gets its **own directory** with its own `design.yaml`,
+because the arrange chain wants a block for every designator it finds
+there — a shared file carrying all twelve blocks makes every sheet
+demand geometry for the whole board and refuse.
+
+**`carve.py` skips the round trip through the editor.** The whole-board
+export already holds every SYMBOL and DEVICE document, so a sheet can be
+cut straight out of it:
+
+    ./tools/carve.py <export.epro2> sheets/<name>/netlist.json -o <name>.epro2
+
+This **deletes**, where `arrange.py` only translates, so it cannot
+borrow that safety argument — removing a component removes its pins from
+the nets they were on. The proof is the other one this project trusts:
+`epro.py diff` against the sheet's own netlist, which counts pin
+references per net and so catches both a part left behind and a stub
+removed that should have stayed. Four sheets, four identical diffs.
+
+Library documents are kept whole. An unused SYMBOL costs a few kilobytes
+where pruning one risks removing a document a remaining part points at,
+and a component whose device is missing imports as nothing at all.
+
+`arrange.py --grid-from` is what a carved sheet needs: it infers the
+placement grid from the *uncarved* export, because a subset's anchor
+spacings are multiples of the real pitch and not the pitch itself.
+Without it the grid comes out wrong and records fall outside their cell,
+which surfaces as "no geometry found".
+
+Each sheet is arranged with **its own `--columns` and `--max-row`**. The
+single-sheet values were once tuned by hand per sheet; the shelf packer
+and `--flow` replaced that, so every sheet now runs the same flags as the
+whole board.
+
+| Sheet | Parts | Cross-sheet signals | Size | At least |
+|---|---|---|---|---|
+| 1 Input and PD | 31 | 14 | 280 × 394 mm | A2 |
+| 2 Supply | 23 | 4 | 261 × 227 mm | A3 |
+| 3 Control | 47 | 15 | 430 × 390 mm | A2 |
+| 4 Outputs | 28 | 8 | 196 × 369 mm | A3 |
+
+Against 578 × 741 mm and 309 drawn objects on the single sheet. **The
+two A4s need A3 once the sheet carries a frame** — ISO 5457 leaves
+277 × 180 mm usable on A4 and both are 189 mm or taller. Quoting the
+bare extent as a paper size is the easy way to be wrong by one format.
+
+**What the split does not fix on its own is density.** Measured as
+occupied 40-pixel cells, the four sheets are 11.4, 9.6, 12.7 and 13.1 %
+against the single sheet's 18.4 % — each one is *thinner* than the sheet
+it helps replace. Making room is the first half and the layout has to
+move into it.
+
+Shelf packing is what moved the single sheet from 17.5 to 18.4 %, and it
+does **not** do the same here: the whitespace on a three-band sheet is
+inside the bands, not between them, and a band is a hub with its
+satellites spread across the hub's pin span. Both levers were measured
+rather than assumed — packing for area alone gave one sheet 699 × 133 mm
+at 19.6 %, and constraining it to a sheet's shape put it back to 11.6 %.
+That trade is the finding, and closing it needs the band itself to pack
+tighter, which neither parameter reaches.
+
 **2. Draw the five hand-drawn symbols** — J2, J3 and TP1-TP3 — onto nets that
 already exist. See *Hand-drawn after import*, and check `LED_RTN` against GND
 while doing it.

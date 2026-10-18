@@ -362,6 +362,14 @@ between a document and a dump.
 ## Reproducibility
 
 The span figures at the top were produced by throwaway scripts and are not
-reproducible from anything committed. Before they are cited again they need
-a committed measurement tool, in the way `consistency.py` backs the numbers
-in the design record. Until then they are observations, not results.
+reproducible from anything committed, which is why this document says not
+to cite them.
+
+`arrange.py` now measures and prints its own, on every run, so the design
+record quotes a number the tool recomputes rather than one a person
+remembered. It is the **star model** and not the hub fan-out this document
+proposed: every net gets the centroid of the parts on it and every part a
+spoke to it, with rails left out. Hub fan-out needs an ownership map that
+only exists inside `--layout star`, so it could not describe the layout it
+was supposed to be compared against. The star model is defined for any
+placement, which is the property a before/after needs.

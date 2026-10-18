@@ -1,0 +1,78 @@
+# Sheet 'Supply', written by tools/split.py.
+#
+# The rails come from the design's own design.yaml. The
+# block map is carried explicitly because the generator's
+# `# ---- Name ----` comments do not travel with a split
+# netlist, and a designator in no block is an error in
+# arrange.py -- placing it somewhere by default would put
+# a part in the wrong block silently.
+
+rails:
+  GND:
+    type: ground
+
+  # The PD bus. 36 V nominal; a compliant fixed PDO may sit at +5%, so
+  # every margin in this design is worked against 37.8 V.
+  VBUS:
+    voltage: 36.0
+    # Every margin in this design is worked against the +5% a compliant fixed
+    # PDO may sit at, so the overvoltage check has to see it too. Declaring only
+    # the nominal would pass a pin that the tolerance breaks.
+    voltageMax: 37.8
+
+  # Channel outputs, downstream of the TPS16630 eFuses. Same voltage as the
+  # bus; separate nets so a short on one chain is visibly one chain.
+  CH1_36V:
+    voltage: 36.0
+    voltageMax: 37.8
+  CH2_36V:
+    voltage: 36.0
+    voltageMax: 37.8
+
+  # Rails. The 5 V stage runs in near-100% duty pass-through at vSafe5V, so
+  # it is 4.56 V at the bottom of the USB-C tolerance - see the dropout
+  # table. 5.0 V is the nominal declared here; the sag is a documented
+  # limit rather than something the ERC can model.
+  BUS_5V:
+    voltage: 5.0
+    # The worst case, not the nominal, and the difference decides a real check:
+    # in pass-through at the bottom of vSafe5V this rail is 4.56 V typical and
+    # 4.48 V at the converter's applicable worst-case on-resistance. The p.5
+    # 190 mOhm maximum is specified at BOOT-SW = 6 V; this design runs at low
+    # dropout, where Figure 1's 3 V curve applies and the maximum is unpublished
+    # - about 0.24 Ohm at the curve's 1.25-1.30x ratio. 4.48 V is UNDER the
+    # 74AHCT541's 4.5 V floor, so P1-undervoltage will fire here on purpose. See
+    # Assumptions; the consequence is cosmetic and documented.
+    voltageMin: 4.48
+  BUS_3V3:
+    voltage: 3.3
+
+  # The HUSB238A's VBUS pin sits behind the Figure 6 follower - an MMBT5551
+  # emitter follower here, not the vendor's BSS138 - which holds it near 26.3 V
+  # on a 36 V bus, set by the BZT52C27 clamp on Q3's BASE. Declaring it as its
+  # own rail is what stops P1 reading the 36 V bus straight onto a 33 V-absolute
+  # pin: the follower is the whole reason that pin survives.
+  PD_VBUS_SENSE:
+    voltage: 26.3
+    # The low end matters as much as the high one here. At the bottom of
+    # vSafe5V D14 holds this pin at 4.11 V against the part's 3.15 V minimum
+    # with VDD tied to 3V3 - 0.96 V of margin, and the tightest rail on the
+    # board. Declared so P1-undervoltage can see it; without it the check is
+    # blind on the one rail whose margin the design argues about most.
+    voltageMin: 4.11
+    # The Zener's high corner (28.35 V) less the follower's low V_BE (0.6 V).
+    voltageMax: 27.75
+
+  # The module return. NOT GND: R1, the 5 mOhm shunt, sits between them, and a
+  # netlist that calls J2/J3 pin 2 GND shorts the shunt through the ground pour
+  # and the current sense reads zero. The two nets meet at the shunt and nowhere
+  # else. No ERC rule catches a connector wired to the wrong net, so the name is
+  # the whole defence.
+  LED_RTN:
+    type: ground
+
+
+blocks:
+  36 V -> 5 V: [C10, C11, C5, C6, C7, C8, C9, D2, L1, R24, R25, R26, R27, U4]
+  5 V -> 3.3 V: [C12, C13, C14, L2, R28, R29, R30, U5]
+  Fan header: [J4]

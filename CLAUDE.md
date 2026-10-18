@@ -651,6 +651,9 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── stale.py           find superseded values after a numeric change
     │   ├── consistency.py     check a document against the netlist it describes
     │   ├── xref.py            check a document's "see X" pointers resolve
+    │   ├── split.py          divide a netlist into one file per sheet
+    │   ├── carve.py          cut one sheet's parts out of a whole-board export
+    │   ├── blocktitles.py    name each functional block on the sheet
     │   ├── stock.py           check a BOM against live LCSC stock
     │   ├── okf.py             check the docs against OKF v0.2 conformance
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)

@@ -67,7 +67,7 @@ def build(path, parts):
                  "endX": px - 20, "endY": py, "strokeWidth": 1})
             add({"type": "ATTR", "id": f"nt{i}_{j}"},
                 {"key": "NET", "value": net, "parentId": wid,
-                 "x": px - 10, "y": py})
+                 "valueVisible": True, "x": px - 10, "y": py})
     # the symbol documents the pins live in
     for i, (d, cx, cy, pins) in enumerate(parts):
         add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": f"sym{i}"})
@@ -159,12 +159,30 @@ def main():
     n2 = tmp / "short.json"
     netlist(n2, shorty)
     rc, log = run(s2, n2, "-o", o2)
-    check("a path over a foreign pin is refused", rc == 0 and "FAR" in log
-          and "no clean path" in log, log)
+    check("the straight path over a foreign pin is not taken", rc == 0, log)
     if o2.exists():
-        check("...and no wire was drawn for it",
-              len(wires(o2)) == len(wires(s2)),
-              f"{len(wires(s2))} -> {len(wires(o2))}")
+        # It used to be refused outright, because the three fixed shapes
+        # all crossed R2's pin and there was nothing else to try. The maze
+        # fallback detours instead, which is what a human would draw -- so
+        # the assertion is no longer "nothing was drawn" but the stronger
+        # "something was drawn and it misses the pin".
+        import json as _j
+        z = zipfile.ZipFile(o2)
+        recs = [( _j.loads(l.partition("||")[0]), _j.loads(l.partition("||")[2].rstrip("|")))
+                for l in z.read("doc.epru").decode("utf-8").split("\n") if "||" in l]
+        netof = {b["parentId"] for h, b in recs
+                 if h.get("type") == "ATTR" and b.get("key") == "NET"}
+        drawn = [(b["startX"], b["startY"], b["endX"], b["endY"])
+                 for h, b in recs if h.get("type") == "LINE"
+                 and b.get("lineGroup") not in netof]
+        check("...a detour was drawn instead", len(drawn) > 0,
+              f"{len(drawn)} segment(s)")
+        import importlib.util as _i
+        _sp = _i.spec_from_file_location("sw", TOOL)
+        _m = _i.module_from_spec(_sp); _sp.loader.exec_module(_m)
+        check("...and it does not touch the foreign pin",
+              not any(_m.touches(s, (100, 0)) for s in drawn),
+              str(drawn))
 
     # --- span and pin-count gates -----------------------------------------
     rc, log = run(src, nl, "--dry-run", "--max-span", "10")
@@ -248,6 +266,175 @@ def main():
     check("an unverified transform stops the run",
           rc == 1 and "NOSTUB" in log, log)
     check("...and nothing is written", not gone.exists())
+
+    # --- the maze: a target off the step lattice -------------------------
+    # The lattice is anchored at the start pin, so a target that is not a
+    # whole GRID away in both axes used to be unreachable -- and only 55 of
+    # the real board's 441 pins sit on a multiple of 10 in x. The search
+    # reported "no clean path", which reads as a layout too tight rather
+    # than a step size that cannot land, and that cost 29 of 37 nets.
+    sys.path.insert(0, str(ROOT / "tools"))
+    import schwire
+
+    clear = schwire.Obstacles([], [])
+    G = schwire.GRID
+    straight = schwire._route_pair((0, 0), (3 * G, 0), clear, {(0, 0), (3 * G, 0)})
+    check("a target on the lattice is reached", straight is not None)
+
+    off = (3 * G + 3, 0)
+    skew = schwire._route_pair((0, 0), off, clear, {(0, 0), off})
+    check("...and so is one three units off it",
+          skew is not None and skew[-1] == off, str(skew))
+
+    both = (3 * G + 3, 2 * G + 7)
+    skew2 = schwire._route_pair((0, 0), both, clear, {(0, 0), both})
+    check("...and one off the lattice in both axes",
+          skew2 is not None and skew2[-1] == both, str(skew2))
+
+    # --- obstacles are geometry, not a rasterised point set --------------
+    # The point set was rasterised on multiples of GRID while the search
+    # walks the start pin's lattice, so the two never met and the router
+    # drove straight through U7 and U2. An inverse probe: put the body
+    # somewhere no multiple of GRID lands inside it.
+    # The wall spans no multiple of GRID in x, and is short enough in y
+    # that a detour exists -- so "no path" cannot stand in for "went
+    # around", which is what makes this probe worth running.
+    wall = schwire.Obstacles([(13, -15, 17, 15)], [])
+    around = schwire._route_pair((0, 0), (30, 0), wall, {(0, 0), (30, 0)})
+    check("a route past a body off the lattice is found",
+          around is not None, str(around))
+    check("...and it does not pass through it",
+          around is not None
+          and not any(13 < x < 17 and -15 < y < 15 for x, y in around),
+          str(around))
+    check("...because the direct step is refused",
+          wall.step_blocked(0, 0, 30, 0, set()) is True)
+    check("...while a step clear of it is not",
+          wall.step_blocked(0, 50, 10, 50, set()) is False)
+
+    # --- a foreign pin may not be run over, the net's own may ------------
+    pinned = schwire.Obstacles([], [(20, 0)])
+    check("a step running over a foreign pin is refused",
+          pinned.step_blocked(0, 0, 30, 0, set()))
+    check("...and allowed when that pin belongs to this net",
+          not pinned.step_blocked(0, 0, 30, 0, {(20, 0)}))
+
+    # --- a foreign stub is an obstacle, not just its endpoint ------------
+    # There is no junction record in this format -- the hand-drawn
+    # reference has none -- so a crossing and a T are indistinguishable
+    # on the sheet and the only honest answer is not to cross. Blocking
+    # the pin alone left 283 crossings; blocking the stub leaves none.
+    vstub = [(50, -40, 50, 40, "GND")]
+    withstub = schwire.Obstacles([], [], vstub)
+    check("a step crossing a foreign stub is refused",
+          withstub.step_blocked(0, 0, 100, 0, set(), "SIG") is True)
+    check("...and allowed when the stub is this net's own",
+          withstub.step_blocked(0, 0, 100, 0, set(), "GND") is False)
+    check("...and a step that misses the stub is allowed",
+          withstub.step_blocked(0, 200, 100, 200, set(), "SIG") is False)
+
+    # a wire drawn for an earlier net becomes an obstacle for later ones
+    withstub.add_wire([(70, -40, 70, 40)], "VCC")
+    check("a wire already drawn is an obstacle too",
+          withstub.step_blocked(60, 0, 100, 0, set(), "SIG") is True)
+    check("...and not for the net that owns it",
+          withstub.step_blocked(60, 0, 100, 0, set(), "VCC") is False)
+
+    # --- clearance: not touching is not the same as reading apart -------
+    # At clearance 0 the maze takes the only free corridor and that runs
+    # flush along the symbol outline -- 42 segments on this board lay
+    # exactly on one, and three of LED1's four edges came out green.
+    box = [(0, 0, 100, 100)]
+    tight = schwire.Obstacles(box, [])
+    loose = schwire.Obstacles(box, [], (), 5)
+    check("a segment along the outline is allowed at clearance 0",
+          tight.step_blocked(-10, 0, 110, 0, set()) is False)
+    check("...and refused once a clearance is asked for",
+          loose.step_blocked(-10, 0, 110, 0, set()) is True)
+    check("...while one beyond the clearance is still allowed",
+          loose.step_blocked(-10, -20, 110, -20, set()) is False)
+    check("...and the clearance does not block the far side of the sheet",
+          loose.step_blocked(-10, -500, 110, -500, set()) is False)
+
+    # --- the free end of a stub needs more room than its flank ----------
+    # "No crossings means every meeting is a node" reads the other way
+    # too: a trunk running a millimetre clear of ten foreign stub ends is
+    # ten T-junctions to the eye. Measured on the real board, 70 drawn
+    # segments passed within half a grid of a foreign end; end-clearance
+    # 6 leaves one. The flank is different -- a wire beside a stub for
+    # part of its length reads as two wires -- so the rule is asymmetric.
+    stub1 = [(50, 0, 50, 40, "GND")]
+    flank = schwire.Obstacles([], [], stub1, 0, 0)
+    ended = schwire.Obstacles([], [], stub1, 0, 6)
+    check("a step passing 4 units from a foreign stub end is allowed at 0",
+          flank.step_blocked(0, 44, 100, 44, set(), "SIG") is False)
+    check("...and refused once the end has a clearance",
+          ended.step_blocked(0, 44, 100, 44, set(), "SIG") is True)
+    check("...while 8 units away is allowed again",
+          ended.step_blocked(0, 48, 100, 48, set(), "SIG") is False)
+    check("...and the net's own stub end never blocks it",
+          ended.step_blocked(0, 44, 100, 44, set(), "GND") is False)
+
+    # --- labels off the body, and the exception that allows it ----------
+    # 46 of 261 visible labels overlapped a symbol: a stub is three pin
+    # pitches long and `NC_EFUSE1_MODE` does not fit in that. Moving the
+    # text is safe where moving a wire is not -- the net is carried by
+    # the attribute's value on the wire, not by where its text sits.
+    #
+    # But schwire is append-only, and this is the one thing that changes
+    # an existing record. So the proof names the exception instead of
+    # being loosened: only a NET attribute, only x/y/align. The probe
+    # that matters is the second one, which checks the *refusal* still
+    # works -- a check relaxed to "some records may differ" would have
+    # retired itself.
+    d = tmp / "labels"; d.mkdir()
+    lparts = [("R1", 0, 0, [(0, 0, "SIG"), (0, -40, "GND")]),
+              ("R2", 100, 0, [(0, 0, "SIG"), (0, -40, "GND")])]
+    lsrc, nl2 = d / "in.epro2", d / "netlist.json"
+    build(lsrc, lparts)
+    netlist(nl2, lparts)
+    plain, moved = d / "plain.epro2", d / "moved.epro2"
+    rc1, _ = run(lsrc, nl2, "-o", plain)
+    rc2, log2 = run(lsrc, nl2, "--labels-outward", "-o", moved)
+    check("--labels-outward is accepted", rc2 == 0, log2)
+    # A count, and a non-zero one. The first version of this fixture had
+    # no  on its NET attributes, so nothing was eligible,
+    # nothing moved, and every probe below passed against an untouched
+    # file -- including a deliberate tamper. A probe that cannot fail is
+    # the failure mode this file exists to prevent.
+    import re as _re
+    _m = _re.search(r"(\d+) net label\(s\) moved", log2)
+    check("...and says how many it moved, which is not zero",
+          _m is not None and int(_m.group(1)) > 0, log2)
+
+    if plain.exists() and moved.exists():
+        def nets(path):
+            out = {}
+            for line in zipfile.ZipFile(path).read("doc.epru").decode(
+                    "utf-8").split("\n"):
+                if "||" not in line:
+                    continue
+                h, _, b = line.partition("||")
+                try:
+                    hh, bb = json.loads(h), json.loads(b.rstrip("|"))
+                except json.JSONDecodeError:
+                    continue
+                if hh.get("type") == "ATTR" and bb.get("key") == "NET":
+                    out[hh["id"]] = bb
+            return out
+        a_, b_ = nets(plain), nets(moved)
+        check("...and every label keeps its net name",
+              {k: v.get("value") for k, v in a_.items()}
+              == {k: v.get("value") for k, v in b_.items()})
+        # rotation joined the list: a label on a vertical stub is set
+        # along it, because a horizontal name is wider than a pin pitch
+        # and a row of them can then only be staggered. Still only these
+        # four keys -- the exception stays named rather than widened.
+        check("...while only x, y, align and rotation differ",
+              all({q for q in set(a_[k]) | set(b_[k])
+                   if a_[k].get(q) != b_[k].get(q)}
+                  <= {"x", "y", "align", "rotation"}
+                  for k in a_ if k in b_))
 
     print()
     if FAILURES:
