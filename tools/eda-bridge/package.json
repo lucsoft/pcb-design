@@ -1,10 +1,10 @@
 {
   "name": "eda-bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "MCP server and EasyEDA Pro extension, two halves of one bridge",
+  "description": "MCP server driving a live EasyEDA Pro editor over CDP",
   "license": "Apache-2.0",
   "dependencies": { "ws": "^8.18.0" },
-  "scripts": { "test": "node test.mjs" }
+  "scripts": { "test": "node live.mjs" }
 }

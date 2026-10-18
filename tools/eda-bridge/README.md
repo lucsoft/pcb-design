@@ -1,119 +1,103 @@
 ---
 type: Tool
-title: "EasyEDA bridge: an MCP server and the extension it talks to"
-description: Two halves of one bridge. The server runs here and listens; the extension runs inside EasyEDA Pro and dials in. What is tested, what is not, and why the shape is what it is.
+title: "EasyEDA bridge: driving a live editor over CDP"
+description: An MCP server that reaches the EasyEDA Pro extension API through the browser's debugging protocol. What was measured to make that possible, what it costs, and what is not proven.
 status: draft
-generated: { by: claude-code/claude-opus-5, at: 2026-10-18T10:00:00Z }
+generated: { by: claude-code/claude-opus-5, at: 2026-10-18T10:30:00Z }
+verified:
+  - { by: process:live-test, at: 2026-10-18T10:30:00Z }
 sources:
   - id: api
     resource: https://prodocs.easyeda.com/en/api/guide/
     title: The EasyEDA Pro extension API this drives
-  - id: agent
-    resource: https://github.com/easyeda/eext-easyeda-api-agent
-    title: EasyEDA's own Apache-2.0 extension, which the manifest follows
 ---
 
 # The EasyEDA bridge
 
-## Why it is two halves and not one
+    nix-shell --run 'cd tools/eda-bridge && node live.mjs'
 
-`eda` is **not** a page global. The API documentation is explicit: every
-extension gets its own `eda` object and it is not shared with any other.
-So nothing outside an extension can reach it — not the browser console,
-not the Chrome DevTools Protocol, not a userscript. Code that wants to
-drive the editor has to *be* an extension.
+## Why there is no extension
 
-That rules out the shape this would otherwise have taken. What is left is
-a bridge: an extension inside the editor, a server outside it, and a
-WebSocket between them.
+The API documentation says every extension gets its own `eda` object,
+"not shared with other extensions". That reads as isolation nothing
+outside can cross, and this bridge was first built the way that implies:
+an `.eext` inside the editor, a server outside, a WebSocket between.
 
-**The editor dials out, the server listens.** An extension cannot open a
-port, so the direction is forced — and it is the better one anyway. The
-bridge is reachable only while somebody has opened the editor and picked
-*Connect*; it does not stand open waiting.
+**Measured on a live editor, it is not true** — or not the whole truth.
+The editor keeps the same object graph on `window._EXTAPI_ROOT_`, in the
+page's main world, which is exactly where the Chrome DevTools Protocol
+evaluates:
 
-**Desktop would not change any of this.** The desktop client is an
-Electron wrapper around the same web application, with the same extension
-isolation. It was considered and is not worth the NixOS packaging work:
-EasyEDA ships Linux as a bare ZIP, and the Flathub build needs
-`services.flatpak.enable` and a rebuild, for no capability the browser
-does not already have.
+    _EXTAPI_ROOT_                              120+ namespaces
+      sch_PrimitiveComponent, sch_Netlist, …   schematic
+      pcb_PrimitiveComponent, pcb_Drc, …       board
+      dmt_Project, lib_Device, sys_*           project, library, system
 
-## Installing it
+    sys_Environment.getEditorCurrentVersion()  "3.2.206"
+    sys_Message.showToastMessage(…)            a toast appears
 
-**1. Register the server** in `.mcp.json`, beside `jlcpcb`:
+So the extension is gone and nothing is lost: no `.eext` to build, no
+import step, nothing to keep in step with the editor's version.
 
-```json
-"eda-bridge": {
-  "type": "stdio",
-  "command": "/home/lucsoft/pcb-design/tools/eda-bridge.sh",
-  "args": [], "env": {}
-}
-```
+**Two things about this were wrong before they were checked**, and both
+are the same mistake — reasoning from the documentation instead of
+probing. The first was the isolation. The second was the conclusion drawn
+from it, that the desktop client might help; it is an Electron wrapper
+around the same page and would have changed nothing.
 
-**2. Build the extension.** It needs EasyEDA's own SDK, which is not
-vendored here:
+## What it costs, plainly
 
-```sh
-cd tools/eda-bridge
-npm install --no-save @jlceda/pro-api-types esbuild
-npx esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js
-zip -r pcb-design-bridge.eext extension.json dist/
-```
+The browser has to run with `--remote-debugging-port=9222`. **That port
+is full control of every tab in that browser** — cookies, sessions,
+anything typed. Any local process can use it. This is a real exposure and
+the reason it is stated here rather than in a footnote.
 
-**3. Load it** in EasyEDA Pro: *Advanced → Extension Manager → Import*,
-pick the `.eext`. Then *pcb-design bridge → Connect*. A toast says
-whether it reached the server.
+    helium --remote-debugging-port=9222        # or any Chromium build
 
-`eda_status` answers without an editor, so it is the first thing to call:
-it reports whether one is connected and on which port.
+The server finds the EasyEDA tab itself; it does not open or close tabs,
+and it never navigates.
 
-## What the tools are
+## The tools
 
-Pass-throughs, every one. The server owns no knowledge of schematics — it
-forwards a named call and returns what came back. What a supply sheet
-*is* lives in `tools/*.py`, where it can be tested without an editor in
-the loop.
+`eda_status` first, always. It answers without an editor and gives three
+distinct answers rather than two: no browser on the port, a browser but
+no EasyEDA tab, or a tab whose API has not loaded because nobody is
+logged in. Each needs a different fix, so each says so.
 
-| tool | what it does |
+| tool | |
 |---|---|
-| `eda_status` | is an editor connected, and on which port |
-| `eda_editor_info` | editor and environment versions |
-| `eda_document_info`, `eda_document_list` | the open document, and the project's documents |
-| `eda_schematic_components`, `eda_schematic_nets`, `eda_schematic_selected` | what is on the open schematic |
-| `eda_pcb_components` | what is on the open PCB |
-| `eda_move_component`, `eda_rotate_component` | move or turn one schematic component |
-| `eda_export_document`, `eda_export_3d` | export the document, or the board as STEP |
-| `eda_show_message` | a toast, to prove the bridge is live |
+| `eda_status` | is a live editor reachable, and which version |
+| `eda_namespaces` | the API's namespaces, or the calls in one |
+| `eda_call` | any namespace, function and arguments |
+| `eda_editor_info` | editor version and build |
+| `eda_project_info`, `eda_project_documents` | the open project |
+| `eda_schematic_components`, `_nets`, `_netlist`, `_selected` | the open schematic |
+| `eda_pcb_components` | the open board |
+| `eda_message` | a toast — the cheapest proof the bridge is live |
 
-**The write tools are deliberately two.** A schematic is a document
-somebody is working in, and a bridge that can change anything can change
-the wrong thing with no undo an agent can reach. The extension dispatches
-through a **table of allowed calls** rather than `eda[ns][fn](...)`:
-what is not listed cannot be invoked, and adding a capability is a diff
-somebody can read.
+**`eda_call` can reach anything, and the named tools exist anyway.** A
+tool list is what an agent reads to find out what it may do; a single
+do-anything call makes every schematic edit look alike to whoever is
+granting permission. `eda_namespaces` is what makes the rest
+discoverable, because guessing in advance which of 120 namespaces matter
+would have been wrong.
 
-## What is tested, and what is not
+## What is proven and what is not
 
-    cd tools/eda-bridge && npm test
+`live.mjs` runs nine probes against a **real editor**: that it is
+reachable and reports a version, that the namespaces list and contain
+the expected ones, that a namespace lists its calls, that a named tool
+reaches the API, that a write arrives (the toast), and that an unknown
+namespace or call is **named** in the error rather than swallowed. All
+nine pass against EasyEDA Pro 3.2.206 in Helium.
 
-Thirteen probes against a **mock editor**: that the server speaks MCP,
-that a call reaches the editor by the name the extension registers, that
-parameters travel with it, that the editor's own error is passed through
-rather than swallowed, and that every way the editor can be absent —
-never connected, disconnected mid-call, silent — produces an *error*
-rather than a hang. An agent waiting forever on a dead editor is the
-worst of the three answers, so each is a probe.
+It skips cleanly with the reason when no editor is up, rather than
+failing — a test that cannot run is not a test that failed.
 
-**What no test here can prove is that `eda.*` does what the documentation
-says.** The call names in `src/index.ts` are written from the API
-reference, not from a running editor — this machine has no EasyEDA, so
-the bridge has never been attached to one. Expect some of them to be
-wrong on first contact. `eda_editor_info` and `eda_show_message` are the
-two to try first: they need no document, so a failure there is the bridge
-and a failure elsewhere is a call name.
-
-This is the same honesty the rest of the repository keeps about EasyEDA:
-several questions in `CLAUDE.md` end in *"import it and look — that is
-the only thing that does"*. Attaching the bridge is the first chance to
-answer them.
+**Not proven:** anything that modifies a document. The write path is
+`eda_call` plus whatever the API offers, and the only write exercised
+here is a toast. `sch_Netlist.setNetlist` and `sch_PrimitiveComponent.create`
+exist and are the obvious way to close the import loop that `CLAUDE.md`
+still describes as a manual step — but neither has been run, and running
+one against a project somebody cares about is a decision for a person,
+not a default.
