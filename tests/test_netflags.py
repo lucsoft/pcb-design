@@ -67,8 +67,15 @@ def donor(path):
     write(path, r)
 
 
-def target(path, stubs):
-    """stubs: [(pin_x, pin_y, free_x, free_y, net)]"""
+def target(path, stubs, stray_pins=()):
+    """stubs: [(pin_x, pin_y, free_x, free_y, net)]
+
+    stray_pins: [(x, y)] -- pins with no stub. The importer draws a line
+    from every pin, so on a real sheet a pin on the ground bus is always
+    *also* a line touching it and the crossing guard alone would refuse.
+    A pin the guards can only see through the pin list is the one shape
+    that tells the two guards apart, so it has to be built by hand.
+    """
     r, t = [], 0
 
     def add(h, b):
@@ -92,10 +99,21 @@ def target(path, stubs):
              "endX": fx, "endY": fy})
         add({"type": "ATTR", "id": f"n{i}"},
             {"key": "NET", "value": net, "parentId": f"w{i}"})
-    for i, _ in enumerate(stubs):
-        add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": f"sym{i}"})
-        add({"type": "PIN", "id": f"p{i}"},
-            {"partId": f"P{i}.1", "x": 0, "y": 0, "length": 10, "rotation": 0})
+    syms = [(f"sym{i}", f"P{i}.1") for i in range(len(stubs))]
+    for j, (sx, sy) in enumerate(stray_pins):
+        k = f"x{j}"
+        add({"type": "COMPONENT", "id": f"c{k}"},
+            {"partId": f"P{k}.1", "x": sx, "y": sy, "rotation": 0,
+             "isMirror": False})
+        add({"type": "ATTR", "id": f"d{k}"},
+            {"key": "Designator", "value": f"R{k}", "parentId": f"c{k}"})
+        add({"type": "ATTR", "id": f"s{k}"},
+            {"key": "Symbol", "value": f"sym{k}", "parentId": f"c{k}"})
+        syms.append((f"sym{k}", f"P{k}.1"))
+    for su, pid in syms:
+        add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": su})
+        add({"type": "PIN", "id": f"p{su}"},
+            {"partId": pid, "x": 0, "y": 0, "length": 10, "rotation": 0})
     write(path, r)
 
 
@@ -210,6 +228,27 @@ def target_boxed(path, stubs, half=20, group=None):
         add({"type": "RECT", "id": f"rc{c}"},
             {"dotX1": -half, "dotY1": -half, "dotX2": half, "dotY2": half})
     write(path, r)
+
+
+def append_line(path, a, b):
+    """Add a bare wire to a built fixture -- the hand-drawn kind.
+
+    It carries no NET attribute, exactly as `handplace.py`'s `wire` line
+    emits it, so the only thing that can attribute it is where it lands.
+    """
+    z = zipfile.ZipFile(path)
+    entries = {n: z.read(n) for n in z.namelist()}
+    z.close()
+    wid = "handwire"
+    entries["doc.epru"] += (
+        f'\n{{"type":"WIRE","id":"{wid}"}}||'
+        f'{{"groupId":"","zIndex":1}}|'
+        f'\n{{"type":"LINE","id":"{wid}l"}}||'
+        f'{{"lineGroup":"{wid}","startX":{a[0]},"startY":{a[1]},'
+        f'"endX":{b[0]},"endY":{b[1]},"strokeWidth":1}}|').encode("utf-8")
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as w:
+        for n, data in entries.items():
+            w.writestr(n, data)
 
 
 def read(path):
@@ -412,6 +451,521 @@ def test_one_per_node(tmp):
               got.get("GND") == 4, got)
 
 
+def test_ground_bus(tmp):
+    """Ground's own leads join where they land in one line.
+
+    A stage's parts drop their ground leads to a common height, and a
+    symbol per part states the same connection once per part. One line
+    joins the run and one symbol marks it -- but only where the run is
+    genuinely one line. A bus drawn across a pin, or across a lead on
+    another net, is a short the net diff cannot see, so both are refused
+    rather than drawn, and each probe has its inverse.
+    """
+    dn = tmp / "d5.epro2"
+    donor_drawn(dn)
+
+    # Three ground leads ending on one line, 100 units apart.
+    tg = tmp / "bus.epro2"
+    target(tg, [(0, 0, 0, -40, "GND"), (100, 0, 100, -40, "GND"),
+                (200, 0, 200, -40, "GND")])
+    out = tmp / "bus-out.epro2"
+    rc, log = run(tg, "--donor", dn, "--nets", "GND",
+                  "--ground-bus", "150", "-o", out)
+    check("a collinear ground run is accepted", rc == 0, log)
+    check("...and it becomes one symbol, not three",
+          "place    1 x GND" in log, log)
+    check("...joined by one bus wire",
+          "1 ground run(s)" in log and "2 symbol(s) fewer" in log, log)
+    if rc == 0:
+        recs = read(out)
+        lines = [b for h, b in recs if h.get("type") == "LINE"
+                 and "startX" in b]
+        ends = {(b["startX"], b["startY"], b["endX"], b["endY"])
+                for b in lines}
+        # Through the *pins*, at y=0, not through the stub ends at y=-40.
+        # A bar at the ends is a comb of drops; the line the reader wants
+        # meets each part where its ground pin actually is.
+        bus = [b for b in lines
+               if (b["startX"], b["startY"], b["endX"], b["endY"])
+               in {(0, 0, 200, 0), (200, 0, 0, 0)}]
+        check("...spanning the run from end to end", len(bus) == 1, ends)
+        # The bus wire carries no NET attribute, and that is the point:
+        # `epro.py diff` counts one ATTR key=NET per pin, so a wire of
+        # its own would lift the export's count above the netlist's.
+        if len(bus) == 1:
+            grp = bus[0].get("lineGroup")
+            wires = {h["id"] for h, b in recs if h.get("type") == "WIRE"}
+            check("...on a WIRE record of its own", grp in wires, grp)
+            check("...which carries no NET attribute",
+                  not any(h.get("type") == "ATTR" and b.get("key") == "NET"
+                          and b.get("parentId") == grp for h, b in recs),
+                  log)
+
+    # The inverse: a gap wider than the run is two leads, not a bus.
+    # Without this the rule could join anything at one height and the
+    # probe above would still pass.
+    tg2 = tmp / "far.epro2"
+    target(tg2, [(0, 0, 0, -40, "GND"), (500, 0, 500, -40, "GND")])
+    rc, log = run(tg2, "--donor", dn, "--nets", "GND",
+                  "--ground-bus", "150", "-o", tmp / "far-out.epro2")
+    check("a gap wider than the run is not a bus",
+          rc == 0 and "place    2 x GND" in log
+          and "ground run(s)" not in log, log)
+
+    # The inverse: a foreign lead crossing the span connects at the
+    # crossing in a geometric schematic, which is a short -- so the bus
+    # is refused and both leads keep their own symbol.
+    #
+    # The two ground leads are 120 apart, inside the 150 the bus allows,
+    # so a run *would* form: this probe reaches the crossing guard. Span
+    # them 200 and it would pass on the "gap wider than the run" rule
+    # instead, which the probe above already covers -- the guard itself
+    # would then be untested against a fixture that fails without it.
+    tg3 = tmp / "cross.epro2"
+    target(tg3, [(0, 0, 0, -40, "GND"), (120, 0, 120, -40, "GND"),
+                 (60, -100, 60, 0, "VCC")])
+    rc, log = run(tg3, "--donor", dn, "--nets", "GND,VCC=GND",
+                  "--ground-bus", "150", "-o", tmp / "cross-out.epro2")
+    check("a run crossed by another lead is refused",
+          rc == 0 and "place    2 x GND" in log
+          and "ground run(s)" not in log, log)
+
+    # ...and one with a pin sitting on the span, which is the same short
+    # reached the other way. 120 apart again. The pin carries no stub, so
+    # no line crosses the span and only the pin guard can refuse it: give
+    # it a lead and the crossing guard fires first, which is what happens
+    # on a real sheet and would leave this guard untested.
+    tg4 = tmp / "inside.epro2"
+    target(tg4, [(0, 0, 0, -40, "GND"), (120, 0, 120, -40, "GND")],
+           stray_pins=[(60, 0)])
+    rc, log = run(tg4, "--donor", dn, "--nets", "GND,VCC=GND",
+                  "--ground-bus", "150", "-o", tmp / "inside-out.epro2")
+    check("a run with a pin on its span is refused",
+          rc == 0 and "place    2 x GND" in log
+          and "ground run(s)" not in log, log)
+
+    # Without the option the leads stay separate: the bus has to be the
+    # difference, not something the tool did anyway.
+    rc, log = run(tg, "--donor", dn, "--nets", "GND",
+                  "-o", tmp / "nobus-out.epro2")
+    check("without --ground-bus nothing is joined",
+          rc == 0 and "place    3 x GND" in log
+          and "ground run(s)" not in log, log)
+
+
+def placed_flags(path):
+    """Every flag component in an export, as {net: [(x, y, rotation)]}.
+
+    The net is unnamed on a flag -- it carries no NET attribute, which is
+    what keeps the net diff unmoved -- so this reads the position and
+    rotation only, and the caller knows which fixture pin it asked for.
+    """
+    rows = read(path)
+    desig = {b["parentId"] for h, b in rows
+             if h.get("type") == "ATTR" and b.get("key") == "Designator"}
+    return [(b.get("x"), b.get("y"), b.get("rotation"))
+            for h, b in rows
+            if h.get("type") == "COMPONENT" and b.get("partId") == FLAG_PART]
+
+
+def test_flag_turn(tmp):
+    """A flag is turned when its own drawing would lie on its lead.
+
+    The supply symbol draws its bar on the far side of its pin from the
+    wire that feeds it. Reached from below that is right; reached from
+    above it puts the bar back along the incoming wire, ten units of it
+    sticking out past the bar, so the symbol reads as a crossbar
+    threaded on a line rather than a flag. Only that case is turned --
+    a bar perpendicular to its wire is what every other flag draws.
+
+    Read off the drawing, not off the net name: the ground triangle
+    hangs the other way, so the same two fixtures must give it the
+    opposite pair of answers. A rule keyed on "GND" and "+5V" would pass
+    the first half of this and be one more table to keep in step with
+    the library.
+    """
+    dn = tmp / "d5.epro2"
+    donor_drawn(dn)
+
+    # The stub runs *down* from the pin, so the flag at its free end is
+    # reached from above -- the case that needs the turn. The turn is
+    # 180, not 90: the bar has to end up on the far side of the flag
+    # from the wire, and a quarter turn would lay it along the lead.
+    down = tmp / "down.epro2"
+    target_boxed(down, [(0, 0, 0, 40, "VCC")], half=5)
+    rc, log = run(down, "--donor", dn, "--nets", "VCC=+5V", "--one-per-part",
+                  "-o", tmp / "down-out.epro2")
+    if rc == 0:
+        f = placed_flags(tmp / "down-out.epro2")
+        check("a supply flag reached from above is turned about",
+              f and f[0][2] == 180, f"{f}\n{log}")
+    else:
+        check("a supply flag reached from above is turned about", False, log)
+
+    # The control: the same flag reached from below keeps rotation 0, so
+    # the probe is measuring the rule and not "flags are rotated".
+    up = tmp / "up.epro2"
+    target_boxed(up, [(0, 0, 0, -40, "VCC")], half=5)
+    rc, log = run(up, "--donor", dn, "--nets", "VCC=+5V", "--one-per-part",
+                  "-o", tmp / "up-out.epro2")
+    if rc == 0:
+        f = placed_flags(tmp / "up-out.epro2")
+        check("...and one reached from below is not",
+              f and f[0][2] == 0, f"{f}\n{log}")
+    else:
+        check("...and one reached from below is not", False, log)
+
+    # The inverse probe: the ground symbol draws downwards, so the two
+    # fixtures swap over. Without this the rule could be a turn applied
+    # to every flag in a row and both probes above would still pass.
+    gd = tmp / "gdown.epro2"
+    target_boxed(gd, [(0, 0, 0, 40, "GND")], half=5)
+    rc, log = run(gd, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "-o", tmp / "gdown-out.epro2")
+    if rc == 0:
+        f = placed_flags(tmp / "gdown-out.epro2")
+        check("...while a ground flag under the same stub is left alone",
+              f and f[0][2] == 0, f"{f}\n{log}")
+    else:
+        check("...while a ground flag under the same stub is left alone",
+              False, log)
+
+    gu = tmp / "gup.epro2"
+    target_boxed(gu, [(0, 0, 0, -40, "GND")], half=5)
+    rc, log = run(gu, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "-o", tmp / "gup-out.epro2")
+    if rc == 0:
+        f = placed_flags(tmp / "gup-out.epro2")
+        check("...and turned when the stub puts it above its pin",
+              f and f[0][2] == 180, f"{f}\n{log}")
+    else:
+        check("...and turned when the stub puts it above its pin", False, log)
+
+
+def test_lead_turn(tmp):
+    """--lead-turn sends the lead square off the row, not along it.
+
+    A straight lead is the shorter one and lands the flag in the pin
+    row. Where a neighbouring net has to cross that row to reach its own
+    parts, the flag walls it off -- FB_5V on U4 is the case: a straight
+    lead seals y=140 from the FB pin to the flag, and that is the only
+    line COMP_5V can use to get from its pin down to C7 and R27. The
+    square form leaves the row from the stub end itself, which is where
+    a supply symbol belongs anyway.
+    """
+    dn = tmp / "d6.epro2"
+    donor_drawn(dn)
+
+    # GND and a signal one pitch apart, so the flag has to be carried out
+    # of the row. The neighbour sits on the *down* side, so between the
+    # two square directions only the upward one is clear -- which is what
+    # makes the expectation a position and not a range.
+    tg = tmp / "turn.epro2"
+    target_boxed(tg, [(0, 0, -30, 0, "GND"), (0, 10, -30, 10, "SIG")],
+                 half=5, group={0: 0, 1: 0})
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--strict-flags", "--flag-clearance", "15",
+                  "--flag-lead", "40", "--lead-turn", "GND",
+                  "-o", tmp / "turn-out.epro2")
+    check("a net in --lead-turn is carried out square",
+          rc == 0 and "carried 40 units out" in log, log)
+    if rc == 0:
+        f = placed_flags(tmp / "turn-out.epro2")
+        check("...so the flag sits off the pin row, not along it",
+              f and f[0][0] == -30 and f[0][1] == -40, f"{f}\n{log}")
+        perp = [b for h, b in read(tmp / "turn-out.epro2")
+                if h.get("type") == "LINE" and "startX" in b
+                and b["startX"] == b["endX"] == -30
+                and abs(b["endY"] - b["startY"]) == 40]
+        check("...and the lead's first segment leaves the row square",
+              perp, f"{len(perp)} segment(s)")
+
+    # The control: the same fixture without the option lands the flag in
+    # the row at the straight lead's tip, so the square form is the
+    # option doing it and not some other change made at the same time.
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--strict-flags", "--flag-clearance", "15",
+                  "--flag-lead", "40", "-o", tmp / "straight-out.epro2")
+    if rc == 0:
+        f = placed_flags(tmp / "straight-out.epro2")
+        check("...whereas without it the same lead runs along the row",
+              f and f[0][0] < 0 and f[0][1] == 0, f"{f}\n{log}")
+    else:
+        check("...whereas without it the same lead runs along the row",
+              False, log)
+
+
+def test_bus_junction(tmp):
+    """A wire *meeting* the bus is the connection it exists for.
+
+    The guard that refuses a bus crossed by another net's wire exempted a
+    crossing at one of the run's own pins and not at its leads' free ends.
+    On the supply sheet R26's ground stub is horizontal, so its free end
+    lies *inside* the run's span; the hand-drawn ground wire lands there,
+    the crossing guard called it a stranger, and the run was refused --
+    three symbols kept where one was wanted. A wire arriving at a lead of
+    the same net is what a bus is, not a fault.
+
+    Both directions: the drawn wire must not refuse the run, and a wire
+    crossing the same span anywhere else must still refuse it.
+    """
+    dn = tmp / "d9.epro2"
+    donor_drawn(dn)
+
+    # Three ground leads pointing left, so their free ends at -40, 60 and
+    # 160 lie on the line their pins stand on. The middle one is inside
+    # the span.
+    tg = tmp / "junction.epro2"
+    target(tg, [(0, 0, -40, 0, "GND"), (100, 0, 60, 0, "GND"),
+                (200, 0, 160, 0, "GND")])
+    append_line(tg, (60, -100), (60, 0))
+    out = tmp / "junction-out.epro2"
+    rc, log = run(tg, "--donor", dn, "--nets", "GND",
+                  "--ground-bus", "220", "-o", out)
+    check("a wire landing on a run member's free end does not refuse it",
+          rc == 0 and "place    1 x GND" in log
+          and "1 ground run(s)" in log, log)
+
+    # The inverse, unchanged: the same span crossed away from any member
+    # is still the short it was refused for before. Without this the guard
+    # could be loosened to nothing and the probe above would still pass.
+    tg2 = tmp / "stranger.epro2"
+    target(tg2, [(0, 0, -40, 0, "GND"), (100, 0, 60, 0, "GND"),
+                 (200, 0, 160, 0, "GND")])
+    append_line(tg2, (130, -100), (130, 0))
+    rc, log = run(tg2, "--donor", dn, "--nets", "GND",
+                  "--ground-bus", "220", "-o", tmp / "stranger-out.epro2")
+    check("...whereas one crossing the span elsewhere still refuses it",
+          rc == 0 and "place    3 x GND" in log
+          and "ground run(s)" not in log, log)
+
+
+def test_wire_covers_node(tmp):
+    """One symbol marks the node, even when a wire is what made it one.
+
+    J4's ground was drawn down to the stage's own ground line and U4's
+    across to the catch diode's, and in both cases the symbol already
+    sitting on the far end of that wire was saying it. Placing a second
+    one is two marks on one node.
+
+    Which of the two goes is not "whichever sorts first": a point that
+    needed a lead is the one to give up, because a lead is only drawn
+    when the pin field was too crowded for the symbol, and the wire has
+    taken that job over.
+    """
+    dn = tmp / "d10.epro2"
+    donor_drawn(dn)
+
+    # Two parts with one ground each; a second part's pin sits 15 units
+    # from the first, so that one's flag is crowded and gets carried out
+    # on a lead. The far ground is not crowded and keeps its stub end.
+    stubs = [(0, 0, 0, -40, "GND"), (15, 0, 15, -40, "VCC"),
+             (400, 0, 400, -40, "GND")]
+    plain = tmp / "plain.epro2"
+    target_boxed(plain, stubs, half=5)
+    rc, log = run(plain, "--donor", dn, "--nets", "GND,VCC=+5V",
+                  "--one-per-part", "--flag-clearance", "20",
+                  "--flag-lead", "40", "-o", tmp / "plain-out.epro2")
+    check("two grounds with no wire between them keep two symbols",
+          rc == 0 and "place    2 x GND" in log, log)
+    check("...and the crowded ones are carried out on leads",
+          "crowded flag(s) carried" in log, log)
+
+    # The same sheet with a wire joining the two free ends. Nothing else
+    # changes, so the difference is the wire.
+    joined = tmp / "joined.epro2"
+    target_boxed(joined, stubs, half=5)
+    append_line(joined, (0, -40), (400, -40))
+    out = tmp / "joined-out.epro2"
+    rc, log = run(joined, "--donor", dn, "--nets", "GND,VCC=+5V",
+                  "--one-per-part", "--flag-clearance", "20",
+                  "--flag-lead", "40", "-o", out)
+    check("a wire joining them leaves one", rc == 0
+          and "place    1 x GND" in log, log)
+    # ...and it is the far one, the point that never needed a lead. With
+    # the sort left as plain coordinate order the near one survives, so
+    # this is what holds the preference to account.
+    f = [q[:2] for q in placed_flags(out)]
+    check("...and the one that survives is the one that needed no lead",
+          (400, -40) in f and (0, -40) not in f, f)
+    # The near pin is not reported bare: the wire reaches it, which is the
+    # whole reason its symbol could go.
+    check("...and the pin it left is not called bare",
+          "left bare" not in log, log)
+
+
+def test_symbol_turned_clear(tmp):
+    """A flag whose symbol lands in a part is turned over, not dropped.
+
+    U4's thermal pad: its stub runs out of the pin row and its free end
+    is clear of the package, so every check that asks about the *root*
+    passes -- and the ground triangle rooted there hangs its bars down
+    into the IC. Turned over they sit above it, which is where a person
+    draws them.
+
+    The turn is asked even where there is no lead to reason from. The
+    `inbody` set is built by asking whether a flag at a point would land
+    in a part, and that question arrives with no previous point; answer
+    it 0 and the pad reads as in-body, becomes a candidate for being
+    carried out of the pin field, and the lead then runs into the SW_5V
+    corridor and blocks that net's route.
+    """
+    dn = tmp / "d11.epro2"
+    donor_drawn(dn)
+    tg = tmp / "turnclear.epro2"
+    # One part, a 20-unit body and a stub leaving its pin upwards, so the
+    # free end is 20 units clear of the body -- and the flag's own box is
+    # 30 deep, so at rotation 0 it reaches back into it.
+    target_boxed(tg, [(0, 0, 0, -40, "GND")], half=20)
+    out = tmp / "turnclear-out.epro2"
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "-o", out)
+    check("a flag that would land in a part is still placed", rc == 0, log)
+    if rc == 0:
+        f = placed_flags(out)
+        check("...and turned over so it lands clear of it",
+              f and f[0][2] == 180, f)
+        check("...with nothing drawn into the symbol for it",
+              "CLASH" not in log, log)
+
+
+def test_pin_stub(tmp):
+    """--pin-stub re-aims a lead the importer aimed along the package.
+
+    U4's thermal pad is a vertical pin on the top edge whose lead came out
+    sideways, thirty units along the body. A symbol on that lead has
+    nowhere to sit that is not to the side of the pin it belongs to, and
+    the ground triangle rooted at its end draws its bars into the IC.
+
+    The lead is *moved*, not dropped. The node's `NET` attribute lives on
+    that wire and `epro.py diff` counts one of those per pin, so deleting
+    the record would break the count where moving it breaks nothing --
+    which is why the proof below still has to pass.
+    """
+    dn = tmp / "d12.epro2"
+    # The plain donor: its flag draws nothing, so there is no box for the
+    # fit test to trip over and the probe measures the geometry the option
+    # is about rather than which way a 110-unit symbol happened to fall.
+    donor(dn)
+    tg = tmp / "pinstub.epro2"
+    # A pin at the left with a body beside it and its lead running *along*
+    # the body to the right, which is U4's pad exactly: the free end is
+    # clear of the package and the lead still leaves the symbol nowhere
+    # sensible to stand.
+    target_boxed(tg, [(0, 0, 30, 0, "GND")], half=20)
+    out = tmp / "pinstub-out.epro2"
+
+    def segs(path):
+        return [(b["startX"], b["startY"], b["endX"], b["endY"])
+                for h, b in read(path) if h.get("type") == "LINE"]
+
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "-o", out)
+    check("the lead runs along the package by default",
+          rc == 0 and (0, 0, 30, 0) in segs(out), segs(out))
+
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--pin-stub", "GND@0,0", "-o", out)
+    check("--pin-stub is accepted", rc == 0 and "re-aimed" in log, log)
+    if rc != 0:
+        return
+    after = segs(out)
+    check("...so the lead no longer runs along the package",
+          (0, 0, 30, 0) not in after, after)
+    # ...and it is the same lead, moved: one end is still on the pin, the
+    # other has gone somewhere else. Dropping the record instead would
+    # take the node's `NET` attribute with it and break the one-per-pin
+    # count `epro.py diff` reads, which is why moving it is the point.
+    check("...and it is moved, not dropped",
+          any((x0, y0) == (0, 0) or (x1, y1) == (0, 0)
+              for x0, y0, x1, y1 in after), after)
+    check("...and the lead is short: barely a stub",
+          any(abs(x0 - x1) + abs(y0 - y1) <= 10
+              for x0, y0, x1, y1 in after), [s for s in after])
+
+    # A spec naming no pin is refused by name rather than silently doing
+    # nothing, which is how a typo would read as success.
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--pin-stub", "GND@99,99", "-o", out)
+    check("a --pin-stub that names no pin is refused",
+          rc == 2 and "--pin-stub wants" in log, (rc, log))
+
+
+def test_bare_pin(tmp):
+    """A pin on a flagged net that no symbol reaches is a warning.
+
+    `--one-per-part` puts one symbol on a part that has several pins on
+    the net. That is right when the pins stand in a row -- ten ground
+    symbols down one pin pitch is the black ladder the rule exists for --
+    and wrong when nothing joins them, because the second pin then reads
+    as a bare stub ending in the word GND while the same net is a symbol
+    everywhere else on the sheet. U4's thermal pad is the case.
+
+    A warning and not a failure, deliberately: the net is still connected,
+    by name, the way everything on this sheet is. What it costs is a
+    reader deciding whether that one pin means something else. So it must
+    not set the exit status -- `build.sh` runs under `set -e` and would
+    stop the chain over it.
+    """
+    dn = tmp / "d7.epro2"
+    donor_drawn(dn)
+
+    # Two ground pins on one part, 300 apart; a third on another part so
+    # the run has something to place besides the bare one. The stubs
+    # point *down*: the ground symbol's box runs from its root to 30
+    # units above it, so a stub in the pin row puts the flag back on the
+    # body and the clash rule -- not this one -- decides the outcome.
+    tg = tmp / "bare.epro2"
+    target_boxed(tg, [(0, 0, 0, -40, "GND"), (0, 300, 0, 260, "GND"),
+                      (600, 0, 600, -40, "GND")],
+                 half=5, group={0: 0, 1: 0, 2: 1})
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--one-per-node", "400", "-o", tmp / "bare-out.epro2")
+    check("a bare pin on a flagged net is reported",
+          rc == 0 and "left bare" in log, log)
+    check("...naming the part and the coordinate",
+          "R1 on GND is left bare at (0, 260)" in log, log)
+    check("...and it warns rather than failing the build", rc == 0, rc)
+    # ...and it says which of the two shapes it is. "Nothing on this part
+    # marks the net" and "the part's other pin carries the symbol" want
+    # opposite fixes, so a single sentence covering both would send half
+    # its readers the wrong way.
+    check("...naming the shape it is, not just the pin",
+          "the part's other pin on this net carries a symbol" in log, log)
+
+    # The inverse: a pin its node's symbol already covers. Without this the
+    # rule could report every pin that has no symbol of its own, which is
+    # most of a rail, and the probe above would still pass.
+    tg2 = tmp / "nodep.epro2"
+    target_boxed(tg2, [(0, 0, 0, -40, "VCC"), (0, 100, 0, 60, "VCC"),
+                       (900, 0, 900, -40, "VCC")],
+                 half=5, group={0: 0, 1: 0, 2: 1})
+    rc, log = run(tg2, "--donor", dn, "--nets", "VCC=+5V", "--one-per-part",
+                  "--one-per-node", "200", "-o", tmp / "nodep-out.epro2")
+    check("a pin its node's own symbol reaches is not reported",
+          rc == 0 and "no pin on a flagged net is left without" in log, log)
+
+    # The revert probe, and the reason the node branch is load-bearing:
+    # take the grouping away and the same fixture is one symbol for the
+    # part again, so the far pin goes bare. It is not a second opinion on
+    # the rule -- it is what proves the branch is what answered above.
+    rc, log = run(tg2, "--donor", dn, "--nets", "VCC=+5V", "--one-per-part",
+                  "-o", tmp / "nodep2-out.epro2")
+    check("...whereas without the grouping the same pin goes bare",
+          rc == 0 and "left bare" in log, log)
+
+    # The inverse: one pin on the net is one symbol, so nothing is bare
+    # however the flags are chosen. A part with several pins is what makes
+    # the warning reachable at all, and this is the shape that shows it.
+    tg3 = tmp / "one.epro2"
+    target_boxed(tg3, [(0, 0, 0, -40, "GND"), (600, 0, 600, -40, "GND")],
+                 half=5)
+    rc, log = run(tg3, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "-o", tmp / "one-out.epro2")
+    check("a part with one pin on the net is never bare",
+          rc == 0 and "left bare" not in log, log)
+
+
 def run(*args):
     p = subprocess.run([sys.executable, str(TOOL), *map(str, args)],
                        capture_output=True, text=True)
@@ -610,7 +1164,15 @@ def main():
 
     test_flag_clash(tmp)
     test_flag_lead(tmp)
+    test_flag_turn(tmp)
+    test_lead_turn(tmp)
     test_one_per_node(tmp)
+    test_ground_bus(tmp)
+    test_bus_junction(tmp)
+    test_wire_covers_node(tmp)
+    test_symbol_turned_clear(tmp)
+    test_pin_stub(tmp)
+    test_bare_pin(tmp)
 
     print()
     if FAILURES:

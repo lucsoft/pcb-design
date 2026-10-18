@@ -39,7 +39,8 @@ from netflags import symbol_extent, R4Q          # noqa: E402
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from arrange import read_blocks, _symbol_boxes, _symbol_box_owners  # noqa: E402
+from arrange import (read_blocks, _symbol_boxes, _symbol_box_owners,
+                     net_flag_boxes)  # noqa: E402
 
 KEY = "Block"
 
@@ -242,6 +243,11 @@ def main() -> int:
     ap.add_argument("--doc-number", help="drawing number (EN ISO 7200)")
     ap.add_argument("--drawn-by")
     ap.add_argument("--approved-by")
+    ap.add_argument("--note-dx", type=int, default=0,
+                    help="shift each do-not-fit remark box this far right "
+                         "of the part it describes. The box starts at the "
+                         "part's left edge and sits below it, which reads "
+                         "as part of the symbol when the symbol is small")
     ap.add_argument("--note-width", type=int, default=34,
                     help="characters per line in a do-not-fit note before "
                          "it wraps")
@@ -360,7 +366,7 @@ def main() -> int:
         # an untidy one. Pull the title in until nothing else is nearer.
         # About the point the title actually occupies, which is above the
         # hub -- not about the block's centre. Asking about the centre
-        # pulled "5 V -> 3.3 V" down into the block above it and then
+        # pulled "5 V → 3.3 V" down into the block above it and then
         # reported the result as placed, because the point it had checked
         # was clear and the point it wrote was not.
         tw = len(str(blk)) * a.font_size * 0.62
@@ -406,7 +412,7 @@ def main() -> int:
              "keyVisible": False, "valueVisible": True,
              # Over the hub, not over the block's left edge and not over
              # its centre. Both of those name whatever part happens to be
-             # there: the left edge put "36 V -> 5 V" above an input
+             # there: the left edge put "36 V → 5 V" above an input
              # capacitor with the converter 100 mm to its right, and
              # centring put "Channel 1 eFuse" over the current-sense row.
              # The hub is the part the block is named after, so a title
@@ -605,8 +611,20 @@ def main() -> int:
         # and 18% of the sheet carrying ink. The lower left is empty on
         # most schematics for the same reason the title block goes
         # bottom right.
-        nlines = len(crossing) + 1
-        need_w = max((len(n) for n in crossing), default=40) * 11
+        # The lines as they will be drawn, so the clearance test can be
+        # sized against the text rather than against the net names in it.
+        # It was sized off the names -- `max(len(n)) * 11` -- and a line
+        # reads "BUS_3V3 -> sheet 1 (Input and PD), sheet 3 (Control),
+        # sheet 4 (Outputs)", five times its net name. The box the test
+        # checked was 77 units wide and the text it stood for 213, so a
+        # ground triangle 150 units out was never in the test and the
+        # list was drawn across it.
+        xlines = (["Signals continued on other sheets:"] +
+                  [f"{n} -> " + ", ".join(_where(n, s)
+                                          for s in sorted(onsheet[n] - {mine}))
+                   for n in crossing])
+        nlines = len(xlines)
+        need_w = max((len(t) for t in xlines), default=40) * 3
         need_h = nlines * 22 + 20
         # Against everything drawn, not only the symbol outlines. Testing
         # `boxes` alone put the list straight across U5 and its input
@@ -614,6 +632,12 @@ def main() -> int:
         # reader sees there and none of it was in the test. Same gap as
         # the clip rule had, same fix.
         occupied = [v for v in boxes.values()]
+        # The net flags are the densest ink on the sheet and `boxes` does
+        # not carry them -- `_symbol_boxes` drops a component with no
+        # Designator, which is every flag. Without this the list is placed
+        # as if the ground and supply symbols were not there, and it did
+        # land on one. See `net_flag_boxes`.
+        occupied += net_flag_boxes(rows)
         for h_, b_, doc_, _ in rows:
             if not h_ or not doc_ or doc_[0] not in ("SCH", "SCH_PAGE"):
                 continue
@@ -642,11 +666,7 @@ def main() -> int:
             print("  the cross-sheet list goes below the drawing; nothing "
                   "inside it is clear enough to hold it")
         host = byid[min(boxes, key=lambda d: boxes[d][0])]
-        for i, n in enumerate(["Signals continued on other sheets:"] +
-                              [f"{n} -> " + ", ".join(
-                                  _where(n, s)
-                                  for s in sorted(onsheet[n] - {mine}))
-                               for n in crossing]):
+        for i, n in enumerate(xlines):
             ticket += 1
             xref.append((
                 {"type": "ATTR", "ticket": ticket,
@@ -806,7 +826,7 @@ def main() -> int:
         if cur:
             lines_.append(cur)
         x0, y0, x1, y1 = boxes[d]
-        dnf_block.append((d, lines_, x0, y1))
+        dnf_block.append((d, lines_, x0 + a.note_dx, y1))
         for k, line_ in enumerate(lines_):
             ticket += 1
             dnf_notes.append((
@@ -816,9 +836,10 @@ def main() -> int:
                  "parentId": byid[d], "key": f"DNF {d} {k}",
                  "value": line_,
                  "keyVisible": False, "valueVisible": True,
-                 "x": int(x0), "y": int(y1 + 26 + k * 18), "rotation": 0,
+                 "x": int(x0 + a.note_dx),
+                 "y": int(y1 + 26 + k * 15), "rotation": 0,
                  "color": None, "fillColor": None, "fontFamily": None,
-                 "fontSize": max(8, a.font_size - 6), "strikeout": None,
+                 "fontSize": max(8, a.font_size - 8), "strikeout": None,
                  "underline": None, "italic": None, "fontWeight": None,
                  "align": "left", "version": "2.0"}))
     added += dnf_notes
@@ -827,6 +848,35 @@ def main() -> int:
               f"design.yaml's dnf:")
     elif dnf:
         print(f"  dnf: names {len(dnf)} part(s), none of them on this sheet")
+
+    # And a mark on the symbol itself. The reason block above is prose in
+    # a remarks field, which is right for the reason and wrong for the
+    # fact: an assembler does not read a paragraph to decide whether to
+    # fit a part, so J4 went on reading as an ordinary two-pin header
+    # with the sentence saying otherwise in a box beside it. "DNP" is the
+    # word an assembly drawing uses and bold is already this format's
+    # vocabulary for emphasis -- the block titles are set in it.
+    dnp_badge = []
+    for d in sorted(dnf):
+        if d not in boxes:
+            continue
+        x0, y0, x1, y1 = boxes[d]
+        ticket += 1
+        dnp_badge.append((
+            {"type": "ATTR", "ticket": ticket,
+             "id": hashlib.sha256(f"dnp/{d}".encode()).hexdigest()[:16]},
+            {"groupId": "", "locked": False, "zIndex": 1,
+             "parentId": byid[d], "key": f"DNP {d}", "value": "DNP",
+             "keyVisible": False, "valueVisible": True,
+             "x": int(x0), "y": int(y0 - 26), "rotation": 0,
+             "color": None, "fillColor": None, "fontFamily": None,
+             "fontSize": a.font_size, "strikeout": None, "underline": None,
+             "italic": None, "fontWeight": "bold", "align": "left",
+             "version": "2.0"}))
+    added += dnp_badge
+    if dnp_badge:
+        print(f"  {len(dnp_badge)} DNP badge(s) on the symbol, so the mark "
+              f"is where the part is")
 
 
     # --- the sheet frame ---------------------------------------------------
@@ -976,8 +1026,8 @@ def main() -> int:
         # bounded remarks field of its own.
         for d_, lines_, nx_, ny_ in dnf_block:
             nw_ = max(len(s) for s in lines_) * max(
-                8, a.font_size - 6) * 0.62
-            nh_ = (len(lines_) - 1) * 18
+                8, a.font_size - 8) * 0.62
+            nh_ = (len(lines_) - 1) * 15
             bx0_, by0_ = nx_ - 10, ny_ + 26 - 12
             bx1_, by1_ = nx_ + nw_ + 10, ny_ + 26 + nh_ + 10
             segs += [(bx0_, by0_, bx1_, by0_), (bx1_, by0_, bx1_, by1_),
@@ -1094,6 +1144,15 @@ def main() -> int:
                   f"Nothing written.\n", file=sys.stderr)
             return 1
 
+        # Measured before the frame goes in, so it is the drawing rather
+        # than the sheet. A design record says whether the content fits a
+        # sheet size, and that claim was being made from a number taken by
+        # hand once and never re-derivable -- the supply sheet's carried
+        # one from a layout several rows old and stayed there while the
+        # row came in. Printed, so the claim has a source.
+        _ce = _extent(rows, boxes, [r for r in added if r not in xref])
+        print(f"  drawing {round((_ce[2] - _ce[0]) * 0.254)} x "
+              f"{round((_ce[3] - _ce[1]) * 0.254)} mm of content")
         added += frame_recs
         print(f"  {iso_name} sheet: {(fx1 - fx0) * 0.254:.0f} x "
               f"{(fy1 - fy0) * 0.254:.0f} mm drawing area, "
@@ -1323,7 +1382,7 @@ def main() -> int:
     print(f"\n{a.export.name}")
     # Fail closed. A title nearer another block's part than its own says
     # something false about that part, and saying it quietly is how the
-    # first version of this went out: "5 V -> 3.3 V" sat under the 5 V
+    # first version of this went out: "5 V → 3.3 V" sat under the 5 V
     # converter's feedback divider and the tool reported three titles
     # placed.
     wrong_title = []

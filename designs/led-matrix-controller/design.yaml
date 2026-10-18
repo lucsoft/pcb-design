@@ -156,6 +156,6 @@ blocks:
 sheets:
   Input and PD: [USB-C inlet and the PD front end, Current sense,
                  Bus voltage ADC]
-  Supply: [36 V -> 5 V, 5 V -> 3.3 V, Fan header]
+  Supply: [36 V → 5 V, 5 V → 3.3 V, Fan header]
   Control: [MCU, Ethernet module, Status chain, Differential link]
   Outputs: [Channel 1 eFuse, Channel 2 eFuse]

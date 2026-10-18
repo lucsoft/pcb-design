@@ -321,6 +321,144 @@ def test_clip_covers_everything(tmp):
           rc != 0 and "title block" in log3, log3)
 
 
+def _xref_fixture(d: Path, with_flag: bool):
+    """A two-sheet design and a drawing with room for the cross-sheet list.
+
+    Three parts stacked vertically, so the list has several candidate
+    rows to choose from, and one net that also lands on the other sheet,
+    which is what makes it cross.
+    """
+    d.mkdir(parents=True, exist_ok=True)
+    sheets = d / "sheets"
+    (sheets / "this").mkdir(parents=True, exist_ok=True)
+    (sheets / "other").mkdir(parents=True, exist_ok=True)
+
+    (d / "design.yaml").write_text(
+        "sheets:\n  This: [Front]\n  Other: [Back]\n", encoding="utf-8")
+
+    nl = {f"gge{i + 1}": {"props": {"Designator": des, "Supplier Part": "C9"},
+                          "pins": {"1": "GND"}}
+          for i, des in enumerate(("R1", "R2", "R3"))}
+    (sheets / "this" / "netlist.json").write_text(json.dumps(nl),
+                                                  encoding="utf-8")
+    (sheets / "this" / "netlist.py").write_text(
+        "    # ---- Front " + "-" * 30 + "\n"
+        + '        ("R1", "C9", "x", "y", {}),\n'
+        + '        ("R2", "C9", "x", "y", {}),\n'
+        + '        ("R3", "C9", "x", "y", {}),\n', encoding="utf-8")
+    (sheets / "other" / "netlist.json").write_text(json.dumps(
+        {"gge1": {"props": {"Designator": "U9", "Supplier Part": "C9"},
+                  "pins": {"1": "GND"}}}), encoding="utf-8")
+
+    rows, t = [], 0
+
+    def add(h, b):
+        nonlocal t
+        t += 1
+        h["ticket"] = t
+        rows.append((h, b))
+
+    add({"type": "DOCHEAD"}, {"docType": "SCH_PAGE", "uuid": "sch"})
+    for i, py in enumerate((0, 200, 400)):
+        add({"type": "COMPONENT", "id": f"c{i}"},
+            {"partId": "P.1", "x": 0, "y": py, "rotation": 0,
+             "isMirror": False})
+        add({"type": "ATTR", "id": f"d{i}"},
+            {"parentId": f"c{i}", "key": "Designator", "value": f"R{i + 1}"})
+        add({"type": "ATTR", "id": f"s{i}"},
+            {"parentId": f"c{i}", "key": "Symbol", "value": "sym"})
+    if with_flag:
+        # A net flag: a COMPONENT with a partId and *no Designator*, which
+        # is exactly what `_symbol_boxes` drops. It sits where the list
+        # lands when the flag is invisible -- 25 units to the right of the
+        # list's left edge, on the third candidate row.
+        add({"type": "COMPONENT", "id": "f0"},
+            {"partId": "FLAG.1", "x": 25, "y": 316, "rotation": 0,
+             "isMirror": False})
+        add({"type": "ATTR", "id": "fs0"},
+            {"parentId": "f0", "key": "Symbol", "value": "flagsym"})
+    add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": "sym"})
+    add({"type": "RECT", "id": "r"},
+        {"dotX1": -20, "dotY1": -20, "dotX2": 20, "dotY2": 20})
+    add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": "flagsym"})
+    add({"type": "RECT", "id": "fr"},
+        {"dotX1": -5, "dotY1": -6, "dotX2": 5, "dotY2": 6})
+
+    body = "\n".join(
+        json.dumps(h, separators=(",", ":")) + "||"
+        + json.dumps(b, separators=(",", ":")) + "|" for h, b in rows)
+    with zipfile.ZipFile(d / "in.epro2", "w") as z:
+        z.writestr("project2.json", json.dumps({"title": "t"}))
+        z.writestr("doc.epru", body)
+    return d / "in.epro2"
+
+
+def _xref_lines(path):
+    """(x, y, value) for every cross-sheet list line in a written sheet."""
+    out = []
+    for line in read(path):
+        h, _, b = line.partition("||")
+        try:
+            hh, bb = json.loads(h), json.loads(b.rstrip("|"))
+        except json.JSONDecodeError:
+            continue
+        if (hh.get("type") == "ATTR"
+                and str(bb.get("key", "")).startswith("Xref")
+                and isinstance(bb.get("x"), (int, float))):
+            out.append((bb["x"], bb["y"], str(bb.get("value", ""))))
+    return out
+
+
+def test_xref_avoids_flags(tmp):
+    """The cross-sheet list must not land on a net flag.
+
+    Two fail-opens hid the same collision and the sheet carried it: the
+    flags are absent from `boxes`, because `_symbol_boxes` drops every
+    component without a Designator, and the reserved width came from the
+    net *names* rather than the lines, so a 77-unit box stood for 213
+    units of text. Either one alone leaves the list where it was.
+    """
+    args = ["--sheet-title", "T", "--doc-number", "D", "--sheet", "1 of 2",
+            "--revision", "A", "--date", "2026-01-01"]
+
+    d1 = tmp / "xref-noflag"
+    src1 = _xref_fixture(d1, with_flag=False)
+    rc1, log1 = run(src1, d1 / "sheets" / "this" / "netlist.json", *args,
+                    "--xref-sheets", d1 / "sheets", "--this-sheet", "this",
+                    "-o", d1 / "out.epro2")
+    check("a cross-sheet list is written", rc1 == 0, log1)
+    plain = _xref_lines(d1 / "out.epro2")
+    check("...with a line per crossing signal", len(plain) == 2, str(plain))
+
+    d2 = tmp / "xref-flag"
+    src2 = _xref_fixture(d2, with_flag=True)
+    rc2, log2 = run(src2, d2 / "sheets" / "this" / "netlist.json", *args,
+                    "--xref-sheets", d2 / "sheets", "--this-sheet", "this",
+                    "-o", d2 / "out.epro2")
+    check("...and it is written with a flag in the way", rc2 == 0, log2)
+    moved = _xref_lines(d2 / "out.epro2")
+
+    # The flag's own box, as `net_flag_boxes` computes it: a 10 x 12 RECT
+    # at (25, 316), rotation 0.
+    fx0, fy0, fx1, fy1 = 20, 310, 30, 322
+
+    def hits(x, y, value):
+        # The same conservative 3 units per character the tool reserves
+        # with, so the check is not looser than the placement.
+        return (x - 10) < fx1 and fx0 < (x + len(value) * 3) \
+            and (y - 8) < fy1 and fy0 < (y + 8)
+
+    bad = [l for l in moved if hits(*l)]
+    check("...and it does not sit on the flag", not bad, str(bad))
+
+    # And the flag is what moved it: with the flag invisible the list
+    # keeps the row it would have had anyway, and the probe above passes
+    # for the wrong reason. This is the half that fails on the old code.
+    check("...which the flag changes, rather than being luck",
+          [l[1] for l in moved] != [l[1] for l in plain],
+          f"{[l[1] for l in plain]} vs {[l[1] for l in moved]}")
+
+
 def main():
     tmp = Path(tempfile.mkdtemp())
     d = tmp / "a"
@@ -401,6 +539,7 @@ def main():
     test_title_block_corner(tmp)
     test_iso_sheet(tmp)
     test_clip_covers_everything(tmp)
+    test_xref_avoids_flags(tmp)
 
     print()
     if FAILURES:

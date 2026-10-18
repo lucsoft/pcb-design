@@ -103,7 +103,7 @@ COMPONENTS = [
     ("R48", "C17168", "0402WGF0000TCE", "0R DNF", {
         "1": "VBUS", "2": "PD_VBUS_SENSE"}),
 
-    # ---- 36 V -> 5 V --------------------------------------------------
+    # ---- 36 V → 5 V -----------------------------------------------
     # EN is left open deliberately: abs max 8.4 V, and any UVLO divider off a
     # 36 V bus would sit over it. Open gives the internal 4.3 V UVLO.
     ("U4", "C524806", "TPS54360BDDAR", "buck 5V", {
@@ -125,12 +125,22 @@ COMPONENTS = [
     ("C10", "C7432781", "HGC1206R5106K500NSPJ", "10uF 50V", {"1": "BUS_5V", "2": "GND"}),
     ("C11", "C7432781", "HGC1206R5106K500NSPJ", "10uF 50V", {"1": "BUS_5V", "2": "GND"}),
 
-    # ---- 5 V -> 3.3 V -------------------------------------------------
+    # ---- 5 V → 3.3 V ----------------------------------------------
     ("U5", "C479074", "SY8089A1AAC", "buck 3V3", {
         "1": "SY_EN", "2": "GND", "3": "LX_3V3", "4": "BUS_5V", "5": "FB_3V3"}),
     ("R30", "C25741", "0402WGF1003TCE", "100k", {"1": "SY_EN", "2": "BUS_5V"}),
     ("R28", "C25741", "0402WGF1003TCE", "100k", {"1": "BUS_3V3", "2": "FB_3V3"}),
     ("R29", "C43473", "0402WGF2212TCE", "22.1k", {"1": "FB_3V3", "2": "GND"}),
+    # NOT here, and deliberately: the feed-forward capacitor the datasheet's
+    # Table1 pairs with these two. The 3.3 V row gives RH 100k / RL 22.1k /
+    # Cff 22pF and R28 and R29 are the first two columns of it, so the cap is
+    # the one the divider is short of -- see the open item in README.md. It
+    # cannot go in from here: the supply sheet's build chain starts from an
+    # EasyEDA export of this netlist, and `handplace.py` refuses a designator
+    # the export does not carry ("C37, which is not on this sheet"). Adding
+    # the part without re-importing would leave the sheet disagreeing with
+    # its own netlist and every counter red. It goes in with the next
+    # import, not before.
     ("C12", "C45783", "CL21A226MAQNNNE", "22uF 25V", {"1": "BUS_5V", "2": "GND"}),
     ("C14", "C131394", "CC0402KRX7R9BB104", "100nF", {"1": "BUS_5V", "2": "GND"}),
     ("L2", "C7427146", "ANR6028T2R2M", "2.2uH", {"1": "LX_3V3", "2": "BUS_3V3"}),

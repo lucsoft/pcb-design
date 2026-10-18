@@ -20,6 +20,18 @@ space the export uses; more negative y is **up**. Rotation is absolute
 and one of 0/90/180/270. Blank lines and `#` comments are ignored, and
 a component the file does not name stays where it is.
 
+A line beginning `wire` draws one wire by hand:
+
+    wire  GND   920,125  900,170  745,170  745,150
+
+The net comes first, then the polyline. Both ends have to land on the
+named net -- a pin of it or the free end of one of its stubs -- and the
+route has to stay off every other net's pins and wires, because a wire
+crossing one of those is a connection nothing downstream can see. It is
+here rather than in `schwire.py` because it is a drawing decision, not a
+rule: the net is one the never-draw list keeps as labels, and the one
+place it has to become a line is a case no rule finds.
+
 **Attribution is by pin coincidence, not by the cell grid.** `arrange.py`
 infers a uniform grid because that is what the importer produces; a file
 this tool has already touched has no such grid, and neither does one a
@@ -40,8 +52,8 @@ from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import json
-import re
 import sys
 import zipfile
 from pathlib import Path
@@ -51,14 +63,37 @@ from arrange import (ROT, anchor_geometry, read_records,    # noqa: E402
                      reread, rotate_cluster, translate)
 
 
-def read_placement(path: Path) -> dict[str, tuple[int, int, int]]:
-    """designator -> (x, y, rotation), from the hand-written file."""
-    out, bad = {}, []
+def read_placement(path: Path):
+    """(designator -> (x, y, rotation), [(net, pts)], {desig: len})."""
+    out, wires, stubs, bad = {}, [], {}, []
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
         parts = line.split()
+        if parts[0] == "wire":
+            pts = []
+            try:
+                for q in parts[2:]:
+                    px, _, py = q.partition(",")
+                    pts.append((int(px), int(py)))
+            except ValueError:
+                pts = []
+            if len(parts) < 4 or len(pts) != len(parts) - 2:
+                bad.append((lineno, raw, "want `wire NET x,y x,y ...`, at "
+                                         "least two integer points"))
+                continue
+            wires.append((parts[1], pts))
+            continue
+        if parts[0] == "stub":
+            if len(parts) != 3:
+                bad.append((lineno, raw, "want `stub DESIGNATOR LENGTH`"))
+                continue
+            try:
+                stubs[parts[1]] = int(parts[2])
+            except ValueError:
+                bad.append((lineno, raw, "length must be an integer"))
+            continue
         if len(parts) not in (3, 4):
             bad.append((lineno, raw, "want `designator x y [rotation]`"))
             continue
@@ -81,7 +116,163 @@ def read_placement(path: Path) -> dict[str, tuple[int, int, int]]:
             print(f"  error: line {lineno}: {why}\n           {raw}",
                   file=sys.stderr)
         raise SystemExit(1)
+    return out, wires, stubs
+
+
+def hand_wire(net: str, pts, first_ticket: int):
+    """WIRE + one LINE per segment, for a hand-drawn wire.
+
+    No `NET` attribute. `epro.py diff` counts one `key=NET` per pin, so a
+    wire carrying one of its own lifts the export's count above the
+    netlist's and reads as a connection that is not there -- the same
+    reason netflags' ground bus has none. The net is carried by geometry:
+    the ends land on pins and stub ends that already name it.
+    """
+    wid = "hw" + hashlib.sha256(
+        f"{net}/{pts}".encode()).hexdigest()[:14]
+    recs = [({"type": "WIRE", "ticket": first_ticket, "id": wid},
+             {"groupId": "", "zIndex": 1})]
+    for i, (a_, b_) in enumerate(zip(pts, pts[1:])):
+        recs.append(({"type": "LINE", "ticket": first_ticket + i + 1,
+                      "id": f"{wid}l{i}"},
+                     {"lineGroup": wid, "startX": a_[0], "startY": a_[1],
+                      "endX": b_[0], "endY": b_[1], "strokeWidth": 1}))
+    return recs
+
+
+def pin_coords(rows):
+    """(x, y) -> designator for every placed pin, as the file has them.
+
+    The same transform `arrange.py` uses to attribute a wire to a
+    component: anchor plus the pin's symbol-local offset, rotated.
+    """
+    desig = {b["parentId"]: b["value"] for h, b, _, _ in rows
+             if h and h["type"] == "ATTR" and b.get("key") == "Designator"
+             and b.get("value")}
+    symref = {b["parentId"]: b["value"] for h, b, _, _ in rows
+              if h and h["type"] == "ATTR" and b.get("key") == "Symbol"
+              and b.get("value")}
+    sympins = collections.defaultdict(list)
+    for h, b, doc, _ in rows:
+        if h and h["type"] == "PIN" and doc and doc[0] == "SYMBOL":
+            sympins[doc[1]].append(b)
+    out = {}
+    for h, b, _, _ in rows:
+        if (not h or h["type"] != "COMPONENT" or not b.get("partId")
+                or h["id"] not in desig):
+            continue
+        r = (b.get("rotation") or 0) % 360
+        if r not in ROT:
+            continue
+        for q in sympins.get(symref.get(h["id"]), []):
+            lx = -q.get("x", 0) if b.get("isMirror") else q.get("x", 0)
+            dx, dy = ROT[r](lx, q.get("y", 0))
+            out[(round(b["x"] + dx), round(b["y"] + dy))] = desig[h["id"]]
     return out
+
+
+def read_rows(path: Path):
+    """(header, payload, dochead, raw) for every line of the one .epru."""
+    z = zipfile.ZipFile(path)
+    name = [n for n in z.namelist() if n.endswith(".epru")][0]
+    rows, cur = [], None
+    for raw in z.read(name).decode("utf-8").split("\n"):
+        if "||" not in raw:
+            rows.append((None, None, None, raw))
+            continue
+        head, _, body = raw.partition("||")
+        try:
+            h, b = json.loads(head), json.loads(body.rstrip("|"))
+        except json.JSONDecodeError:
+            rows.append((None, None, None, raw))
+            continue
+        if h.get("type") == "DOCHEAD":
+            cur = (b.get("docType"), b.get("uuid"))
+        rows.append((h, b, cur, raw))
+    return rows
+
+
+def net_points(rows):
+    """net -> every (x, y) its stubs end at, pin end included.
+
+    Both ends of a stub line, because a stub starts on its component's pin
+    and a wire may land on either.
+    """
+    netof = {b["parentId"]: b["value"] for h, b, _, _ in rows
+             if h and h["type"] == "ATTR" and b.get("key") == "NET"
+             and b.get("value")}
+    out = collections.defaultdict(set)
+    for h, b, _, _ in rows:
+        if h and h["type"] == "LINE" and b.get("lineGroup") in netof:
+            for x, y in ((b["startX"], b["startY"]), (b["endX"], b["endY"])):
+                out[netof[b["lineGroup"]]].add((round(x), round(y)))
+    return out
+
+
+def _crosses(p, q, r, s):
+    """Do segments pq and rs meet, endpoints included?"""
+    def side(o, u, v):
+        return ((u[1] - o[1]) * (v[0] - o[0])
+                - (u[0] - o[0]) * (v[1] - o[1]))
+    d1, d2 = side(p, q, r), side(p, q, s)
+    d3, d4 = side(r, s, p), side(r, s, q)
+    if ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0)):
+        return True
+    def on(o_, u_, v_):
+        return (min(u_[0], v_[0]) <= o_[0] <= max(u_[0], v_[0])
+                and min(u_[1], v_[1]) <= o_[1] <= max(u_[1], v_[1]))
+    return (d1 == 0 and on(r, p, q) or d2 == 0 and on(s, p, q)
+            or d3 == 0 and on(p, r, s) or d4 == 0 and on(q, r, s))
+
+
+def check_wires(rows, wires):
+    """Every reason a hand-drawn wire is wrong, as a list of strings.
+
+    Run on what was *written*, not on what was meant: a wire is a set of
+    coincidences, and the coordinates that matter are the ones in the
+    file. Three answers where the data can be absent -- a point on the
+    net, a point on nothing, and a point on a different net -- because
+    the second is what a typo looks like and it must not pass as the
+    first.
+    """
+    pts = net_points(rows)
+    on_net = {}
+    for n, qs in pts.items():
+        for q in qs:
+            on_net.setdefault(q, set()).add(n)
+    # Every line in the file, with the net it carries where one of its
+    # ends names it. A crossing of a *segment* is as much a connection as
+    # a crossing of a pin, and leaving it out made the docstring above
+    # false: the pad's wire to U4's ground ran straight across the
+    # bootstrap's SW_5V line and the check said nothing.
+    segs = []
+    for h, b, _, _ in rows:
+        if h and h["type"] == "LINE" and b.get("startX") is not None:
+            ends = ((round(b["startX"]), round(b["startY"])),
+                    (round(b["endX"]), round(b["endY"])))
+            here = on_net.get(ends[0], set()) | on_net.get(ends[1], set())
+            segs.append((ends[0], ends[1], here))
+    bad = []
+    for net, poly in wires:
+        for q in (poly[0], poly[-1]):
+            here = on_net.get(q, set())
+            if net not in here:
+                what = "/".join(sorted(here)) if here else "no net at all"
+                bad.append(f"the wire on {net} ends at {q}, which is {what}")
+        for a_, b_ in zip(poly, poly[1:]):
+            for q, ns in sorted(on_net.items()):
+                if net in ns:
+                    continue
+                if _crosses(a_, b_, q, q):
+                    bad.append(f"the wire on {net} crosses {q}, which is on "
+                               f"{'/'.join(sorted(ns))}")
+            for p_, q_, ns in segs:
+                if net in ns or ns == set():
+                    continue
+                if _crosses(a_, b_, p_, q_):
+                    bad.append(f"the wire on {net} runs across {p_}-{q_}, "
+                               f"which carries {'/'.join(sorted(ns))}")
+    return bad
 
 
 def cluster_owner(lines):
@@ -181,7 +372,7 @@ def main() -> int:
             print(f"error: {p} not found", file=sys.stderr)
             return 2
 
-    want = read_placement(a.placement)
+    want, wires, stubs = read_placement(a.placement)
     name, lines = read_records(a.export)
     of_record, owner = cluster_owner(lines)
     present = set(owner)
@@ -190,6 +381,13 @@ def main() -> int:
     print(f"  {len(present)} placed components, "
           f"{len(of_record)} canvas records attributed")
 
+    stray = sorted(set(stubs) - present - {"*"})
+    if stray:
+        print(f"  error: the placement states a lead length for "
+              f"{', '.join(stray[:8])}, which "
+              f"{'is' if len(stray) == 1 else 'are'} not on this sheet",
+              file=sys.stderr)
+        return 1
     unknown = sorted(set(want) - present)
     if unknown:
         print(f"  error: the placement names {', '.join(unknown[:8])}, which "
@@ -216,6 +414,84 @@ def main() -> int:
     else:
         lines2 = lines
     print(f"  {len(turned)} component(s) rotated ({nrot} records)")
+
+    # --- leads cut to a stated length -------------------------------------
+    # The importer gives every pin a thirty-unit lead. That is a fine
+    # length for a part standing upright -- its footprint stays a line --
+    # and a bad one for a part lying *across* a row, where the two leads
+    # make a hundred-unit footprint and nothing can be placed within it.
+    # `stub R26 15` states what that part's leads are, by designator and
+    # not by coordinate, so moving the part does not invalidate it.
+    #
+    # Cut here, before anything reads the geometry: the overlap check, the
+    # write and the drift fingerprint all then see the leads the sheet
+    # really has. Cutting it a stage later, in netflags, left this tool
+    # refusing positions that were fine.
+    cut, cut_lines = 0, set()
+    if stubs.get("*") is not None:
+        # `stub * 5` -- every part on the sheet. A lead is the importer's
+        # runway out to where a net's name sits, and on a sheet whose
+        # layout is hand-set nothing needs a long one: the names move with
+        # the leads, and every unit of runway is a unit no neighbour can
+        # stand in.
+        for d in present:
+            stubs.setdefault(d, stubs["*"])
+    if stubs:
+        pinset = pin_coords(lines2)
+        for i, (h, b, _, _) in enumerate(lines2):
+            if not h or h["type"] != "LINE" or not b.get("lineGroup"):
+                continue
+            d = owner.get(of_record.get(i))
+            if d not in stubs:
+                continue
+            a_ = (round(b["startX"]), round(b["startY"]))
+            c_ = (round(b["endX"]), round(b["endY"]))
+            if a_ in pinset and c_ not in pinset:
+                pin, free = a_, c_
+            elif c_ in pinset and a_ not in pinset:
+                pin, free = c_, a_
+            else:
+                continue
+            ln = stubs[d]
+            u = (0 if free[0] == pin[0] else (1 if free[0] > pin[0] else -1),
+                 0 if free[1] == pin[1] else (1 if free[1] > pin[1] else -1))
+            new_ = (pin[0] + u[0] * ln, pin[1] + u[1] * ln)
+            nb = dict(b)
+            if a_ == free:
+                nb["startX"], nb["startY"] = new_
+            else:
+                nb["endX"], nb["endY"] = new_
+            lines2[i] = (h, nb, lines2[i][2],
+                         f"{json.dumps(h, separators=(',', ':'))}||"
+                         f"{json.dumps(nb, separators=(',', ':'))}|")
+            cut_lines.add(i)
+            cut += 1
+        # ...and the name that sits on it moves with it. The importer puts
+        # the label at the lead's midpoint, so a cut lead leaves the text
+        # hanging out beyond its end -- and the box the overlap check
+        # measures is every coordinate the component owns, text included,
+        # so an unmoved label keeps the footprint at its old width and the
+        # whole point of cutting is lost.
+        lgl = {r[1]["lineGroup"]: i for i, r in enumerate(lines2)
+               if r[1] and r[1].get("lineGroup")}
+        for i, (h, b, _, _) in enumerate(lines2):
+            if (not h or h["type"] != "ATTR" or b.get("key") != "NET"
+                    or b.get("parentId") not in lgl
+                    or lgl[b["parentId"]] not in cut_lines
+                    or not isinstance(b.get("x"), (int, float))):
+                continue
+            j = lgl[b["parentId"]]
+            h2, b2, _, _ = lines2[j]
+            if h2 is None:
+                continue
+            nb = dict(b)
+            nb["x"] = (round(b2["startX"]) + round(b2["endX"])) // 2
+            nb["y"] = (round(b2["startY"]) + round(b2["endY"])) // 2
+            lines2[i] = (h, nb, lines2[i][2],
+                         f"{json.dumps(h, separators=(',', ':'))}||"
+                         f"{json.dumps(nb, separators=(',', ':'))}|")
+        if cut:
+            print(f"  stub   {cut} lead(s) cut to the length the file states")
 
     anchors = {}
     for i, (h, b, _, _) in enumerate(lines2):
@@ -282,16 +558,61 @@ def main() -> int:
                          f"{json.dumps(nb, separators=(',', ':'))}|")
         touched += 1
 
+    # The hand-drawn wires go at the end of the schematic document, with
+    # the rest of the canvas records and not inside a SYMBOL or DEVICE
+    # one. They are added after the translation because their coordinates
+    # are the ones the placement file states -- the finished canvas, which
+    # is what a person drawing on the sheet reads off.
+    nwire = 0
+    if wires:
+        last_sch = max(i for i, (h, _, doc, _) in enumerate(lines2)
+                       if h and doc and doc[0] in ("SCH", "SCH_PAGE"))
+        ticket = 1 + max((h["ticket"] for h, _, _, _ in lines2
+                          if h and isinstance(h.get("ticket"), int)),
+                         default=0)
+        new = []
+        for net, poly in wires:
+            recs = hand_wire(net, poly, ticket)
+            ticket += len(recs)
+            new += recs
+        out_lines = (out_lines[:last_sch + 1]
+                     + [f"{json.dumps(h, separators=(',', ':'))}||"
+                        f"{json.dumps(b, separators=(',', ':'))}|"
+                        for h, b in new]
+                     + out_lines[last_sch + 1:])
+        nwire = len(new)
+
     src = zipfile.ZipFile(a.export)
     a.out.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(a.out, "w", zipfile.ZIP_DEFLATED) as z:
         for entry in src.namelist():
             z.writestr(entry, "\n".join(out_lines).encode("utf-8")
                        if entry == name else src.read(entry))
-    print(f"  {touched} records translated")
+    print(f"  {touched} records translated"
+          + (f", {nwire} drawn by hand" if nwire else ""))
 
     # --- the proof ---------------------------------------------------------
-    after = reread(a.out, lines2, of_record, owner)
+    # `reread` requires the output to be the input's records one for one,
+    # which is true of a pure translation and false once a wire has been
+    # drawn. So the hand wires are taken back out first and the same
+    # comparison run on what is left: the point of it is that no original
+    # record moved or changed, not that the file is the same length.
+    if nwire:
+        back = read_rows(a.out)
+        kept = [r for r in back
+                if not (r[0] and str(r[0].get("id", "")).startswith("hw"))]
+        if len(kept) != len(lines2) or any(
+                (h1 is None) != (h2 is None) or (
+                    h1 is not None and (h1.get("id"), h1.get("type"))
+                    != (h2.get("id"), h2.get("type")))
+                for (h1, _, _, _), (h2, _, _, _) in zip(lines2, kept)):
+            a.out.unlink(missing_ok=True)
+            print(f"\n  error: drawing the hand wire disturbed the record "
+                  f"sequence; {a.out} deleted\n", file=sys.stderr)
+            return 1
+        after = anchor_geometry(kept, of_record, owner)
+    else:
+        after = reread(a.out, lines2, of_record, owner)
     drift = [d for d in before if before[d] != after.get(d)]
     gone = sorted(set(before) - set(after))
     if drift or gone:
@@ -303,6 +624,23 @@ def main() -> int:
         print(f"\n  {len(drift) + len(gone)} component(s) did not move "
               f"rigidly; {a.out} deleted\n", file=sys.stderr)
         return 1
+
+    # A hand-drawn wire is checked on the file that was written, not on
+    # the placement line that asked for it: the coordinates that matter
+    # are the ones now in the canvas, and a route that ends nowhere is
+    # exactly the fault this is for.
+    if wires:
+        wrong = check_wires(read_rows(a.out), wires)
+        if wrong:
+            for w in wrong[:10]:
+                print(f"  BADWIRE {w}", file=sys.stderr)
+            a.out.unlink(missing_ok=True)
+            print(f"\n  {len(wrong)} problem(s) with the hand-drawn wire(s); "
+                  f"{a.out} deleted\n", file=sys.stderr)
+            return 1
+        for net, poly in wires:
+            ends = " ".join(f"{q[0]},{q[1]}" for q in (poly[0], poly[-1]))
+            print(f"  wire   {net} from {ends}, {len(poly) - 1} segment(s)")
     print(f"  {len(before)} components: local geometry unchanged, so every "
           f"wire still meets the pin it met")
     print(f"\n  now prove the nets:  ./tools/epro.py diff {a.out} "

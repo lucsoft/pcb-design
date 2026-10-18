@@ -23,9 +23,10 @@ itself put in the donor.
     netflags.py <target.epro2> --donor <hand-drawn.epro2> --dry-run
 
 **Flags carry no Designator and no Supplier Part**, which is what keeps them
-out of the BOM and out of `epro.py diff`'s part check. They add no wire, so
-the net diff's 441 pin connections are untouched. Both are checked after
-writing rather than assumed.
+out of the BOM and out of `epro.py diff`'s part check. They add no wire —
+and `--ground-bus` adds one only without a `NET` attribute, which is what
+keeps the net diff's pin connections untouched either way. Both are checked
+after writing rather than assumed.
 
 A flag's own pin lands exactly on the pin it flags, so it connects the way
 every other coincidence in this format does. That also means placing one
@@ -171,6 +172,33 @@ R4Q = {0: lambda x, y: (x, y), 90: lambda x, y: (-y, x),
        180: lambda x, y: (-x, -y), 270: lambda x, y: (y, -x)}
 
 
+def flag_hits(tip, ext, bx):
+    """Would a symbol of this extent land inside bx *whichever way up*?
+
+    Both ways, not either: the flag is turned to suit its lead, so one
+    clear orientation is enough and asking for both refuses positions the
+    drawing would have been happy with. Asking for either cost the pad
+    ten units of lead -- the way that reaches back into the package is the
+    one the turn rule exists to avoid.
+
+    Module level, not a closure: the lead re-aim runs before the rest of
+    `main` has defined anything, and it is what asks this.
+    """
+    if ext is None:
+        return False
+    for r in (0, 180):
+        cs = [R4Q[r](x, y) for x, y in
+              ((ext[0], ext[1]), (ext[2], ext[1]),
+               (ext[0], ext[3]), (ext[2], ext[3]))]
+        x0 = tip[0] + min(x for x, _ in cs)
+        x1 = tip[0] + max(x for x, _ in cs)
+        y0 = tip[1] + min(y for _, y in cs)
+        y1 = tip[1] + max(y for _, y in cs)
+        if not (x0 < bx[2] and bx[0] < x1 and y0 < bx[3] and bx[1] < y1):
+            return False
+    return True
+
+
 def symbol_extent(rows, uuid):
     """A symbol's drawn extent, relative to its own anchor.
 
@@ -227,6 +255,30 @@ def main() -> int:
                     help="carry a crowded flag this many units further out "
                          "along its own stub, extending the stub, instead "
                          "of dropping it or drawing it across a neighbour")
+    ap.add_argument("--lead-turn", default="",
+                    help="comma-separated nets whose crowded flag is led "
+                         "across its stub rather than along it. The straight "
+                         "lead is shorter but runs in the row beside the "
+                         "part's other pins, where it walls off the space a "
+                         "neighbouring net needs to get past; a turn leaves "
+                         "the row. Both perpendicular sides are tried and "
+                         "the first that clears wins, the down side first")
+    ap.add_argument("--pin-stub", default="",
+                    help="semicolon-separated NET@x,y naming pins whose lead "
+                         "is moved, optionally as NET@x,y=length. Without a "
+                         "length the lead is re-aimed square off the pin: the "
+                         "importer aims a lead by the pin's side, which is "
+                         "right for the pins along an edge and wrong for one "
+                         "on it, and U4's thermal pad is a vertical pin on the "
+                         "top edge whose lead came out sideways, thirty units "
+                         "along the package. With a length the lead keeps its "
+                         "direction and is cut to that many units, which is "
+                         "what a part lying *across* a row needs: thirty units "
+                         "each end make a hundred-unit footprint, and nothing "
+                         "can come within a hundred of it. The lead is moved "
+                         "in both forms and never dropped -- the node's NET "
+                         "attribute lives on its wire, and epro.py diff counts "
+                         "one of those per pin")
     ap.add_argument("--flag-clearance", type=int, default=0,
                     help="with --strict-flags, drop a flag whose root has a "
                          "foreign stub end within this many units; the "
@@ -244,8 +296,16 @@ def main() -> int:
                          "ten-pin ground on one IC otherwise stacks ten "
                          "symbols on the pin pitch; the pins that lose "
                          "their flag keep their net label")
+    ap.add_argument("--ground-bus", type=int, default=0,
+                    help="join a ground net's free ends that sit in one "
+                         "line, consecutive gaps up to this many units, with "
+                         "a bus wire and one ground symbol; a rail's parts "
+                         "that each drop their lead to the same height "
+                         "otherwise repeat the symbol once per part")
     ap.add_argument("--rotation", type=int, default=0,
-                    help="rotation for the placed flag (default 0, bars down)")
+                    help="rotation added to every placed flag, on top of "
+                         "the turn each one may need to keep its own lead "
+                         "off the bar it draws (default 0)")
     a = ap.parse_args()
     if not a.dry_run and not a.out:
         print("error: give -o/--out, or --dry-run", file=sys.stderr)
@@ -257,13 +317,150 @@ def main() -> int:
 
     _, drows = load(a.donor)
     flags = find_flags(drows)
+    name, rows = load(a.target)
+    # --- a stub that runs along the symbol rather than out of it ---------
+    # `--pin-stub` names a pin whose lead the importer aimed along the
+    # package instead of away from it. The lead is *moved*, never dropped:
+    # the node's NET attribute lives on that wire and `epro.py diff`
+    # counts one of those per pin, so deleting the record would break the
+    # count where moving it breaks nothing. Everything downstream -- the
+    # label, the flag, the router -- then sees the lead where a person
+    # would have drawn it.
+    restub = {}
+    if a.pin_stub:
+        _pc = pin_coords(rows)
+        _anch = {}
+        for _h, _b, _, _ in rows:
+            if _h and _h["type"] == "COMPONENT" and _b.get("partId") \
+                    and isinstance(_b.get("x"), (int, float)):
+                _anch[_h["id"]] = (_b["x"], _b["y"])
+        _at_of = {}
+        for _h, _b, _, _ in rows:
+            if _h and _h["type"] == "ATTR" and _b.get("key") == "Designator" \
+                    and _b.get("parentId") in _anch:
+                _at_of[_b["value"]] = _anch[_b["parentId"]]
+        # The boxes a symbol has to keep out of, and the extent of the
+        # flag that will sit on the new end -- both readable from the raw
+        # records, so this runs before anything else builds them.
+        _symref = {_b["parentId"]: _b["value"] for _h, _b, _, _ in rows
+                   if _h and _h["type"] == "ATTR"
+                   and _b.get("key") == "Symbol" and _b.get("value")}
+        _boxes = []
+        for _h, _b, _d, _ in rows:
+            if not _h or _h["type"] != "COMPONENT" or not _b.get("partId"):
+                continue
+            _e = symbol_extent(rows, _symref.get(_h["id"]))
+            if _e is None:
+                continue
+            _r = (_b.get("rotation") or 0) % 360
+            if _r not in R4Q:
+                continue
+            _cs = [R4Q[_r](x, y) for x, y in
+                   ((_e[0], _e[1]), (_e[2], _e[1]),
+                    (_e[0], _e[3]), (_e[2], _e[3]))]
+            _boxes.append((_b["x"] + min(x for x, _ in _cs),
+                           _b["y"] + min(y for _, y in _cs),
+                           _b["x"] + max(x for x, _ in _cs),
+                           _b["y"] + max(y for _, y in _cs)))
+        # A spec with no `@` names a *designator*, and shortens every lead
+        # that part owns. That is the form to use for a part lying across a
+        # row: its leads are short because of what it is, not because of
+        # where it happens to be, and a coordinate would have to be
+        # rewritten every time the part moved -- which is the coupling that
+        # makes placing these by hand tedious in the first place.
+        _specs = []
+        for _spec in (a.pin_stub or "").split(";"):
+            _spec = _spec.strip()
+            if not _spec:
+                continue
+            if "@" in _spec:
+                _specs.append((_spec, None))
+                continue
+            _d, _, _ln = _spec.partition("=")
+            for _h, _b, _dd, _ in rows:
+                if _h and _h["type"] == "LINE" and _b.get("lineGroup"):
+                    for _e in ((round(_b["startX"]), round(_b["startY"])),
+                               (round(_b["endX"]), round(_b["endY"]))):
+                        if _pc.get(_e) == _d.strip():
+                            _specs.append((f"{_d.strip()}@{_e[0]},{_e[1]}"
+                                           f"={_ln.strip() or 15}",
+                                           _d.strip()))
+        for _spec, _of in _specs:
+            _spec = _spec.strip()
+            if not _spec:
+                continue
+            _net, _, _co = _spec.partition("@")
+            try:
+                _q = tuple(int(v) for v in _co.split(","))
+            except ValueError:
+                _q = ()
+            _own = _pc.get(_q) if len(_q) == 2 else None
+            if _own is None:
+                print(f"error: --pin-stub wants NET@x,y naming a pin, not "
+                      f"{_spec!r}", file=sys.stderr)
+                return 2
+            _anchor = _at_of.get(_own, _q)
+            _done = False
+            for _i, (_h, _b, _d, _r) in enumerate(rows):
+                if _done or not _h or _h["type"] != "LINE":
+                    continue
+                _e0 = (round(_b["startX"]), round(_b["startY"]))
+                _e1 = (round(_b["endX"]), round(_b["endY"]))
+                if _q not in (_e0, _e1):
+                    continue
+                _free = _e1 if _e0 == _q else _e0
+                if _free in _pc:
+                    continue                     # not a stub
+                _n = abs(_free[0] - _q[0]) + abs(_free[1] - _q[1])
+                if _free[1] == _q[1]:
+                    _dirs = [(0, -1), (0, 1)]
+                elif _free[0] == _q[0]:
+                    _dirs = [(-1, 0), (1, 0)]
+                else:
+                    continue
+                _fe = flags.get(_net) or next(iter(flags.values()), None)
+                _ext = symbol_extent(drows, _fe[0]) if _fe else None
+                # Away from the body first -- and no longer than the symbol
+                # fits in. U4's pad has C5 fifty units above it, so a
+                # thirty-unit lead puts the bars inside the capacitor
+                # whichever way they are turned; twenty is clear.
+                _dirs.sort(key=lambda d: (d[0] * (_q[0] - _anchor[0])
+                                          + d[1] * (_q[1] - _anchor[1])),
+                           reverse=True)
+                _away = None
+                for _d in _dirs:
+                    for _ln in (5, 10, _n // 2, _n * 2 // 3, _n):
+                        _t = (_q[0] + _d[0] * _ln, _q[1] + _d[1] * _ln)
+                        if not any(flag_hits(_t, _ext, _bx) for _bx in _boxes):
+                            _away = _t
+                            break
+                    if _away is not None:
+                        break
+                if _away is None:
+                    continue
+                _nb = dict(_b)
+                if _e0 == _free:
+                    _nb["startX"], _nb["startY"] = _away
+                else:
+                    _nb["endX"], _nb["endY"] = _away
+                rows[_i] = (_h, _nb, _d,
+                            f"{json.dumps(_h, separators=(',', ':'))}||"
+                            f"{json.dumps(_nb, separators=(',', ':'))}|")
+                restub[_h["id"]] = (_free, _away)
+                _done = True
+            if not _done:
+                print(f"error: --pin-stub found no stub on the pin at {_q}",
+                      file=sys.stderr)
+                return 2
+        print(f"  stub   {len(restub)} lead(s) re-aimed away from their "
+              f"symbol")
+
     print(f"\n{a.donor.name} offers: {', '.join(sorted(flags)) or 'nothing'}")
     if not flags:
         print("  error: the donor places no flag components, so there is "
               "nothing to copy\n", file=sys.stderr)
         return 1
 
-    name, rows = load(a.target)
     at = stub_nets(rows)
     pins = pin_coords(rows)
     wanted, using = [], {}
@@ -376,23 +573,110 @@ def main() -> int:
                             max(b["startY"], b["endY"]),
                             netname.get(b["lineGroup"])))
 
-    def _flagbox(pt, n):
+    def _gdir(n):
+        """Which side of its own pin a flag's graphic is drawn on.
+
+        Read off the drawing, not named per net: in the donor file GND's
+        triangle lies at +y and the +5V bar at -y, so a table of net
+        names would be one more thing to keep in step with the library.
+        """
         e = flagext.get(n)
         if e is None:
             return None
-        return (pt[0] + e[0], pt[1] + e[1], pt[0] + e[2], pt[1] + e[3])
+        cx = (e[0] + e[2]) / 2.0
+        cy = (e[1] + e[3]) / 2.0
+        if abs(cx) >= abs(cy):
+            return (1 if cx > 0 else -1, 0)
+        return (0, 1 if cy > 0 else -1)
 
-    def _draws_into(pt, n):
+    def _turn(n, tip, prev):
+        """0, or 180 where the graphic would point back along its lead.
+
+        A flag reached from above is the case that needs it. The supply
+        symbol draws its bar on the far side of its pin from the wire it
+        feeds, so leading a flag *down* to sit below a pin row puts the
+        bar squarely on the incoming wire -- the wire's last ten units
+        stick out past it and the flag reads as a crossbar threaded on a
+        line rather than a flag. Only that case is turned: a bar
+        perpendicular to its wire is what every other flag here draws.
+        """
+        g = _gdir(n)
+        if g is None:
+            return 0
+        if prev is None:
+            return 0
+        dx, dy = tip[0] - prev[0], tip[1] - prev[1]
+        if dx == 0 and dy == 0:
+            return 0
+        if abs(dy) >= abs(dx):
+            d = (0, 1 if dy > 0 else -1)
+        else:
+            d = (1 if dx > 0 else -1, 0)
+        off = 180 if g == (-d[0], -d[1]) else 0
+        # ...and the one other reason to turn: the symbol would be drawn
+        # into a part and turning it over puts it clear. U4's thermal pad
+        # is that case. Its stub runs *right* out of the pin row, so the
+        # bars hang down into the package from a stub end that is itself
+        # clear of it -- and every check that asks about the root says
+        # the position is fine. Turned over they sit in the gap between
+        # the pad and the bootstrap loop above it, which is where a
+        # person draws them, and nothing had to move to get there.
+        #
+        if _turn_clears(tip, n, off):
+            return (off + 180) % 360
+        return off
+
+    def _turn_clears(tip, n, off=0):
+        """Would turning this flag over take it out of a part?
+
+        Asked of the rotation it would otherwise take, not of 0: a flag
+        already turned because its graphic points back along its lead is
+        clear or not clear the other way round.
+        """
+        return (_in_part(tip, n, (a.rotation + off) % 360) and
+                not _in_part(tip, n, (a.rotation + off + 180) % 360))
+
+    def _in_part(tip, n, r):
+        """Would n's symbol at rotation r, rooted at tip, land in a part?
+
+        Written without `_flagbox`, which asks `_turn`, which asks this --
+        a ring of three that would recurse.
+        """
+        e = flagext.get(n)
+        if e is None or r not in R4Q:
+            return False
+        cs = [R4Q[r](x, y) for x, y in ((e[0], e[1]), (e[2], e[1]),
+                                        (e[0], e[3]), (e[2], e[3]))]
+        x0 = tip[0] + min(x for x, _ in cs)
+        x1 = tip[0] + max(x for x, _ in cs)
+        y0 = tip[1] + min(y for _, y in cs)
+        y1 = tip[1] + max(y for _, y in cs)
+        return any(x0 < bx[2] and bx[0] < x1 and y0 < bx[3] and bx[1] < y1
+                   for bx in partbox)
+
+    def _flagbox(pt, n, prev=None):
+        e = flagext.get(n)
+        if e is None:
+            return None
+        r = (a.rotation + _turn(n, pt, prev)) % 360
+        if r not in R4Q:
+            return None
+        cs = [R4Q[r](x, y) for x, y in ((e[0], e[1]), (e[2], e[1]),
+                                        (e[0], e[3]), (e[2], e[3]))]
+        return (pt[0] + min(x for x, _ in cs), pt[1] + min(y for _, y in cs),
+                pt[0] + max(x for x, _ in cs), pt[1] + max(y for _, y in cs))
+
+    def _draws_into(pt, n, prev=None):
         """Would a flag for n, rooted at pt, be drawn over a part?"""
-        f = _flagbox(pt, n)
+        f = _flagbox(pt, n, prev)
         if f is None:
             return False
         return any(f[0] < bx[2] and bx[0] < f[2]
                    and f[1] < bx[3] and bx[1] < f[3] for bx in partbox)
 
-    def _draws_over_wire(pt, n):
+    def _draws_over_wire(pt, n, prev=None):
         """... or over a wire carrying some other net?"""
-        f = _flagbox(pt, n)
+        f = _flagbox(pt, n, prev)
         if f is None:
             return False
         for x0, y0, x1, y1, wn in wireseg:
@@ -401,6 +685,23 @@ def main() -> int:
             if f[0] < x1 and x0 < f[2] and f[1] < y1 and y0 < f[3]:
                 return True
         return False
+
+    # Points a *drawn* wire already reaches -- a line meeting them that is
+    # not the stub they sit on. U4 grounds twice: its pin's stub end,
+    # which the hand-drawn wire to the catch diode already covers, and the
+    # thermal pad's, which nothing reaches. Ranking the pin's first put
+    # the part's one flag there, and the rule against a second mark on a
+    # wired node then took it away, so U4 ended up with no ground symbol
+    # at all and the pad unmarked. A point a wire reaches does not need
+    # the mark; a point it does not is the one that does.
+    stubwid = {pt: {w for _, w in ns} for pt, ns in at.items()}
+    wired_pt = set()
+    for h, b, _, _ in rows:
+        if h and h["type"] == "LINE" and b.get("startX") is not None:
+            for q in ((round(b["startX"]), round(b["startY"])),
+                      (round(b["endX"]), round(b["endY"]))):
+                if q in at and b.get("lineGroup") not in stubwid.get(q, set()):
+                    wired_pt.add(q)
 
     inbody = {pt for pt in at
               if any(_draws_into(pt, n) for n, _ in at[pt] if n in wanted)}
@@ -476,7 +777,7 @@ def main() -> int:
                 for q_ in g_:
                     node_of[(n_, q_)] = k_
 
-    best = {}
+    best, why = {}, {}
     if a.one_per_part:
         for pt, nets in sorted(at.items()):
             for n, wid in sorted(nets):
@@ -500,7 +801,12 @@ def main() -> int:
                     key = (owner_, n,
                            pt if (a.ground_every and n in ground_nets)
                            else None)
-                rank = (pt in inbody, pt in onwire_pt, pt in crowded, pt)
+                # The sort key and the three questions the skip rules
+                # ask, kept apart on purpose: reading them back out of
+                # `rank` by position survived exactly as long as it took
+                # to insert a component in front of them.
+                why[pt] = (pt in inbody, pt in onwire_pt, pt in crowded)
+                rank = (pt in wired_pt,) + why[pt] + (pt,)
                 if key not in best or rank < best[key][0]:
                     best[key] = (rank, pt)
     # Where *every* candidate would draw into a part, place none. J4's
@@ -530,7 +836,26 @@ def main() -> int:
     # wires schwire draws -- and it is refused if it would come near
     # anything carrying a different net.
     lead = {}
+    led_boxes = []
+    led_segs = []
+
+    def _crosses(p, q, r, s):
+        """Do segments pq and rs meet, endpoints included?"""
+        def side(o, u, v):
+            return ((u[1] - o[1]) * (v[0] - o[0])
+                    - (u[0] - o[0]) * (v[1] - o[1]))
+        def on(p_, u_, v_):
+            return (min(u_[0], v_[0]) <= p_[0] <= max(u_[0], v_[0])
+                    and min(u_[1], v_[1]) <= p_[1] <= max(u_[1], v_[1]))
+        d1, d2 = side(p, q, r), side(p, q, s)
+        d3, d4 = side(r, s, p), side(r, s, q)
+        if ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0)):
+            return True
+        return (d1 == 0 and on(r, p, q) or d2 == 0 and on(s, p, q)
+                or d3 == 0 and on(p, r, s) or d4 == 0 and on(q, r, s))
+
     if a.flag_lead:
+        turn_first = {s.strip() for s in (a.lead_turn or "").split(",") if s.strip()}
         stubgeo = {}
         for h, b, _, _ in rows:
             if h and h["type"] == "LINE" and b.get("lineGroup") in netname:
@@ -545,7 +870,14 @@ def main() -> int:
         # symbol, on a sheet where every other ground pin has one. A
         # lead carries it clear of the body exactly as it carries one
         # clear of a neighbouring pin.
+        # A flag that turning over takes out of a part needs no lead:
+        # whichever corner of the pin field it is in, the cheaper answer
+        # is to turn it. U4's pad is the case -- and a lead out of there
+        # runs right along the pin row, into the corridor SW_5V has to
+        # come down through, and blocks that net's route outright.
         for pt in sorted(crowded | onwire_pt | inbody):
+            if any(_turn_clears(pt, n_) for n_, _ in at.get(pt, ())):
+                continue
             grp = next((g for g, segs in stubgeo.items()
                         for s in segs if pt in s), None)
             if grp is None or pt in pinset:
@@ -568,21 +900,81 @@ def main() -> int:
             # out and covers the tip.
             foreign = [q for q, ns in at.items() if mine not in {m for m, _ in ns}]
             start = (pt[0] + ux * 14, pt[1] + uy * 14)
-            lo = (min(start[0], tip[0]) - 12, min(start[1], tip[1]) - 12)
-            hi = (max(start[0], tip[0]) + 12, max(start[1], tip[1]) + 12)
             def _clear(a_, b_):
                 lo_ = (min(a_[0], b_[0]) - 12, min(a_[1], b_[1]) - 12)
                 hi_ = (max(a_[0], b_[0]) + 12, max(a_[1], b_[1]) + 12)
-                return not any(lo_[0] <= q[0] <= hi_[0]
-                               and lo_[1] <= q[1] <= hi_[1] for q in foreign)
+                if any(lo_[0] <= q[0] <= hi_[0]
+                       and lo_[1] <= q[1] <= hi_[1] for q in foreign):
+                    return False
+                # A lead already put down for another flag is wire on *its*
+                # net, and there is no junction dot to say whether a
+                # crossing is one node or two -- in a geometric schematic
+                # it is two, and it reads as an ambiguity. The lead this
+                # was written for turned across its neighbour's: U4's
+                # FB_5V, blocked straight out by U4's ground flag, turned
+                # up at x=430 and cut the ground lead lying at y=120 on
+                # its way past. Clearing the foreign *stub ends* did not
+                # see it, because the obstruction was a lead this loop had
+                # added a moment earlier.
+                for (sx0, sy0), (sx1, sy1), sn_ in led_segs:
+                    if sn_ == mine:
+                        continue
+                    if _crosses(a_, b_, (sx0, sy0), (sx1, sy1)):
+                        return False
+                return True
+
+            def _record(pt_, pts_):
+                prev_ = pt_
+                for nxt_ in pts_:
+                    led_segs.append((prev_, nxt_, mine))
+                    prev_ = nxt_
 
             # The tip must also be somewhere the symbol may be drawn.
             # U4's thermal pad stub lies *above* its package, so the
             # straight lead is clear of every foreign point and the flag
             # at its end still hangs into the IC -- the one thing the
             # lead was supposed to escape.
-            if _clear(start, tip) and not _draws_into(tip, mine):
-                lead[pt] = ([tip], grp)
+            #
+            # And it must clear the symbols the previous leads put down.
+            # Two pins one pitch apart, both crowded, are led the same
+            # distance along parallel stubs and their symbols land on
+            # each other: U4's ground at (410,120) and its FB_5V at
+            # (410,140) both reached x=470 and overlapped. The pins are
+            # ten apart, so a lead that clears the *stubs* still does
+            # not clear the *flags*, and the clash this tool prints at
+            # the end is the one it just created. Points are walked in
+            # order, so the earlier flag's box is known here; a tip
+            # landing in it is refused and the turn below is tried.
+            def _free(t, prev=None):
+                box = _flagbox(t, mine, prev)
+                return box is None or not any(
+                    box[0] < q[2] and q[0] < box[2]
+                    and box[1] < q[3] and q[1] < box[3] for q in led_boxes)
+
+            # A symbol landing on the one above it is one answer, and
+            # turning away is another -- but the shortest is to stop
+            # short: the neighbour has already vacated the near half of
+            # the row, so a lead of half the length lands its own symbol
+            # where nothing is. U4's FB_5V takes that one; longer did
+            # not help, because at ninety units the tip is inside D2.
+            # A straight lead is shorter, but it lies in the pin row; where
+            # a neighbouring net has to cross that row to reach its own
+            # parts, the flag walls it off. FB_5V on U4 is the case: its
+            # straight lead runs at y=140 from the FB pin to (440, 140),
+            # and with the FB stub it seals y=140 from x=380 to 440 --
+            # which is the only line COMP_5V could cross to get from its
+            # pin down to C7 and R27. The pin row is exactly the wrong
+            # place for the flag, and a turn leaves it.
+            took = None if mine in turn_first else ([
+                t_ for d_ in (a.flag_lead, a.flag_lead // 2, a.flag_lead * 3 // 2)
+                if (t_ := (pt[0] + ux * d_, pt[1] + uy * d_)) != pt
+                and _clear(start, t_) and not _draws_into(t_, mine, pt)
+                and _free(t_, pt)][:1] or None)
+            if took is not None:
+                lead[pt] = (took, grp)
+                _record(pt, took)
+                if (bx := _flagbox(took[-1], mine, pt)) is not None:
+                    led_boxes.append(bx)
                 continue
             # Straight out is blocked -- U5's ground has L2's stub end
             # sitting in the only space it could use. Turn instead: a
@@ -590,14 +982,41 @@ def main() -> int:
             # it. Still wire on the net it belongs to, still refused if
             # the new stretch comes near anything foreign, and it does
             # not need the rest of the sheet moved out of the way.
-            knee = (pt[0] + ux * 20, pt[1] + uy * 20)
+            # A net in --lead-turn leaves the row *square*, straight off the
+            # stub end, which is where the flag at (440, 140) should have
+            # been all along: perpendicular and clear of the pin row. The
+            # knee form below runs twenty units along the row first, and
+            # for FB_5V that lands the flag twelve units from COMP_5V's own
+            # stub end -- refused, correctly, as two symbols a reader cannot
+            # tell apart. Trimmed fourteen units out like the straight test,
+            # so the clearance is measured on the new stretch and not on the
+            # crowding it is leaving.
+            px_, py_ = -uy, ux
             for s_ in (1, -1):
-                far = (knee[0] - uy * a.flag_lead * s_,
-                       knee[1] + ux * a.flag_lead * s_)
-                if _clear(start, knee) and _clear(knee, far) \
-                        and not _draws_into(far, mine):
-                    lead[pt] = ([knee, far], grp)
-                    break
+                dx_, dy_ = px_ * s_, py_ * s_
+                far = (pt[0] + dx_ * a.flag_lead, pt[1] + dy_ * a.flag_lead)
+                st_ = (pt[0] + dx_ * 14, pt[1] + dy_ * 14)
+                if mine not in turn_first or not _clear(st_, far) \
+                        or _draws_into(far, mine, pt) or not _free(far, pt):
+                    continue
+                lead[pt] = ([far], grp)
+                _record(pt, [far])
+                if (bx := _flagbox(far, mine, pt)) is not None:
+                    led_boxes.append(bx)
+                break
+            else:
+                knee = (pt[0] + ux * 20, pt[1] + uy * 20)
+                for s_ in (1, -1):
+                    far = (knee[0] - uy * a.flag_lead * s_,
+                           knee[1] + ux * a.flag_lead * s_)
+                    if _clear(start, knee) and _clear(knee, far) \
+                            and not _draws_into(far, mine, knee) \
+                            and _free(far, knee):
+                        lead[pt] = ([knee, far], grp)
+                        _record(pt, [knee, far])
+                        if (bx := _flagbox(far, mine, knee)) is not None:
+                            led_boxes.append(bx)
+                        break
         if lead:
             print(f"  lead   {len(lead)} crowded flag(s) carried "
                   f"{a.flag_lead} units out of the pin field on their own "
@@ -609,10 +1028,11 @@ def main() -> int:
     # may call its return AGND or LED_RTN and still draw it as ground.
     skipped_clash = skipped_wire = kept_last = kept_crowded = 0
     for key, (rank, pt) in sorted(best.items()):
-        if own_flags[key[0]] <= 1 and (rank[0] or rank[1] or rank[2]):
+        inb, onw, crd = why[pt]
+        if own_flags[key[0]] <= 1 and (inb or onw or crd):
             kept_last += 1
             continue
-        if rank[0]:
+        if inb:
             # Before the lead check, deliberately. Looking for a lead
             # first was tried, to rescue U4's thermal pad: its stub
             # points *into* the package -- free end at (330, 90) with
@@ -625,7 +1045,7 @@ def main() -> int:
         elif pt in lead:
             # carried out of the pin field instead; nothing to skip
             pass
-        elif key[1] in ground_nets and rank[2] and not rank[1]:
+        elif key[1] in ground_nets and crd and not onw:
             # Ground keeps its symbol even when crowded. DIN EN 60617-02
             # has one, and a reader who meets it on fourteen pins and
             # then reads the word "GND" on the fifteenth has to decide
@@ -635,7 +1055,7 @@ def main() -> int:
             # matters. An inconsistent convention costs more than a bar
             # drawn a pin pitch from its neighbour.
             kept_crowded += 1
-        elif (rank[1] or rank[2]) and a.strict_flags:
+        elif (onw or crd) and a.strict_flags:
             del best[key]
             own_flags[key[0]] -= 1
             skipped_wire += 1
@@ -655,8 +1075,41 @@ def main() -> int:
               f"foreign net's wire; those pins keep their net name")
     chosen = {v[1] for v in best.values()}
 
-    taken = set()
-    for pt, nets in sorted(at.items()):
+    # --- which stub ends wire already joins -------------------------------
+    # A union-find over every LINE in the file, which is how a hand-drawn
+    # wire -- or a wire schwire will add, if this is re-run on a wired
+    # sheet -- becomes visible here at all. Two things ask it the same
+    # question: whether a pin is already on a node that carries a symbol,
+    # and whether a pin has nothing reaching it.
+    uf = {}
+
+    def _find(q):
+        uf.setdefault(q, q)
+        r_ = q
+        while uf[r_] != r_:
+            r_ = uf[r_]
+        while uf[q] != r_:
+            uf[q], q = r_, uf[q]
+        return r_
+
+    def _join(q, r_):
+        a_, b_ = _find(q), _find(r_)
+        if a_ != b_:
+            uf[a_] = b_
+
+    for h, b, _, _ in rows:
+        if h and h["type"] == "LINE" and b.get("startX") is not None:
+            _join((round(b["startX"]), round(b["startY"])),
+                  (round(b["endX"]), round(b["endY"])))
+
+    # Points that needed no lead come first, so that where a wire joins
+    # two of them the symbol that survives is the one already sitting
+    # cleanly. A lead is only drawn because the pin field was crowded --
+    # U4's ground was carried 60 units out to get clear of its own pins --
+    # and once a wire covers the node that carried-out symbol is the one
+    # to give up, not the one on the stub end that never needed moving.
+    taken, placed_pts = set(), set()
+    for pt, nets in sorted(at.items(), key=lambda kv: (kv[0] in lead, kv[0])):
         for n, wid in sorted(nets):
             # Only where the stub already names this net. A flag put on the
             # wrong coordinate is a short, and the coordinate is read, never
@@ -677,18 +1130,22 @@ def main() -> int:
                             # schwire's stagger is where it belongs.
                             continue
                         taken.add(key)
+                        # One symbol marks the node. A wire already
+                        # reaching this point from a symbol placed above
+                        # makes this one a second mark on one node -- on
+                        # this sheet J4's ground, drawn down to the
+                        # stage's own ground line, and U4's, drawn to the
+                        # catch diode's. Which of the two survives is the
+                        # sort above, which is deterministic.
+                        if any(_find(pt) == _find(q) for q in placed_pts):
+                            continue
                 place.append((pt, n))
+                placed_pts.add(pt)
                 onwire.add(wid)
                 spots[n] += 1
-    for n in wanted:
-        print(f"  place  {spots[n]:3d} x {n}")
     if not place:
         print("\n  nothing to place\n")
         return 1
-
-    if a.dry_run:
-        print("  --dry-run: nothing written\n")
-        return 0
 
     ticket = max((h["ticket"] for h, _, _, _ in rows
                   if h and isinstance(h.get("ticket"), int)), default=0)
@@ -702,6 +1159,27 @@ def main() -> int:
     # reported the flag as renaming its net. The check was right; the
     # id was wrong.
     added = []
+    # Each flag entry's *pin*, recovered before the lead below moves the
+    # entry's coordinate off the stub end and onto the flag's own tip. The
+    # ground bus needs the pins rather than those ends -- see below.
+    pin_of_end = {}
+    for h, b, _, _ in rows:
+        if not h or h["type"] != "LINE" or not b.get("lineGroup"):
+            continue
+        a_ = (round(b["startX"]), round(b["startY"]))
+        b_ = (round(b["endX"]), round(b["endY"]))
+        if a_ in pins and b_ not in pins:
+            pin_of_end[b_] = a_
+        elif b_ in pins and a_ not in pins:
+            pin_of_end[a_] = b_
+    orig_free = [pt for pt, _ in place]
+    # Each flag's rotation, decided where its final wire segment is known.
+    # A flag on a stub end is reached from its pin, which `pin_of_end` has
+    # from the stub itself; the lead loop below overwrites that with the
+    # direction of the lead it just drew.
+    rots = []
+    for (x, y), n in place:
+        rots.append(_turn(n, (x, y), pin_of_end.get((x, y))))
     for i_, ((x, y), n) in enumerate(list(place)):
         if (x, y) in lead:
             pts_, grp = lead[(x, y)]
@@ -717,14 +1195,238 @@ def main() -> int:
                      "strokeStyle": None, "fillColor": None,
                      "strokeWidth": 1, "fillStyle": None}))
                 prev = nxt
+            rots[i_] = _turn(n, prev, pts_[-2] if len(pts_) > 1 else (x, y))
             place[i_] = (prev, n)
-    for (x, y), n in place:
+
+    # --- one ground bus where several pins stand in a row -----------------
+    # A rail's parts each drop their ground lead to a symbol of its own,
+    # and where their *pins* stand on one line a symbol per part states the
+    # same connection once per part. Joined by one line through those pins
+    # the node reads as one node and one symbol marks it.
+    #
+    # Through the pins, not through the stub ends. A bar drawn at the end
+    # of the leads is a comb: three cables dropping to a line that meets
+    # nothing the reader can name, and the drop is the whole fault. At the
+    # pin row it is one line with the ground triangle on the end of it.
+    #
+    # Collinear, not merely near: proximity cascades -- C7's ground is
+    # within reach of R24's, R24's of C9's -- and a "node" that swallows
+    # half the sheet's ground pins is exactly why --one-per-node exempts
+    # ground above. A run shares a coordinate and every gap in it is
+    # small, which is what makes it a bus on the page.
+    #
+    # The bus wire carries no `NET` attribute, deliberately. The net is
+    # already said by each pin's own stub, and `epro.py diff` counts one
+    # ATTR key=NET per pin: a wire of its own would lift the export's
+    # count above the netlist's and read as a discrepancy that is not one.
+    # The line is drawing over a connection that already exists.
+    #
+    # The members after the first keep their stubs and their labels and
+    # lose nothing but the duplicate symbols; their stubs are the ones
+    # schwire drops, because the bus now reaches the pin each of them led
+    # to. The first member's stub stays: it is where the ground triangle
+    # hangs, and a run with its symbol deleted is a bus to nowhere.
+    bus_segs, bus_dropped, bus_reached = [], 0, set()
+    if a.ground_bus:
+        def _crosses(s, t):
+            (x1, y1), (x2, y2) = s
+            (x3, y3), (x4, y4) = t
+
+            def _o(ax, ay, bx, by, cx, cy):
+                v = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+                return (v > 0) - (v < 0)
+
+            o1, o2 = _o(x1, y1, x2, y2, x3, y3), _o(x1, y1, x2, y2, x4, y4)
+            o3, o4 = _o(x3, y3, x4, y4, x1, y1), _o(x3, y3, x4, y4, x2, y2)
+            if o1 != o2 and o3 != o4:
+                return True
+            if o1 == o2 == o3 == o4 == 0:
+                return (max(min(x1, x2), min(x3, x4))
+                        <= min(max(x1, x2), max(x3, x4))
+                        and max(min(y1, y2), min(y3, y4))
+                        <= min(max(y1, y2), max(y3, y4)))
+            return False
+
+        pinpts = set(pins)
+        wire_segs = [((b["startX"], b["startY"]), (b["endX"], b["endY"]))
+                     for h, b, _, _ in rows
+                     if h and h["type"] == "LINE"
+                     and b.get("startX") is not None]
+
+        # (pin, index into `place`, net) for every ground flag whose stub
+        # could be followed back to a pin. An entry with no pin is left out
+        # of the bus entirely rather than placed by a guessed coordinate.
+        entries = []
+        for i_, (pt, n) in enumerate(place):
+            if n not in ground_nets:
+                continue
+            pin = pin_of_end.get(orig_free[i_])
+            if pin is not None:
+                entries.append((pin, i_, n))
+
+        def _runs(fixed, along):
+            """Ground flags whose *pins* stand on one line, in runs."""
+            lines = collections.defaultdict(list)
+            for e in entries:
+                lines[fixed(e[0])].append(e)
+            out = []
+            for grp in lines.values():
+                if len(grp) < 2:
+                    continue
+                grp.sort(key=lambda e: along(e[0]))
+                run = [grp[0]]
+                for e in grp[1:]:
+                    if along(e[0]) - along(run[-1][0]) <= a.ground_bus:
+                        run.append(e)
+                    else:
+                        if len(run) > 1:
+                            out.append(run)
+                        run = [e]
+                if len(run) > 1:
+                    out.append(run)
+            return out
+
+        drop = set()
+        # A row first, then a column; a point claimed by one run is not
+        # offered to the next.
+        for run in (_runs(lambda p: p[1], lambda p: p[0])
+                    + _runs(lambda p: p[0], lambda p: p[1])):
+            if any(e[1] in drop for e in run):
+                continue
+            end_a, end_b = run[0][0], run[-1][0]
+            s = (end_a, end_b)
+            horizontal = end_a[1] == end_b[1]
+            lo, hi = sorted((end_a[0], end_b[0]) if horizontal
+                            else (end_a[1], end_b[1]))
+            fixed_at = end_a[1] if horizontal else end_a[0]
+            # A pin *inside* the span would be a connection the run did not
+            # ask for -- the run's own members excepted, since a three-pin
+            # run has one in the middle by construction. A wire crossing the
+            # span anywhere but at a member is the same fault; the members'
+            # own stubs meet it at their pins and are the crossings that are
+            # wanted.
+            # The members' pins *and* their stub ends. A wire meeting the
+            # bus at either is the connection the bus is for -- it comes
+            # off a lead of the same net -- and counting only the pins put
+            # a hand-drawn ground wire onto R26's stub end and had the bus
+            # refuse its own run, which cost three symbols rather than
+            # saving one. A wire crossing the span anywhere else is the
+            # short this guard exists for.
+            mem = {e[0] for e in run} | {orig_free[e[1]] for e in run}
+            if horizontal:
+                intruder = any(py == fixed_at and lo < px < hi
+                               and (px, py) not in mem for px, py in pinpts)
+            else:
+                intruder = any(px == fixed_at and lo < py < hi
+                               and (px, py) not in mem for px, py in pinpts)
+            hit = any(_crosses(s, t) and not (set(t) & mem)
+                      for t in wire_segs)
+            if intruder or hit:
+                continue
+            bus_segs.append((end_a, end_b))
+            drop |= {e[1] for e in run[1:]}
+        if bus_segs:
+            bus_dropped = len(drop)
+            # The bus is wire this run drew, and the flags it took away
+            # are exactly the pins it reaches -- the drop *means* the pin
+            # is joined to the one that kept the symbol. Recorded here
+            # rather than inferred from the geometry, because in a
+            # geometric schematic a bus also joins whatever its span
+            # passes through, and that is the rule that took them away.
+            bus_reached = {orig_free[i_] for i_ in drop}
+            place = [e for i_, e in enumerate(place) if i_ not in drop]
+            rots = [r for i_, r in enumerate(rots) if i_ not in drop]
+            orig_free = [q for i_, q in enumerate(orig_free) if i_ not in drop]
+
+    # --- a pin on a flagged net left with no mark of its own --------------
+    # `--one-per-part` puts one symbol on a part that has several pins on
+    # the net, and that is right when those pins stand in a row: ten ground
+    # symbols down one pin pitch is the black ladder the rule exists for.
+    # It is wrong when nothing joins them, because then one pin reads as
+    # grounded and its twin reads as a bare stub ending in the word GND.
+    # U4 is the case: its ground return and its thermal pad are on opposite
+    # edges of the package, so one flag sits at (380, 120) and the pad's
+    # stub ends at (360, 90) with nothing but the word GND on it -- on the
+    # pin where the ground return matters most. Every other ground pin on
+    # this sheet ends in a symbol, so that one asks a reader to decide
+    # whether it means something else, which is the reading the
+    # crowded-ground rule above was already written to prevent.
+    #
+    # Reach is what decides it, not "does a flag sit here" -- most of a
+    # rail has no flag of its own by design. Four things reach a pin, and
+    # the placement model above knows all four: the flag on its own stub
+    # end; a flag on another stub end of the same node, where
+    # --one-per-node groups them; a bus this run drew and then took the
+    # symbol away from, since the drop means the pin is joined to the one
+    # that kept it; and wire in the file. Reading only the first reported
+    # 16 pins here, six of them the 5 V pins the node rule had marked.
+    #
+    # The last one is the union-find built above, which reads every LINE in
+    # the file rather than a table of what this run drew -- so a wire
+    # schwire adds in the next stage counts too, and re-running this on a
+    # wired sheet stops warning about a pin that has since been joined.
+
+    # The *stub ends* that carry a flag, not the pins behind them: the
+    # comparison below is between stub ends, and a set of pins would make
+    # every group look unmarked and silence the check. A stub end and the
+    # pin behind it are one component of the union-find, so a flag's own
+    # pin still tests as reached.
+    marked = {orig_free[i_] for i_, (_, n_) in enumerate(place)
+              if n_ in wanted}
+    on_net = collections.defaultdict(list)
+    for pt_, nets_ in at.items():
+        if pt_ in pins:
+            continue
+        for n_, _w in nets_:
+            if n_ in wanted and stub_owner.get(pt_) is not None:
+                on_net[(stub_owner[pt_], n_)].append(pt_)
+
+    def _covered(n_, q):
+        if q in marked or q in bus_reached:
+            return True
+        if (n_, q) in node_of:
+            k_ = node_of[(n_, q)]
+            if any(node_of.get((n_, m)) == k_ for m in marked):
+                return True
+        # A wire reaching a bus member counts, and that is not academic:
+        # the hand-drawn ground wire from J4 lands on a stub end whose own
+        # flag the bus took away, and reading only the surviving flags
+        # called J4 bare when the bus was holding its symbol.
+        return any(_find(q) == _find(m) for m in marked | bus_reached)
+
+    bare = []
+    for (who_, n_), pts_ in sorted(on_net.items()):
+        covered = [q for q in pts_ if _covered(n_, q)]
+        if len(covered) == len(pts_):
+            continue
+        # Two shapes, told apart because the fix differs. A part whose
+        # *other* pin on the net carries the symbol wants a wire joining
+        # the two. A part the skip rules stripped of every flag wants a
+        # symbol, or an honest reason it has none -- and that one the skip
+        # lines report only as a count, so it is named here as well.
+        for q in pts_:
+            if q not in covered:
+                bare.append((n_, q, who_, bool(covered)))
+
+    spots = collections.Counter(n for _, n in place)
+    for n in wanted:
+        print(f"  place  {spots[n]:3d} x {n}")
+    if bus_segs:
+        print(f"  bus    {len(bus_segs)} ground run(s) joined by one wire "
+              f"each, {bus_dropped} symbol(s) fewer than one per lead")
+
+    if a.dry_run:
+        print("  --dry-run: nothing written\n")
+        return 0
+
+    for i_, ((x, y), n) in enumerate(place):
         cid = hashlib.sha256(f"flag/{n}/{x}/{y}".encode()).hexdigest()[:16]
         ticket += 1
         added.append(({"type": "COMPONENT", "ticket": ticket, "id": cid},
                       {"locked": False, "zIndex": 1, "partId": FLAG_PART,
                        "groupId": "", "x": x, "y": y,
-                       "rotation": a.rotation, "isMirror": False, "attrs": {}}))
+                       "rotation": (a.rotation + rots[i_]) % 360,
+                       "isMirror": False, "attrs": {}}))
         s, d = flags[using[n]]
         # `Global Net Name` is what decides the net, and the instance's
         # overrides the device's -- which is exactly how the donor's +24V
@@ -762,6 +1464,20 @@ def main() -> int:
                  "fontSize": None, "strikeout": None, "underline": None,
                  "italic": None, "fontWeight": None, "align": None,
                  "version": "2.0"}))
+
+    for end_a, end_b in bus_segs:
+        wid = hashlib.sha256(f"bus/{end_a}/{end_b}".encode()).hexdigest()[:16]
+        lid = hashlib.sha256(f"busline/{end_a}/{end_b}".encode()).hexdigest()[:16]
+        ticket += 1
+        added.append(({"type": "WIRE", "ticket": ticket, "id": wid},
+                      {"zIndex": 99}))
+        ticket += 1
+        added.append(({"type": "LINE", "ticket": ticket, "id": lid},
+                      {"fillColor": None, "fillStyle": None,
+                       "strokeColor": None, "strokeStyle": None,
+                       "strokeWidth": None, "startX": end_a[0],
+                       "startY": end_a[1], "endX": end_b[0],
+                       "endY": end_b[1], "lineGroup": wid}))
 
     # Hide the net name wherever a flag now says it. The symbol is the
     # whole point: leaving the text as well means 233 strings still on the
@@ -810,8 +1526,12 @@ def main() -> int:
         # The only permitted change to an existing record.
         changed = {k for k in set(b1 or {}) | set(b2 or {})
                    if (b1 or {}).get(k) != (b2 or {}).get(k)}
-        if (h1 != h2 or b1.get("key") != "NET"
-                or changed != {"valueVisible"}):
+        # ...or the one other permitted change: a lead this run was
+        # asked to re-aim, and only its ends moved.
+        moved = (h1 and h1.get("id") in restub and h1["type"] == "LINE"
+                 and changed <= {"startX", "startY", "endX", "endY"})
+        if h1 != h2 or (not moved and (b1.get("key") != "NET"
+                                       or changed != {"valueVisible"})):
             a.out.unlink(missing_ok=True)
             print(f"  error: an existing record changed — {a.out} deleted\n",
                   file=sys.stderr)
@@ -839,6 +1559,19 @@ def main() -> int:
               f"deleted\n", file=sys.stderr)
         return 1
     print(f"  every flag names the net it sits on")
+    if bare:
+        for n_, q, who_, partial in bare[:6]:
+            why_ = ("the part's other pin on this net carries a symbol and "
+                    "nothing joins the two" if partial else
+                    "the part carries no symbol on this net at all")
+            print(f"  WARN   {who_} on {n_} is left bare at ({q[0]}, {q[1]}) "
+                  f"— {why_}")
+        print(f"  {len(bare)} pin(s) on a flagged net keep only their net "
+              f"name — the net reads as a symbol everywhere else, so these "
+              f"read as a different net. Give each its own flag, or draw "
+              f"the wire that joins it to a pin that has one")
+    else:
+        print(f"  no pin on a flagged net is left without a symbol or a wire")
 
     # Where the far end of each flag's pin graphic lands. The flag is
     # connected at its pin's *root* -- measured, not assumed: all 226

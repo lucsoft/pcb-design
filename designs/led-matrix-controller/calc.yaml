@@ -304,6 +304,36 @@ inputs:
     unit: mohm
     source: "a higher-DCR 10 uH alternative, for the sensitivity check"
     provenance: datasheet
+  L1_H:
+    value: 10
+    unit: µH
+    source: "SPM6530T-100M, the BOM's L1 -- the 100M suffix is 10 uH"
+    provenance: datasheet
+  F_SW:
+    value: 963
+    unit: kHz
+    source: "TPS54360B RT/CLK 100 kOhm, datasheet p.14 §7.3.9 equation; it gives 963.3 kHz, and the BOM rounds that to '1 MHz'"
+    provenance: datasheet
+  CIN_REQ_L1:
+    value: 3
+    unit: µF
+    source: "TPS54360B datasheet p.26 §8.2.2.6, input capacitance required EFFECTIVE after DC-bias derating"
+    provenance: datasheet
+  C8_NOMINAL:
+    value: 4.7
+    unit: µF
+    source: "the fitted CIN part at its nominal value, C8 = C2840282 4.7 uF 100 V X7R 1210"
+    provenance: datasheet
+  R_COMP:
+    value: 4700
+    unit: ohm
+    source: "R27, the COMP series resistor the BOM lists as 4.7 kOhm"
+    provenance: datasheet
+  C_COMP_PARALLEL:
+    value: 150
+    unit: pF
+    source: "C7, the COMP parallel capacitor the BOM lists as 150 pF NP0"
+    provenance: datasheet
   V_BUFFER_MIN:
     value: 4.5
     unit: V
@@ -1642,6 +1672,39 @@ derived:
     expr: v_rail5_applicable - V_BUFFER_MIN
     unit: V
     display: { unit: mV, digits: 2 }
+
+  # ---- the converter's own passives, sized rather than trusted ---------
+  #
+  # The ripple is quoted at the top of the bus, where the duty is smallest
+  # and (1 - D) largest, and so is the worst case. In pass-through at
+  # vSafe5V the duty goes to ~100% and the ripple to zero.
+
+  l1_ripple_pp:
+    expr: V_RAIL5_NOM * (1 - V_RAIL5_NOM / v_bus_max) / (L1_H * F_SW)
+    unit: A
+    display: { unit: A, digits: 3 }
+  kind_l1:
+    expr: l1_ripple_pp / I_RAIL5
+    unit: ""
+    display: { unit: "", digits: 2 }
+  # The CIN requirement is 3 uF *effective*; at C8's 4.7 uF nominal that is
+  # 64% retention. Below it the datasheet's own requirement is unmet, so the
+  # number is a floor a retention curve can be checked against.
+  cin_derating_floor:
+    expr: CIN_REQ_L1 / C8_NOMINAL
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  # Eq. 51 sets the COMP parallel pole near half the switching frequency.
+  # C7 is 150 pF, which puts the pole lower -- a more conservative
+  # compensation, chosen by the fitted value rather than by the equation.
+  f_comp_pole:
+    expr: 1 / (2 * pi * R_COMP * C_COMP_PARALLEL)
+    unit: Hz
+    display: { unit: kHz, digits: 4 }
+  c_comp_at_half_fsw:
+    expr: 1 / (2 * pi * R_COMP * (F_SW / 2))
+    unit: F
+    display: { unit: pF, digits: 3 }
 
   # ---- what D14 holds the VBUS pin at ----------------------------------
 

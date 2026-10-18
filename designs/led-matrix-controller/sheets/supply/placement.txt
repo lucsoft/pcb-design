@@ -5,11 +5,14 @@
 #
 # Three rules set this arrangement, all of them from review findings:
 #
-#   1. A support capacitor stands within about 60 units -- 15 mm -- of
-#      the pin it serves. Nothing but proximity says what a part
-#      carrying only rail flags belongs to, so distance is the whole of
-#      its meaning. C8 and C9 cannot both be that close on one side;
-#      the bypass gets the near slot and the bulk sits beyond it.
+#   1. A support capacitor stands near what it serves. C8 and C9 used to
+#      hold that by distance -- 60 units of U4's VIN pin, the bypass near
+#      and the bulk beyond it -- and they hold it by the wire now: they
+#      hang on the stage's ground row with their supply pins on the VIN
+#      rail above, so the line under them says ground and the rail over
+#      them says which rail. That is the same reading carried by geometry
+#      instead of by distance, and it buys the row below. A part with only
+#      rail flags is still read from the line it sits on.
 #   2. Each block is a contiguous rectangle with no foreign part inside
 #      it, and the blocks run in flow order down the sheet: 36 V to 5 V
 #      first, 5 V to 3V3 below it.
@@ -17,29 +20,84 @@
 #      reserved by ISO 5457 and a plotter cuts at the frame;
 #      blocktitles.py refuses to write when something does.
 #
-# Shunt parts stand upright, supply up and ground down, without
-# exception. U4's four right-hand pins each turn downward at their own
-# x, and the catch diode stays out of those corridors.
+# Shunt parts stand upright, supply up and ground down, so a glance says
+# which end is which. U4's four right-hand pins each turn downward at
+# their own x, and the catch diode stays out of those corridors.
 #
+# The one exception is R26, the lower leg of the 5 V divider. Lying on
+# its side in R25's own row, the tap between the two is a corner instead
+# of a stretch of wire with the flag parked in the middle of it, and its
+# ground end comes off the same line the stage's capacitors drop to -- so
+# the divider reads as one path out of the 5 V rail and into ground.
+#
+# The importer gives every pin a thirty-unit lead. Upright parts do not
+# care -- their footprint stays a line -- but a part lying *across* a row
+# is as wide as its two leads put together, and nothing can be placed
+# within that. These four lie across: their leads are cut to fifteen, so
+# their footprint is seventy rather than a hundred and the rows can be
+# closed up around them.
+#
+stub   *     5
+
 # designator  x     y    rotation
+
+stub   L1    5
 
 # ---- Stage 1: TPS54360, VBUS -> 5 V ----------------------------------
 # U4's VBUS pin sits at symbol-local y=-5, so the anchor goes to y=125
 # and every pin lands on the 10-unit lattice.
 U4    330    125     0
 C5    330     40     0        # bootstrap, bridges SW_BOOT to SW over the IC
-C9    220    140    90        # 220nF 100V input bypass, hard against VIN
-C8     140    140    90        # 4.7uF 100V input bulk, beyond it
-R24   250    250    90        # RT_SET, straight down from the pin
-R25    950    130    90        # 5 V feedback divider, top
-R26    950    250    90        # 5 V feedback divider, bottom
-C7     440    250    90        # compensation, COMP to GND
-R27    560    250    90        # compensation series
-C6     560    370    90        # ... and its capacitor, directly under it
-D2    500    130    90        # catch diode, hanging off the switch node
-L1    620    110     0        # 10uH, switch node to the 5 V rail
-C10    730    130    90
-C11    810    130    90
+C9    208    245    90        # 220nF 100V input bypass
+C8     165    245    90        # 4.7uF 100V input bulk, beyond it
+R24   252    245    90        # RT_SET, straight down from the pin
+R25    664    130    90        # 5 V feedback divider, top
+R26    614    150   180        # 5 V feedback divider, bottom, on its side
+C7     410    250    90        # compensation, COMP to GND
+R27    458    235     0        # compensation series, lying in the COMP run
+C6     513    250    90        # ... and its capacitor, on the ground rail
+
+# ---- The compensation network, and the ground row it shares ------------
+# U4's COMP pin runs right and turns down at x=395 to where C7 hangs. From
+# that same node R27 goes *along* the run rather than down it, so the
+# branch it feeds -- C6 -- can come up: C6's ground pin now sits on the
+# row at y=265 with C7's, R24's, C9's and C8's, and one symbol stands for
+# all five. Turning R27 cost nothing anywhere else, and it took the
+# sheet's last three-corner detour and its only enclosed ring with it.
+#
+# The drop is not at a place of its own choosing. The router splits a Z at
+# the midpoint of the run's two ends, so the vertical lands half way
+# between U4's pin and C7, and moving C7 is the only way to move it. It
+# has to sit left of the ground lead out of U4, which comes down beside
+# it, and right of what FB_5V's lead leaves clear. C7, R27 and C6 stand
+# together for that reason -- the two behind it follow so the network
+# still reads as one, and the row closes up by the same move.
+#
+# The order is the only thing that matters here and it is fixed by the
+# netlist: C7 is COMP to ground, R27 and C6 are COMP to ground *through*
+# each other. Drawing R27 across the run is what makes that visible --
+# C7 hangs off the near node, C6 off the far one.
+D2    424    130    90        # catch diode, hanging off the switch node
+L1    469    110     0        # 10uH, switch node to the 5 V rail
+C10    525    130    90
+C11    566    130    90
+
+# C14 sits at y=510 rather than 500 so its ground pin lands on the same
+# line as C12's, at y=520. Those two are the input pair and share one
+# symbol: their ground pins sit at different offsets from their anchors,
+# and that difference is what lands both on 520 and both leads on 525.
+#
+# C13 is the output capacitor and keeps a symbol of its own. A line
+# joining it to the pair would run under the whole stage, and U5's enable
+# run crosses that band -- R30 hangs below it, so the wire out of EN has
+# to come down through. There is no junction record in this format, so a
+# crossing reads as a connection, and that one would put SY_EN on ground.
+# The line stops at C12 and C13's own symbol names its node instead.
+
+# The stage's own ground, on one line under the input pair. U5's ground and
+# R29's keep symbols of their own -- U5's lead ends directly above its own
+# EN stub, and R29's right end sits across R28's column from here.
+wire    GND   105,525  185,525
 
 # ---- Stage 2: SY8089A1, 5 V -> 3V3 -----------------------------------
 # Turned 180 deliberately. The symbol puts its input on the right and
@@ -48,15 +106,60 @@ C11    810    130    90
 # power path running the same way as stage 1 and as the page.
 U5      280    490   180
 C12     185    500    90        # 22uF input, hard against the 5 V pin
-C14    105    500    90
+C14    105    510    90
 R28    690    540    90        # 3V3 feedback divider, top
-R29    690    660    90        # 3V3 feedback divider, bottom
+R29    760    560     0        # 3V3 feedback divider, bottom, on its side
 L2     480    480     0        # 2.2uH, LX to the 3V3 rail
 C13    560    500    90
-R30     410    610   270        # enable pull-up, supply end upward
+R30     470    540     0        # enable pull-up, lying in the EN run
+
 
 # ---- Fan header ------------------------------------------------------
-J4      770    500     0        # not fitted; see design.yaml dnf:
+# Beside stage 1 rather than below stage 2, because the fan runs off the
+# 5 V that stage 1 makes: the block sits next to the rail it draws from
+# instead of a stage away from it, and it fills the upper right the
+# drawing was leaving blank.
+J4      700    120     0        # not fitted; see design.yaml dnf:
+# J4's ground, drawn to the stage's own ground line rather than left as a
+# symbol of its own up here. The line runs at y=150 and R25's feedback
+# pin sits on it at x=719, so the route dips to y=195 to pass under the
+# divider and comes back up onto R26's ground pin at (649, 150).
+# The dip clears R25's feedback stub, which hangs to
+# y=180 -- that stub is dropped later, but this runs before anything
+# knows that, and a ground wire across a feedback stub is a crossing
+# either way. The symbol J4 used to carry is gone with the wire: it says
+# the same thing once, and netflags places no second symbol on a node a
+# wire already reaches.
+#
+# It arrives at the *pin*, not at R26's stub end thirty units short of
+# it. The ground bus already ends at that pin, so landing there is one
+# junction where landing on the stub end made two -- and R26's own stub
+# then has a wire at both ends and nothing to do, so it goes.
+wire    GND   680,125  680,165  589,165  589,150
+# U4's ground, drawn across to the catch diode's rather than carried out
+# of the pin field to a symbol of its own at (470, 120). Both are the same
+# node, and one of the two symbols was saying it twice -- so one of them
+# goes, and it is U4's: a lead is only drawn where the pin field is too
+# crowded to carry the symbol, and the wire has taken that job over. The
+# route leaves the pin row above COMP_5V and comes down on the far side
+# of the wire that runs from U4's COMP pin to C7.
+#
+# Same as J4's: it arrives at the catch diode's ground *pin* at (500, 150)
+# rather than at the free end of its stub at (500, 180). The bus already
+# starts at that pin, so one junction does the work of two, and the two
+# runs are collinear into the bargain -- the ground line reads as one
+# line from (460, 150) to where it ends at R26.
+wire    GND   385,120  405,120  405,150  424,150
+# U4's thermal pad is no longer left bare, and getting there took the
+# build rather than this file. The importer aims a lead by the pin's side,
+# which is right for the eight pins along U4's edges and wrong for the one
+# on its top: a vertical pin whose lead came out sideways, thirty units
+# along the package. A symbol on that lead has nowhere to sit that is not
+# to the side of the pin it belongs to, and one rooted at the stub end
+# draws its bars into the IC. `--pin-stub 'GND@330,90'` in build.sh
+# re-aims the lead up out of the pin, and the symbol stands on it. The
+# lead is *moved* and not dropped, so the node's `NET` attribute stays
+# where `epro.py diff` counts it, and `bare pins` in the build is empty.
 
 # ---- Measured, and deliberately left -----------------------------------
 # Three wire ends carry no visible name. They are the stubs whose second
@@ -66,19 +169,42 @@ J4      770    500     0        # not fitted; see design.yaml dnf:
 # a name?" rather than "is this end's net named here?" reports them, and
 # that is the counter's question being wrong, not the sheet's.
 #
-# ---- Why this is A3 and not A4 -----------------------------------------
-# Measured with everything the format picker sees -- parts, flags, leads,
-# labels, the cross-sheet list and the remarks box -- the drawing is
-# 990 x 779 units. A4's usable area, inside the zone band, is 971 x 668.
-# The width is 19 over and could be closed; the height is 111 over and
-# cannot. Tightening every column gap from 120 to 110 and lifting the
-# second band buys about 50 to 60, so A4 needs the sheet reorganised
-# rather than nudged. Three attempts to close it by moving parts are in
-# the history; each produced a sheet whose own clip check refused it.
+# ---- The 5 V rail's pitch, and where it stops --------------------------
+# D2, L1, C10, C11, R26, R25 and J4 stood 100 to 140 units apart, which
+# reads as gaps rather than as one rail; they run at about 50 now, one
+# pitch for the row rather than two values with a lone hundred in the
+# middle, and the four parts lying across it have their leads cut to five
+# so their footprints are 50 rather than 100 -- without that the row
+# cannot close below about 70. They
+# can: the ground leads of D2, C10 and C11 land on one line, so no part
+# needs the width a ground symbol of its own used to take, and R26 lies in
+# the row rather than hanging below it. The bound is
+# D2's side: the ground lead out of U4 and the COMP run to C7 both come
+# down between FB_5V's lead and the diode's body, and that corridor is
+# what fixes the diode's x -- 20 units further left and the two verticals
+# have nowhere to go, so schwire finds no clean path for COMP_5V and
+# leaves the net a label. So D2 holds and the rest of the row comes to
+# it -- R25 and J4 included, which is what made room for R26 on its side
+# without opening a gap beyond the divider.
 #
-# ---- The flag lead is 60 units, and that is measured ------------------
+# ---- Why this is still A3 ----------------------------------------------
+# The placed circuit is 178 x 138 mm -- `build.sh` prints it -- and with
+# everything blocktitles.py draws round it, the cross-sheet list and the
+# remarks box beside J4 included, the drawing measures 300 x 204 mm, which
+# it also prints. A4's usable area inside the zone band is 247 x 170 mm,
+# so it is the annotation that overruns and not the parts, and asking
+# blocktitles.py for an A4 sheet is refused for what sits in the title
+# block. What is outside is not the circuit: it is the title block below
+# the drawing and the remarks box beside it, with the corner between them
+# occupied. Moving parts cannot fix that, and there is nothing here that
+# says which of the three to give up.
+#
+# ---- The flag lead was 60 units, and that measurement is retired ------
 # A flag carried out of the pin field puts a new line end near the
 # neighbouring pin's name, and three labels read as ambiguous for it.
+# That was measured on the wide layout. Re-swept from 8 to 60 on the
+# compact one, every length reports zero ambiguous labels, so the lead is
+# 10 now -- see build.sh.
 # Swept against every counter at once: 40 units leaves three, 60 leaves
 # one, 80 goes back to three -- the tip has to land past the neighbour's
 # name rather than beside it. 50 through 70 all read one, so the

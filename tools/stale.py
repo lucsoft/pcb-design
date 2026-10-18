@@ -20,7 +20,15 @@ import argparse, pathlib, re, sys
 # rail_voltage_min() comment in erc.py carried a retired 4.50 V through two
 # review rounds, structurally invisible to the one check that exists for it.
 ROOTS = ["designs", "kb", "rules", "tools"]
-SKIP_SUFFIX = {".pdf", ".txt", ".png", ".svg", ".epro2"}
+SKIP_SUFFIX = {".pdf", ".png", ".svg", ".epro2"}
+# The extracted datasheet text is the one place a `.txt` is machine output:
+# hundreds of pages of numbers off somebody else's datasheet, where a hit
+# means nothing. Skipping `.txt` by suffix covered it and `placement.txt`
+# with it -- hand-written prose carrying the sheet's measured dimensions,
+# invisible to the one check that exists for numeric claims. It took a
+# reviewer to find a stale A3 note sitting in that blind spot. Skip the
+# directory, not the extension.
+SKIP_PARTS = {"datasheets"}
 
 
 def files():
@@ -29,8 +37,11 @@ def files():
         if not base.exists():
             continue
         for f in base.rglob("*"):
-            if f.is_file() and f.suffix not in SKIP_SUFFIX:
-                yield f
+            if not f.is_file() or f.suffix in SKIP_SUFFIX:
+                continue
+            if SKIP_PARTS & set(f.parts):
+                continue
+            yield f
 
 
 def main():

@@ -1,0 +1,45 @@
+{
+  "@context": "../context.jsonld",
+  "@id": "lcsc:C7419421",
+  "@type": "Component",
+  "lcscId": "C7419421",
+  "mpn": "FCC0603N220J500CT",
+  "manufacturer": "FOJAN",
+  "description": "22pF \u00b15% 50V Ceramic Capacitor C0G 0603",
+  "category": "capacitor",
+  "package": "0603",
+  "stock": 228800,
+  "priceUsd": 0.0053,
+  "parameters": {
+    "Capacitance": "22pF",
+    "Temperature Coefficient": "C0G",
+    "Tolerance": "\u00b15%",
+    "Operating Temperature": "-55\u2103~+125\u2103",
+    "Voltage Rating": "50V"
+  },
+  "datasheet": "https://datasheet.lcsc.com/datasheet/pdf/96dc633700d86f8cae045018479f71b7.pdf",
+  "retrieved": "2026-10-11",
+  "tier": "extended",
+  "pins": [
+    {
+      "number": "1",
+      "name": "1",
+      "type": "passive"
+    },
+    {
+      "number": "2",
+      "name": "2",
+      "type": "passive"
+    }
+  ],
+  "provenance": {
+    "description": "lcsc-api",
+    "package": "lcsc-api",
+    "parameters": "lcsc-api",
+    "stock": "lcsc-api",
+    "priceUsd": "lcsc-api",
+    "category": "lcsc-api",
+    "pins": "EasyEDA Pro symbol FCC0603N220J500CT (tools/eda.py pins), carried out against the LCSC record: a two-terminal ceramic, so the pads are 1 and 2"
+  },
+  "designVerdict": "SOURCED, NOT FITTED. The feed-forward capacitor (Cff) the SY8089A1 datasheet's Table1 pairs with the 3V3 feedback divider: the 3.3 V row gives RH 100k / RL 22.1k / Cff 22pF, and R28 and R29 are already the first two. The datasheet makes the cap conditional -- 'recommended for applications with large load transient step requirements' -- and this rail is an ESP32-C6 in TX bursts plus an Ethernet module, which calc.yaml already models (I_ESP32_TX is the transient term). C0G, because it sets a zero in the loop and an X7R one would drift. Not on the board yet: the supply sheet is built from an EasyEDA export of the netlist, and a designator the export does not carry is refused outright, so the part goes in with the next import. The 0402 alternative is cheaper per part and has no EasyEDA symbol, so it cannot be imported at all -- checked with tools/eda.py, not assumed."
+}

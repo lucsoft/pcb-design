@@ -830,6 +830,64 @@ def _symbol_box_owners(lines):
     return out
 
 
+def net_flag_boxes(lines):
+    """The same outline for the **net flags**, which `_symbol_boxes` skips.
+
+    A flag is a COMPONENT with a `partId` and no `Designator`, and
+    `_symbol_boxes` drops exactly those -- correct for the router, where
+    a flag is not a body to route around, and wrong for anything asking
+    "is this spot clear to look at". The two questions are different and
+    the filter is the answer to only the first.
+
+    This is not a rare coincidence being tidied up: the flags are the
+    densest graphics on the sheet, 233 of them on this board, and a
+    placement test that cannot see any of them is fail-open -- it reports
+    clear wherever a flag happens to be. It did: the cross-sheet list
+    landed on a ground triangle, over the word "sheet".
+
+    The geometry extraction is deliberately its own copy rather than a
+    shared helper: `_symbol_boxes` takes a single RECT corner where this
+    takes both, and folding them together would move the router's boxes
+    and therefore the arrangement, which is a change to a working sheet
+    made in service of a check.
+    """
+    desig = {b["parentId"] for h, b, _, _ in lines
+             if h and h["type"] == "ATTR" and b.get("key") == "Designator"}
+    symref = {b["parentId"]: b["value"] for h, b, _, _ in lines
+              if h and h["type"] == "ATTR" and b.get("key") == "Symbol"
+              and b.get("value")}
+    prims = collections.defaultdict(list)
+    for h, b, doc, _ in lines:
+        if h and doc and doc[0] == "SYMBOL" and h["type"] in ("RECT", "POLY",
+                                                              "ARC"):
+            prims[doc[1]].append((h["type"], b))
+    out = []
+    for h, b, _, _ in lines:
+        if not h or h["type"] != "COMPONENT" or not b.get("partId"):
+            continue
+        if h["id"] in desig:              # a part, which `_symbol_boxes` has
+            continue
+        pts = []
+        for kind, g in prims.get(symref.get(h["id"]), []):
+            if kind == "RECT":
+                pts += [(g["dotX1"], g["dotY1"]), (g["dotX2"], g["dotY2"])]
+            elif kind == "ARC":
+                pts += [(g["startX"], g["startY"]), (g["referX"], g["referY"]),
+                        (g["endX"], g["endY"])]
+            elif g.get("points"):
+                pts += [(q["x"], q["y"]) for q in g["points"]]
+        if not pts:
+            continue
+        r = (b.get("rotation") or 0) % 360
+        m = bool(b.get("isMirror"))
+        tp = [ROT[r](-x if m else x, y) for x, y in pts]
+        out.append((b["x"] + min(x for x, _ in tp),
+                    b["y"] + min(y for _, y in tp),
+                    b["x"] + max(x for x, _ in tp),
+                    b["y"] + max(y for _, y in tp)))
+    return out
+
+
 def collinear_stubs(lines, limit=COLINEAR_LIMIT):
     """Pairs of stubs on different nets that lie on one line, close enough
     to read as a single wire.

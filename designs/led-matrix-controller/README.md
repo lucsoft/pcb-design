@@ -1927,10 +1927,11 @@ any of them does not work. Cited so they can be checked rather than trusted.
 | Part | Value | Source |
 |---|---|---|
 | BOOT cap, BOOT→SW | 100 nF X7R ≥10 V | p.27 §8.2.2.7 "must be connected for proper operation" |
-| RT/CLK to GND | **100 kΩ 1% → 963 kHz** | p.14 §7.3.9 — the pin **cannot float**. The equation gives 963.3 kHz; "1 MHz" elsewhere is that rounded |
+| RT/CLK to GND | **100 kΩ 1% → 963 kHz**<!--calc:F_SW--> | p.14 §7.3.9 — the pin **cannot float**. The equation gives 963.3 kHz; "1 MHz" elsewhere is that rounded |
 | Feedback divider | 53.6 kΩ / 10.2 kΩ 1% (VREF 0.8 V) | p.28 §8.2.2.9 |
-| COMP network | ~4.7 kΩ + 33 nF series, 150 pF parallel | p.13 §7.3.5, eq. 44-51 |
-| CIN | ≥3 µF **effective after DC-bias derating**, 100 V X7R | p.26 §8.2.2.6 |
+| Inductor ripple | **0.45 A**<!--calc:l1_ripple_pp--> p-p, KIND **0.64**<!--calc:kind_l1--> | 10 µH (L1) at 963 kHz, quoted at the 37.8 V bus top where the duty is smallest and (1 − D) largest — the worst case. In pass-through at vSafe5V the duty goes to ~100% and the ripple to zero |
+| COMP network | ~4.7 kΩ + 33 nF series, 150 pF parallel | p.13 §7.3.5, eq. 44-51. At 4.7 kΩ the 150 pF parallel puts the pole at **225.8 kHz**<!--calc:f_comp_pole-->; eq. 51 wants **70.3 pF**<!--calc:c_comp_at_half_fsw--> for fSW/2, so C7 sits **below** the equation — a slower, more conservative compensation, chosen deliberately |
+| CIN | ≥3 µF **effective after DC-bias derating**, 100 V X7R | p.26 §8.2.2.6. C8 is 4.7 µF nominal, so the requirement holds down to **64%**<!--calc:cin_derating_floor--> retention — the floor any DC-bias curve has to clear |
 | COUT | **≥7.3 µF** at this load | p.25 Eq. 32 at a 0.7 A step and 0.2 V of droop. §8.2.2.4's own "29.2 µF" and its 2 × 47 µF fit are for a 1.75 A step, and that section contains no "22 µF" despite being commonly cited for one. Eq. 33 gives 2.4 µF and Eq. 34 2.3 µF, so Eq. 32 binds. C10/C11 are 2 × 10 µF |
 
 PowerPAD must be **electrically** connected to GND, not just thermally (p.3).
@@ -2784,6 +2785,24 @@ See Netlist for what is in it and what the clean report does not mean.
    controller: the inrush ramp was sized for a worst case beyond what it can
    power.
 
+### Waits for the next import
+
+**The 3V3 feed-forward capacitor.** The SY8089A1's datasheet gives its 3.3 V
+feedback network as a table -- RH 100k, RL 22.1k, Cff 22pF -- and R28 and R29
+are the first two columns of it. The cap is the column the divider was left
+short of. The datasheet makes it conditional on the load stepping hard, and
+this rail is an ESP32-C6 in TX bursts plus an Ethernet module: `I_ESP32_TX` is
+already the transient term of the rail current in `calc.yaml`.
+
+It is not on the board yet, and the reason is mechanical rather than
+electrical. The supply sheet is built from an EasyEDA export of `netlist.json`,
+and `handplace.py` refuses a designator that export does not carry -- so a part
+added to the netlist today is a part the sheet cannot draw, and the sheet's own
+counters go red against a netlist it no longer matches. It goes in with the
+next import, alongside the re-export the chain needs anyway. The part is chosen
+and recorded: C7419421, 22 pF C0G 0603, extended tier, chosen over a cheaper
+0402 that has no EasyEDA symbol and so cannot be imported at all.
+
 ### Accepted
 
 6. **The board is not fully JLCPCB-assemblable.** Two kinds of board item are
@@ -2966,7 +2985,13 @@ datasheet draws it, on an ISO 5457 A3 sheet with a frame, an eight by six
 zone grid, a nine-line EN ISO 7200 title block, the cross-sheet signal
 list and the do-not-fit note that otherwise lives only in `design.yaml`.
 
-![The supply sheet placed by hand: two converter bands on an A3 frame with zone grid, title block and cross-sheet signal list](figures/supply-sheet-handplaced.png)
+![The 36 V to 5 V block and the fan header, cropped out of the hand-placed supply sheet](figures/supply-sheet-handplaced.png)
+
+The figure is a crop of that sheet rather than the whole of it. The
+5 V → 3.3 V stage below is real — it is in the netlist, in the placement
+and in the ERC — but what the picture is for is the reference an automatic
+placement is judged against, and the top block is the one being built
+from first. `sheets/supply/build.sh` names the rectangle it cuts.
 
 An independent review of the automatic layout of this same netlist put it
 at 4,5 and the hand layout at 3,0 — and every number the project had at
@@ -3151,10 +3176,24 @@ and aligns it away from the part. A stub is three pin pitches long and
 `NC_EFUSE1_MODE` is not; 46 of the 261 visible labels overlapped a
 symbol body, almost all on the multi-pin ICs. Now none do. Moving text
 is safe where moving a wire is not — the net is carried by the
-attribute's *value* on the wire, not by where its text sits — and it is
-the one thing in `schwire.py` that changes an existing record, so the
-append-only proof **names the exception** rather than being loosened:
-only a `NET` attribute, only `x`, `y` and `align`.
+attribute's *value* on the wire, not by where its text sits — and it
+changes an existing record, so the append-only proof **names the
+exception** rather than being loosened: only a `NET` attribute, only
+`x`, `y` and `align`.
+
+**The stub a drawn wire has made dead is deleted, which is the one thing
+`schwire.py` removes.** A pin's stub leads out to where its name sits, so
+once the rail is drawn *through* the pin the stub beyond the junction is a
+wire to nowhere — on the 5 V node, C10 and C11 each kept a cable standing
+in the air beside a pin the rail already reached, which reads as a part
+that is connected and drawn as if it is not. The name does not leave with
+it: the label is re-parented onto the drawn wire, where `epro.py diff`
+reads the net from anyway. Four guards decide it, and each one is a reason
+to leave a stub alone — the net was drawn, the pin end is where the wire
+meets it, the far end carries nothing (a flagged stub *is* the flag's
+lead), and every label on it is already hidden. On the supply sheet that
+is 22 stubs, and the run afterwards proves every pin still lands on a
+surviving wire.
 
 `--clearance 5` is what buys the second half. Not touching is not the
 same as reading apart: at clearance 0 the maze takes the only free
@@ -3410,6 +3449,28 @@ exists only once that sheet is built. So the chain runs twice — once to
 build all four, once more with `--xref-built` pointing at the first
 run's output. Nothing else about the second pass differs, so a sheet
 that gained no reference comes out byte-identical.
+
+**Only the supply sheet is hand-built so far**, so that second pass has
+not been run and no cross-sheet list yet carries a zone suffix. The
+supply sheet's own build does not pass `--xref-built` for exactly this
+reason: there is no earlier export for it to read, and pointing it at
+one that does not exist would be worse than the plain list. This is a
+limit on the design's current state, not on the tool — it closes when
+the other three sheets get the same build.
+
+**The list is placed against everything drawn, and "everything" had two
+holes in it.** The rule that keeps it clear of the drawing tested symbol
+outlines, wires and visible net text — and not the **net flags**, because
+they are found through `_symbol_boxes`, which drops every component
+without a `Designator`, which is every flag. It also reserved the wrong
+width: `max(len(net name)) * 11`, while a line reads `BUS_3V3 -> sheet 1
+(Input and PD), sheet 3 (Control), sheet 4 (Outputs)` and is five times
+its net name, so a 77-unit box stood for 213 units of text. Both are
+fail-opens of the same shape — the test reports clear wherever it cannot
+see — and together they put the list across a ground triangle, over the
+word "sheet". The flags now have boxes of their own (`net_flag_boxes`)
+and the width comes from the lines as drawn. The sheet had carried the
+collision through a review; what found it was looking at the render.
 
 **The paper size is derived, never given.** It was the bare extent, which
 is what this document warns about two paragraphs up, and two of four

@@ -5,16 +5,31 @@ The netlist importer gives every pin a short stub carrying its net name. That
 is electrically complete and reads as a parts list. This adds real drawn
 wires for the nets where both ends are close enough that a line helps.
 
-**It only adds.** The stubs and their net labels stay exactly where they are,
-so connectivity is still carried by name and a drawn wire is decoration on
-top of a connection that already exists. Get the geometry slightly wrong and
-the circuit is unchanged — which is the opposite of the usual failure here,
-where a drawn wire *is* the connection and being one unit short is an open
-circuit.
+**It adds, and it deletes one thing.** Connectivity is still carried by name,
+so a drawn wire is decoration on top of a connection that already exists: get
+the geometry slightly wrong and the circuit is unchanged, which is the
+opposite of the usual failure here, where a drawn wire *is* the connection and
+being one unit short is an open circuit.
+
+The deletion is the stub a drawn wire has made redundant. A pin's stub is the
+importer's lead out to where its name sits; once a rail is drawn *through*
+the pin, the half of that stub beyond the junction is a wire to nowhere, and
+on the 5 V node it read as two capacitors with a free-standing cable beside
+them, already connected and still drawn as if not. `dead_tails` names the
+groups that qualify and the write loop drops their line records. The name
+does not leave with them — the label is re-parented onto the drawn wire,
+which is where `epro.py diff` reads a net from anyway.
 
 The one way an added wire can do harm is by touching a pin belonging to a
 different net, which in a geometric schematic creates a connection nobody
 asked for. That is checked for every segment before anything is written.
+
+**A wire somebody else drew is checked here too, at last.** `handplace.py`
+verifies its own `wire` lines when it writes them, and at that moment this
+tool has not drawn anything -- so a hand lead that crosses a rail laid down
+*here* passed every check the chain had, twice, and was found by eye both
+times. `hand_crossings` runs the same test over the hand wires against the
+finished geometry, which is the only place both exist at once.
 
     schwire.py <export.epro2> <netlist.json> -o out.epro2
     schwire.py <export.epro2> <netlist.json> --dry-run --max-span 400
@@ -538,6 +553,78 @@ def routes(points, obst=None, detour=6, net=None):
         yield segs
 
 
+def hand_crossings(rows, netof, at, added=(), wid_of=None):
+    """Hand-drawn wires that run across another net's wire, as a list.
+
+    `handplace.py` checks its own wires when it writes them, and at that
+    point this tool has not drawn anything yet -- so a hand lead that
+    crosses a rail laid down *here* is invisible to every check the chain
+    has. It was found by eye, twice, and each time on a route whose ends
+    were right. This is that check, run where the finished geometry is.
+
+    The hand wire's own net is read off the stubs its ends land on, the
+    same way `handplace` reads it, because a hand wire carries no NET
+    attribute of its own.
+
+    `added` is what this run is about to write, and leaving it out was the
+    first version's whole defect: reading only `rows` -- the *input* --
+    meant the check could not see the wires it exists to check the hand
+    wires against, and it reported clean on a sheet where COMP_5V crossed
+    a hand-drawn ground lead twice. `wid_of` names each added wire's net,
+    which is not in `netof` because the tool never writes a NET attribute
+    of its own.
+    """
+    hw = {h["id"] for h, b, _, _ in rows
+          if h and h["type"] == "WIRE" and str(h["id"]).startswith("hw")}
+    if not hw:
+        return []
+    def net_at(v):
+        return set(at.get((round(v[0]), round(v[1])), ()))
+    mine, others = [], []
+    for h, b, _, _ in rows:
+        if not h or h["type"] != "LINE" or b.get("startX") is None:
+            continue
+        seg = ((round(b["startX"]), round(b["startY"])),
+               (round(b["endX"]), round(b["endY"])))
+        if b.get("lineGroup") in hw:
+            mine.append((seg, net_at(seg[0]) | net_at(seg[1])))
+        else:
+            others.append((seg, {netof[b["lineGroup"]]}
+                           if b.get("lineGroup") in netof else set()))
+    for hh, bb in added:
+        if hh.get("type") != "LINE" or bb.get("startX") is None:
+            continue
+        n_ = (wid_of or {}).get(bb.get("lineGroup"))
+        others.append((((round(bb["startX"]), round(bb["startY"])),
+                        (round(bb["endX"]), round(bb["endY"]))),
+                       {n_} if n_ else set()))
+    out = []
+    for (a, b), ns in mine:
+        for c, d in [o[0] for o in others]:
+            on = next((o[1] for o in others if o[0] == (c, d)), set())
+            if on and on & ns:
+                continue
+            if on == set():
+                continue
+            if _meet(a, b, c, d):
+                out.append((a, b, c, d, sorted(on)))
+    return out
+
+
+def _meet(p, q, r, s):
+    """Do segments pq and rs cross, endpoints *not* counted?
+
+    A hand wire ending on another wire of its own net is a junction, and
+    that is what half of them are for. Only a crossing is reported.
+    """
+    def side(o, u, v):
+        return ((u[1] - o[1]) * (v[0] - o[0])
+                - (u[0] - o[0]) * (v[1] - o[1]))
+    d1, d2 = side(p, q, r), side(p, q, s)
+    d3, d4 = side(r, s, p), side(r, s, q)
+    return ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0))
+
+
 def touches(seg, pt):
     """Does an axis-aligned segment pass through or end on a point?"""
     x1, y1, x2, y2 = seg
@@ -547,6 +634,160 @@ def touches(seg, pt):
     if x1 == x2:
         return x == x1 and min(y1, y2) <= y <= max(y1, y2)
     return False
+
+
+def dead_tails(rows, pins, chosen, flagpt, hidden):
+    """Stub groups a drawn wire has made redundant, as {lineGroup: (net,
+    wire to keep)}. The second element is None where the wire that reaches
+    the pin is one this tool is about to draw — the caller knows its id —
+    and the id of an existing wire where it is one already in the file.
+
+    A pin's stub is the importer's lead from the pin out to where its name
+    sits. Once schwire draws a rail *through* that pin the stub has nothing
+    left to do, and the segment on the far side of the junction is a wire to
+    nowhere: on the 5 V node, C10 and C11 each kept a cable standing in the
+    air beside a pin the rail already reached. The reader sees a part that
+    is connected and drawn as if it is not.
+
+    The name must not leave with the stub, so the label is re-parented onto
+    the drawn wire rather than removed — `epro.py diff` counts one
+    `ATTR key=NET` per pin, and the net a wire carries is that attribute's
+    `parentId`, not where its text sits. Four things have to hold, and each
+    false one is a reason to leave the stub alone:
+
+    - the stub's net was drawn;
+    - one end is a pin and the drawn wire passes through *that* end. A stub
+      with two pins, or a pin in its middle, is not something this has seen
+      and is skipped rather than guessed at;
+    - the far end carries nothing — no pin, no flag, no second stub end. A
+      flagged stub is the flag's *lead*: netflags runs it to the stub's far
+      end, so deleting one would leave the symbol hanging in the air;
+    - every label on the stub is already hidden, *where the drawn net is
+      what reaches the pin*. A visible one is the node's name on screen,
+      and then the tail is the cheapest thing to keep.
+
+    The fifth way in is a wire that is already in the file rather than one
+    this tool drew: the ground bus `netflags --ground-bus` runs through the
+    pins of a row. That bus is drawing over a connection each member's own
+    stub already carries, so the members' stubs are the comb the bus was
+    drawn to replace, and they go where the drawn net's would not — because
+    their name is on screen as the ground *symbol* at the end of the run,
+    not as the text on their own tail. The bus states no net of its own (a
+    wire carrying one would lift the export's ATTR count above the
+    netlist's), so it is accepted only where it states none; a wire naming
+    a different net is a short, and not this rule's to fix. The entry then
+    points the label at that wire instead of at a drawn one, and the caller
+    hides it, since the name has already left the tail.
+    """
+    netof = {b["parentId"]: b["value"] for h, b, _, _ in rows
+             if h and h["type"] == "ATTR" and b.get("key") == "NET"
+             and b.get("value")}
+    shown = {b["parentId"] for h, b, _, _ in rows
+             if h and h["type"] == "ATTR" and b.get("key") == "NET"
+             and b.get("parentId") in netof and b.get("valueVisible") is not False
+             and id(b) not in hidden}
+    geom = collections.defaultdict(list)
+    at_end = collections.Counter()
+    for h, b, _, _ in rows:
+        if h and h["type"] == "LINE" and b.get("lineGroup"):
+            s = (grid(b["startX"], b["startY"]), grid(b["endX"], b["endY"]))
+            geom[b["lineGroup"]].append(s)
+            at_end[s[0]] += 1
+            at_end[s[1]] += 1
+    pinpts = {(x, y) for _, x, y in pins}
+
+    # Which *nodes* carry a symbol that names them. The fifth way in below
+    # leans on the name having already left the tail for something on the
+    # sheet, and the case it was written for is a ground bus: the members'
+    # stubs go because the ground *symbol* at the end of the run names the
+    # node. A hand-drawn wire over a node that carries no symbol is not
+    # that case, and taking it as one hid every visible `COMP_5V` on the
+    # supply sheet -- the wire stayed, and nothing on the sheet said which
+    # net it was.
+    #
+    # Asked of the *node*, not of the net. A net is not all one node --
+    # a divider's sense net is two, far apart, one flagged and one not --
+    # and a net-level answer would let a symbol on one excuse eating the
+    # name on the other. Union-find over the points wires meet at is the
+    # same "what is one node" this project asks everywhere else.
+    _up = {}
+
+    def _find(p):
+        _up.setdefault(p, p)
+        while _up[p] != p:
+            _up[p] = _up[_up[p]]
+            p = _up[p]
+        return p
+
+    for _segs in geom.values():
+        for _s, _e in _segs:
+            _a, _b = _find(_s), _find(_e)
+            if _a != _b:
+                _up[_a] = _b
+    # A pin in the *middle* of a wire is a T, and that is what half of
+    # these joins are: the ground bus runs through its members' pins
+    # rather than ending on them. Unioning endpoints alone calls the bus
+    # one node and every part hanging off its length another, which is
+    # exactly the answer that made five stubs keep their tails.
+    _pts = set(pinpts) | set(flagpt) | {p for _ss in geom.values()
+                                        for _s in _ss for p in _s}
+    for _p in _pts:
+        for _ss in geom.values():
+            for _s, _e in _ss:
+                if (_p != _s and _p != _e
+                        and touches((_s[0], _s[1], _e[0], _e[1]), _p)):
+                    _a, _b = _find(_p), _find(_s)
+                    if _a != _b:
+                        _up[_a] = _b
+    named = set()
+    for lg, segs in geom.items():
+        if not netof.get(lg):
+            continue
+        for s, e in segs:
+            if any(touches((s[0], s[1], e[0], e[1]), fp) for fp in flagpt):
+                named.add(_find(s))
+
+    out = {}
+    for lg, segs in geom.items():
+        n = netof.get(lg)
+        if not n:
+            continue
+        ends = {p for s in segs for p in s}
+        pins_here = ends & pinpts
+        if len(pins_here) != 1:
+            continue
+        pin_end = next(iter(pins_here))
+        far = next(iter(ends - {pin_end}))
+        if far in flagpt or far in pinpts or at_end[far] != 1:
+            continue
+        # ...and no flag anywhere along it either. A flag is placed by
+        # netflags to name a node, and a stub it sits on is that node's
+        # lead whatever point of it the symbol landed on -- netflags runs
+        # its own lead out to the stub's end, but nothing in the file
+        # promises it always will.
+        if any(touches((s[0], s[1], e[0], e[1]), fp)
+               for s, e in segs for fp in flagpt):
+            continue
+        drew = chosen.get(n)
+        if drew is not None:
+            # A net this tool draws: the tail goes only where its label is
+            # off screen already, since a visible label *is* the node's name.
+            if lg in shown:
+                continue
+            if any(touches(s, pin_end) for s in drew):
+                out[lg] = (n, None)
+            continue
+        # ...or a wire already in the file reaching the same pin, which is
+        # the ground bus. See the docstring: no net of its own, and taken
+        # only where it names none, since a wire naming another net is a
+        # short and a short is not a stub to trim.
+        hosts = {lg2 for lg2, segs2 in geom.items()
+                 if lg2 != lg and netof.get(lg2, n) in (n, None)
+                 and any(touches((s2[0][0], s2[0][1], s2[1][0], s2[1][1]),
+                                 pin_end) for s2 in segs2)}
+        if len(hosts) == 1 and _find(pin_end) in named:
+            out[lg] = (n, next(iter(hosts)))
+    return out
 
 
 def main() -> int:
@@ -735,12 +976,30 @@ def main() -> int:
                     if merged:
                         break
             keep = [g for g in groups if len(g) > 1]
-            if keep and a.local_rail:
+            stranded = [p for g in groups if len(g) == 1 for p in g]
+            # A grouped net is drawn locally and its far pins are left to
+            # the flag that already names and connects them -- but only a
+            # pin that *has* one. FB_5V is three pins with the feedback
+            # divider 405 units from U4: proximity kept the divider pair
+            # and stranded U4's pin, which carries no flag, so that pin
+            # kept a stub ending in air while its net was drawn elsewhere
+            # on the sheet. The pinch is not describing a rail when a
+            # pinched-off pin has nothing to fall back on, so the net is
+            # routed whole and the router gets to say whether it reaches.
+            if keep and a.local_rail and all(p in flagged_pin
+                                             for p in stranded):
                 local_rails += len(keep)
                 dropped_flagged += len(pts) - sum(len(g) for g in keep)
                 draw[n] = keep
                 continue
-            free = [p for p in pts if p not in flagged_pin]
+            # A pin inside a group this net is drawing stays in it, flag
+            # or no flag. Dropping it because it also carries a symbol
+            # left C8's supply ending in a VBUS flag beside a wire that
+            # ran from C9 to U4's VIN pin -- one rail drawn as two, which
+            # reads as two nets. Only the *stranded* pins are left to
+            # their flags; that is what the flag is for.
+            grouped = {q for g in keep for q in g}
+            free = [p for p in pts if p not in flagged_pin or p in grouped]
             if len(free) < len(pts):
                 dropped_flagged += len(pts) - len(free)
                 pts = free
@@ -784,6 +1043,25 @@ def main() -> int:
             sx, sy = grid(b["startX"], b["startY"])
             ex, ey = grid(b["endX"], b["endY"])
             stubs.append((sx, sy, ex, ey, netof[b["lineGroup"]]))
+
+    # The wires a person drew, which are in `rows` but not in `stubs`: a
+    # hand lead carries no NET attribute of its own, and `stubs` is keyed
+    # on one. They were invisible to the router for that reason, and it
+    # answered by routing COMP_5V straight across the hand-drawn ground
+    # lead between U4's ground pin and the catch diode -- twice, at
+    # (400,130) and (410,150). A crossing is a junction in a geometric
+    # schematic, so the two nets read as one, and `epro.py diff` counts
+    # names and cannot see it. Tested with `_meet` rather than `cross`:
+    # a drawn wire ending *on* a hand wire is a junction the sheet wants
+    # -- J4's ground arrives on R26's pin that way -- and only passing
+    # through is the fault.
+    hands = []
+    for h, b, _, _ in rows:
+        if (h and h["type"] == "LINE" and b.get("startX") is not None
+                and str(b.get("lineGroup", "")).startswith("hw")):
+            sx, sy = grid(b["startX"], b["startY"])
+            ex, ey = grid(b["endX"], b["endY"])
+            hands.append((sx, sy, ex, ey))
 
     def cross(a, b):
         """Do a horizontal and a vertical segment cross?"""
@@ -836,6 +1114,10 @@ def main() -> int:
             for q in drawn:
                 if q[4] != net and cross(s, q):
                     return q, [f"crosses drawn {q[4]}"]
+            for q in hands:
+                if _meet((s[0], s[1]), (s[2], s[3]),
+                         (q[0], q[1]), (q[2], q[3])):
+                    return q, ["crosses a hand-drawn wire"]
         return None
 
     # Where every visible net label is going to end up, worked out
@@ -922,8 +1204,27 @@ def main() -> int:
                               max(ax_, bx_) + 1, max(ay_, by_) + 1,
                               pnet[0] if isinstance(pnet, tuple) else pnet))
 
-    obst = Obstacles(list(body.values()) + [q[:4] for q in label_boxes], at,
-                     stubs, a.clearance, a.end_clearance, pin_boxes)
+    # Label boxes go in as *owned*, beside the pin boxes, not as anonymous
+    # bodies. They were anonymous, and an anonymous box blocks every net
+    # including the one it names -- so a net whose own label sat on the
+    # only way in could not be routed to itself. COMP_5V is exactly that:
+    # its label on C7's and R27's stubs closed the two ends of the net, and
+    # the maze reported "no clean path" while the straight shapes were
+    # rejected by `collides` for the same reason, the labels being its own.
+    # As a net box the owner is exempt and every other net still stops.
+    obst = Obstacles(list(body.values()), at,
+                     stubs, a.clearance, a.end_clearance,
+                     list(pin_boxes) + list(label_boxes))
+    # ...and the hand-drawn wires, as obstacles to every net. `None` is
+    # what says "no net of ours": nothing this run draws is a ground
+    # lead, so a hand lead is a stranger to all of it. `collides` alone
+    # keeps a route off them but cannot find one -- the maze would spend
+    # its search box on paths it is about to throw away, and report "no
+    # clean path" for a net that has one. On the supply sheet, while the
+    # ground line still reached the far side of stage 2, that is what it
+    # did: two nets that had been drawn came back as labels, which is a
+    # worse sheet than the crossing they replaced.
+    obst.add_wire(hands, None)
 
     # The node each pin was assigned to, kept for the label rule below:
     # routing replaces `draw` with segments and the grouping is gone.
@@ -977,9 +1278,11 @@ def main() -> int:
                    if h and doc and doc[0] in ("SCH_PAGE", "SCH"))
 
     added = []
+    wid_of = {n: hashlib.sha256(f"wire/{n}".encode()).hexdigest()[:16]
+              for n in draw}
     for n in sorted(draw):
         segs = draw[n]
-        wid = hashlib.sha256(f"wire/{n}".encode()).hexdigest()[:16]
+        wid = wid_of[n]
         ticket += 1
         added.append((
             {"type": "WIRE", "ticket": ticket, "id": wid},
@@ -1037,6 +1340,38 @@ def main() -> int:
                 _p = _s if _s in pinpts_ else (_e if _e in pinpts_ else None)
                 if _p is not None:
                     bypin[b_["value"], _p].append(b_)
+        # What the drawn wires cover. A lead *inside* a drawn span is one
+        # the route has taken over -- its name belongs on the wire. A lead
+        # sticking out of the node is where its name lives, and the wire
+        # only reaches it at the pin.
+        drawn_segs = []
+        for h_, b_ in added:
+            if h_.get("type") == "LINE" and b_.get("startX") is not None:
+                drawn_segs.append((grid(b_["startX"], b_["startY"]),
+                                   grid(b_["endX"], b_["endY"])))
+
+        def _covered(p_, q_):
+            for r_, s_ in drawn_segs:
+                if r_[0] == s_[0] == p_[0] == q_[0]:
+                    lo, hi = sorted((r_[1], s_[1]))
+                    if lo <= min(p_[1], q_[1]) and max(p_[1], q_[1]) <= hi:
+                        return True
+                elif r_[1] == s_[1] == p_[1] == q_[1]:
+                    lo, hi = sorted((r_[0], s_[0]))
+                    if lo <= min(p_[0], q_[0]) and max(p_[0], q_[0]) <= hi:
+                        return True
+            return False
+
+        def _onwire(b_):
+            """Is this name on the wire, or on a lead it has not taken
+            over? The latter is what keeps a dead spur on the sheet."""
+            for _s, _e in lglines.get(b_.get("parentId"), []):
+                if _s in pinpts_ and _e in pinpts_:
+                    continue                     # the drawn wire itself
+                if not _covered(_s, _e):
+                    return False
+            return True
+
         for n_ in sorted(chosen):
             for g_ in nodegroups[n_]:
                 gset = set(g_)
@@ -1044,10 +1379,15 @@ def main() -> int:
                 if not here:
                     continue
                 # A node with a symbol keeps none of its texts; one
-                # without keeps the first in reading order, so the net is
-                # still named exactly once on the wire that carries it.
+                # without keeps the first in reading order among those on
+                # the wire, so the net is still named exactly once and the
+                # name is never what holds a dead spur up. R27 and C6 are
+                # the case: both name the node between them, C6's lead
+                # points away from its own body into empty space, and
+                # reading order alone picked that one for sitting higher.
                 keep_ = (None if gset & flagged_pt
-                         else min(here, key=lambda b_: (b_.get("y") or 0,
+                         else min(here, key=lambda b_: (not _onwire(b_),
+                                                        b_.get("y") or 0,
                                                         b_.get("x") or 0)))
                 for b_ in here:
                     if b_ is not keep_:
@@ -1055,6 +1395,31 @@ def main() -> int:
         if hide:
             print(f"         {len(hide):3d}  stub label(s) hidden, the node "
                   f"they name already carrying a flag or another label")
+
+    # --- drop the stub a drawn wire has made dead --------------------------
+    # Runs after the one-name-per-node rule because that rule is what says
+    # whether a stub's label is still the node's name on screen, and a stub
+    # whose label is doing that job keeps its line.
+    trimmed = dead_tails(rows, pins, chosen, flagpt, hide)
+    drop, reparent = set(), {}
+    for h, b, _, _ in rows:
+        if not h:
+            continue
+        if h["type"] == "WIRE" and h["id"] in trimmed:
+            drop.add(h["id"])
+        elif h["type"] == "LINE" and b.get("lineGroup") in trimmed:
+            drop.add(h["id"])
+        elif h["type"] == "ATTR" and b.get("parentId") in trimmed:
+            n_, tgt = trimmed[b["parentId"]]
+            reparent[id(b)] = wid_of[n_] if tgt is None else tgt
+            if tgt is not None:
+                # The name left the tail for a wire already on the sheet,
+                # so the text has to go with it: left visible it would sit
+                # at the old free end, naming a wire that is not there.
+                hide.add(id(b))
+    if trimmed:
+        print(f"         {len(trimmed):3d}  stub(s) dropped, a drawn wire "
+              f"reaching the pin the stub led to")
 
     # Bound outside the flag on purpose. Both are read by the write loop
     # below, and `hide` is no longer filled only here: the one-name-per-node
@@ -1292,30 +1657,44 @@ def main() -> int:
 
     out_lines = []
     for i, (h, b, doc, raw) in enumerate(rows):
+        nb = None
         if h and id(b) in desig_fix:
             nb = dict(b)
             nb["x"], nb["y"] = (int(v) for v in desig_fix[id(b)])
-            raw = (f"{json.dumps(h, separators=(',', ':'))}||"
-                   f"{json.dumps(nb, separators=(',', ':'))}|")
         elif h and id(b) in hide:
             nb = dict(b)
             nb["valueVisible"] = False
             if id(b) in label_fix:
                 nb["x"], nb["y"], nb["align"], nb["rotation"] = \
                     label_fix[id(b)]
-            raw = (f"{json.dumps(h, separators=(',', ':'))}||"
-                   f"{json.dumps(nb, separators=(',', ':'))}|")
         elif moved and h and id(b) in label_fix:
             nb = dict(b)
             nb["x"], nb["y"], nb["align"], nb["rotation"] = \
                 label_fix[id(b)]
+        if id(b) in reparent and not (h and h.get("id") in drop):
+            nb = dict(nb) if nb is not None else dict(b)
+            nb["parentId"] = reparent[id(b)]
+        if nb is not None:
             raw = (f"{json.dumps(h, separators=(',', ':'))}||"
                    f"{json.dumps(nb, separators=(',', ':'))}|")
-        out_lines.append(raw)
+        if not (h and h.get("id") in drop):
+            out_lines.append(raw)
         if i == last_sch:
             out_lines += [f"{json.dumps(hh, separators=(',', ':'))}||"
                           f"{json.dumps(bb, separators=(',', ':'))}|"
                           for hh, bb in added]
+
+    cross = hand_crossings(rows, netof, at, added, wid_of)
+    if cross:
+        for p_, q_, r_, s_, ns in cross[:6]:
+            print(f"  CROSS  a hand wire {p_}-{q_} runs across {r_}-{s_} "
+                  f"on {'/'.join(ns)}")
+        a.out.unlink(missing_ok=True)
+        print(f"\n  {len(cross)} hand-drawn wire(s) cross another net's "
+              f"wire; {a.out} deleted -- a crossing reads as a junction, "
+              f"and which it is cannot be told from the file\n",
+              file=sys.stderr)
+        return 1
 
     src = zipfile.ZipFile(a.export)
     a.out.parent.mkdir(parents=True, exist_ok=True)
@@ -1325,31 +1704,46 @@ def main() -> int:
                        if entry == name else src.read(entry))
 
     _, back = load(a.out)
-    if len(back) != len(rows) + len(added):
+    n_drop = sum(1 for h, _, _, _ in rows if h and h.get("id") in drop)
+    if len(back) != len(rows) - n_drop + len(added):
         a.out.unlink(missing_ok=True)
-        print(f"  error: {len(back)} lines out, expected "
-              f"{len(rows)} + {len(added)} — {a.out} deleted\n", file=sys.stderr)
+        print(f"  error: {len(back)} lines out, expected {len(rows)} - "
+              f"{n_drop} + {len(added)} — {a.out} deleted\n", file=sys.stderr)
         return 1
     new_ids = {h["id"] for h, _ in added}
     kept = [r for r in back if not (r[0] and r[0].get("id") in new_ids)]
-    # Append-only, with exactly two named exceptions. `--labels-outward`
+    expect = [(h, b) for h, b, _, _ in rows
+              if not (h and h.get("id") in drop)]
+    if len(kept) != len(expect):
+        a.out.unlink(missing_ok=True)
+        print(f"  error: {len(kept)} original lines out, expected "
+              f"{len(expect)} — {a.out} deleted\n", file=sys.stderr)
+        return 1
+    # Append-only, with three named exceptions now. `--labels-outward`
     # repositions net labels; the one-name-per-node rule hides a stub label
     # on a node that already carries a name, which is a `valueVisible` flip
-    # and nothing else. Everything else stays as locked as before --
-    # loosening this to "some records may differ" would retire the check it
-    # exists to be.
+    # and nothing else; and `dead_tails` re-parents a hidden label onto the
+    # drawn wire that made its stub redundant. Everything else stays as
+    # locked as before -- loosening this to "some records may differ" would
+    # retire the check it exists to be.
     LABEL_KEYS = {"x", "y", "align", "rotation", "valueVisible"}
-    for (h1, b1, _, _), (h2, b2, _, _) in zip(rows, kept):
-        if (h1, b1) == (h2, b2):
+    for (h1, b1), (h2, b2, _, _) in zip(expect, kept):
+        b1e = ({**b1, "parentId": reparent[id(b1)]}
+               if id(b1) in reparent else b1)
+        if (h1, b1e) == (h2, b2):
             continue
-        differs = {k for k in set(b1) | set(b2) if b1.get(k) != b2.get(k)}
+        differs = {k for k in set(b1e) | set(b2) if b1e.get(k) != b2.get(k)}
         moved_label = (a.labels_outward and h1 == h2
                        and b1.get("key") in ("NET", "Designator")
                        and differs <= LABEL_KEYS)
         just_hidden = (h1 == h2 and b1.get("key") == "NET"
                        and differs <= {"valueVisible"}
                        and b2.get("valueVisible") is False)
-        if not (moved_label or just_hidden):
+        reparented = (h1 == h2 and id(b1) in reparent
+                      and differs <= {"valueVisible"}
+                      and b2.get("valueVisible") is False
+                      and b2.get("parentId") == reparent[id(b1)])
+        if not (moved_label or just_hidden or reparented):
             a.out.unlink(missing_ok=True)
             print(f"  error: an existing record changed in "
                   f"{sorted(differs) or 'its header'} — {a.out} deleted\n",
@@ -1374,7 +1768,40 @@ def main() -> int:
     anc = {h["id"]: (b["x"], b["y"]) for h, b, _, _ in fin
            if h and h["type"] == "COMPONENT" and b.get("partId")
            and isinstance(b.get("x"), (int, float))}
+    # Every pin still reaches copper. `dead_tails` only drops a stub whose
+    # pin the drawn wire already covers, so this should find nothing --
+    # which is the reason to check it here rather than trust that: the rule
+    # asks whether the *planned* segment covers the pin, and this asks
+    # whether the *written* file, with the stub actually gone, still does.
+    # A pin that fails this is an open circuit on the sheet that every
+    # other check passes, because `epro.py diff` reads the label that was
+    # re-parented and is happy either way.
+    segs = [(grid(b["startX"], b["startY"]), grid(b["endX"], b["endY"]))
+            for h, b, _, _ in fin
+            if h and h["type"] == "LINE" and b.get("lineGroup")
+            and isinstance(b.get("startX"), (int, float))]
+    orphan = [p for p in pins
+              if not any(touches((s[0], s[1], e[0], e[1]), (p[1], p[2]))
+                         for s, e in segs)]
+    if orphan:
+        a.out.unlink(missing_ok=True)
+        print(f"  error: {len(orphan)} pin(s) left with no wire under them "
+              f"after the stub was dropped, starting at {orphan[0][0]} "
+              f"({orphan[0][1]}, {orphan[0][2]}) — {a.out} deleted\n",
+              file=sys.stderr)
+        return 1
+    # A text the *symbol* places -- a flag's `Global Net Name` -- carries
+    # no coordinates, and nothing in the file says where EasyEDA will draw
+    # it. Two guesses were tried and both invented defects: boxing it at
+    # the component anchor put 'FB_3V3' on top of C12, and reading the
+    # offset off the symbol (Power-5V holds it at (0, -15)) moved the
+    # collision to 'COMP_5V' and 'FB_5V' -- against a renderer that draws
+    # both apart, eighty units of sheet between them. So it is not
+    # guessed at, it is *counted and left out*, and the count is reported:
+    # "no overlap" over a set that quietly shed nine labels is the false
+    # clean this whole check exists to avoid.
     texts = []
+    unplaced = 0
     for h, b, _, _ in fin:
         if (not h or h["type"] != "ATTR" or not b.get("value")
                 or b.get("valueVisible") is not True
@@ -1383,23 +1810,25 @@ def main() -> int:
             continue
         x, y = b.get("x"), b.get("y")
         if not isinstance(x, (int, float)):
-            x, y = anc.get(b.get("parentId"), (None, None))
-        if x is None:
+            unplaced += 1
             continue
         w = len(b["value"]) * 3.0
         if (b.get("rotation") or 0) % 180:
             # Set along its stub: one pin pitch wide, as tall as it is
             # long. Measuring it as if it were horizontal reported 174
             # collisions on a sheet that has none.
-            texts.append((x - 4, y - w, x + 4, y + w))
+            texts.append(((x - 4, y - w, x + 4, y + w), b["value"]))
         else:
-            texts.append((x - w, y - 4, x + w, y + 4))
+            texts.append(((x - w, y - 4, x + w, y + 4), b["value"]))
     clashes = 0
+    clash_at = []
     for i in range(len(texts)):
         for j in range(i + 1, len(texts)):
-            u, v = texts[i], texts[j]
+            u, v = texts[i][0], texts[j][0]
             if u[0] < v[2] and v[0] < u[2] and u[1] < v[3] and v[1] < u[3]:
                 clashes += 1
+                clash_at.append((texts[i][1], texts[j][1],
+                                 (int(min(u[0], v[0])), int(min(u[1], v[1])))))
     # The question a reader actually asks of a label: which pin is this
     # one for? A name that is nearer somebody else's stub end than its
     # own cannot be answered, and no overlap count sees it -- staggering
@@ -1494,6 +1923,12 @@ def main() -> int:
 
     print(f"  {clashes} pair(s) of visible text overlap"
           + ("" if clashes == 0 else " — unreadable where they do"))
+    for n_a, n_b, pt_ in sorted(clash_at)[:4]:
+        print(f"           {n_a!r} and {n_b!r} meet at {pt_}")
+    # Named, not folded into the zero above: these are labels the symbol
+    # places, so where they land is not in the file and not guessed at.
+    print(f"  {unplaced} visible label(s) placed by their symbol, "
+          f"not checked for overlap")
     print(f"  {len(added)} record(s) added")
     print(f"  wrote {a.out}")
     print(f"\n  prove it:  ./tools/epro.py diff {a.out} {a.netlist}\n")

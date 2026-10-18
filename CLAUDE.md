@@ -579,17 +579,51 @@ is 48 nets living inside one block, and after connectivity ordering 19 of them
 span under 200 units with 13 more under 400. Those are the ones where a line
 reads as a circuit instead of crossing the sheet.
 
-**The tool only adds.** The stubs and their labels stay, so connectivity is
-still carried by name and a drawn wire is decoration over a connection that
-already exists. Geometry that is slightly wrong changes nothing — the inverse
-of the usual danger here, where the wire *is* the connection and one unit
-short is an open circuit.
+**The tool adds, and deletes exactly one thing.** Connectivity is still
+carried by name, so a drawn wire is decoration over a connection that already
+exists. Geometry that is slightly wrong changes nothing — the inverse of the
+usual danger here, where the wire *is* the connection and one unit short is
+an open circuit.
+
+**What it deletes is the stub the drawn wire has made dead.** A pin's stub is
+the importer's lead out to where its name sits; once the rail is drawn
+*through* the pin, the stub has nothing left to do and reads as a cable
+standing in the air beside a part that is already connected — on the 5 V node,
+C10 and C11 each kept one. Dropping a stub is safe only where its name does
+not leave with it, so the label is re-parented onto the drawn wire rather
+than removed: `epro.py diff` counts one `ATTR key=NET` per pin and reads the
+net from that attribute's `parentId`, not from where its text sits. Four
+guards, each a reason to leave a stub alone — the net was drawn, the pin end
+is where the wire meets it, the far end carries nothing (a flagged stub *is*
+the flag's lead), and every label on it is already hidden. On this board that
+is **22 stubs**, and the check afterwards is that every pin still lands on a
+surviving wire.
 
 The one real hazard is a wire passing over a pin on a **different** net,
 which in a geometric schematic connects them, and which `epro.py diff` cannot
 see because the declared names are unchanged. Three orthogonal shapes are
 tried per net and the first clean one wins; a net with no clean path stays a
 label. On this board that is 20 drawn and 12 left, out of 32 candidates.
+
+**Drawing a node is what makes its labels a problem, so the tool thins them.**
+A wire joins pins that each still carry their own stub label, so a node that
+is one connection ends up labelled once per pin on it — which reads as that
+many nets, or as a miscount. One name survives per node and the rest are
+hidden, and where a flag already says the name the whole set goes, because
+the flag is the name. That is **22 stub labels** on this sheet. They get
+`valueVisible` false rather than being deleted, so the append-only proof
+still sees every original record. `--keep-text` turns the rule off, and
+exists so the test suite can tell the mechanism from a no-op.
+
+**`--never-draw` names nets never to draw, and defaults to `GND`.** Ground is
+the one net nobody follows: a symbol sits on each of its pins already, so a
+line joining those symbols says nothing the symbols do not, and on this board
+that is 124 pins of the sheet's thickest line. The rule runs *before* the
+local-rail one, because a grouped rail with few enough pins would otherwise
+be drawn by that rule first — left to the router it depended on the route
+failing, and when it stopped failing the 5 V sheet grew a wire round six
+ground pins nobody had drawn. `--never-draw ''` wires ground like any other
+net, which is how the test proves the default is doing something.
 
 **The pin transform is verified, not trusted.** Absolute position is the
 component anchor plus its symbol-local pin offset rotated by the component's
@@ -646,19 +680,24 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── erc.py             electrical rule check
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets, diff)
     │   ├── arrange.py         group an imported schematic into functional blocks
+    │   ├── handplace.py       place parts at hand-written coordinates
     │   ├── fixparts.py        put the real LCSC number on each instance
     │   ├── schwire.py         draw wires between pins already side by side
+    │   ├── netflags.py        real ground and supply symbols, not text
+    │   ├── schpreview.py      render an export to PNG, to look at it
+    │   ├── layoutmetrics.py   measure what a reader sees, not just collisions
     │   ├── plot.py            chart helper: palette and house style
+    │   ├── calc.py            a design's derived numbers, checked against the prose
     │   ├── stale.py           find superseded values after a numeric change
     │   ├── consistency.py     check a document against the netlist it describes
     │   ├── xref.py            check a document's "see X" pointers resolve
-    │   ├── split.py          divide a netlist into one file per sheet
-    │   ├── carve.py          cut one sheet's parts out of a whole-board export
-    │   ├── blocktitles.py    name each functional block on the sheet
+    │   ├── split.py           divide a netlist into one file per sheet
+    │   ├── carve.py           cut one sheet's parts out of a whole-board export
+    │   ├── blocktitles.py     name each functional block on the sheet
     │   ├── stock.py           check a BOM against live LCSC stock
     │   ├── okf.py             check the docs against OKF v0.2 conformance
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
-    └── tests/                 regression tests: erc, xref, okf, kb
+    └── tests/                 regression tests, one file per tool
 
 ## Conventions
 
@@ -780,11 +819,22 @@ materials** -- the artefact you order from -- pointing at the section that
 disagreed with it.
 
 Prose has no type checker, so this is the substitute. It greps `designs/`,
-`kb/` and `rules/` and prints every hit with context. A hit is not automatically
+`kb/`, `rules/` and `tools/` -- the last because a numeric claim hides in a
+docstring too -- and prints every hit with context. A hit is not automatically
 a bug -- the same digits appear legitimately elsewhere. Adjudicate each one;
 require zero unexplained hits. **Read the hits in full.** One sweep here was
 done through `cut -c1-240` and the stale values were past the cut, which put a
 false completeness claim into the commit message.
+
+**A file it cannot read is a hole, not a pass.** It once skipped `.txt` by
+suffix, to stay out of the extracted datasheet text -- and skipped
+`placement.txt` with it, hand-written prose carrying the supply sheet's
+measured dimensions, which is precisely what the tool is for. A stale A3 note
+lived in that hole for several review rounds and a human found it. The skip is
+now on the datasheet directory, not the extension, and `tests/test_stale.py`
+tests both directions: the prose file must be found, the cached datasheet must
+not be. Any future "too noisy, exclude it" is a place to check that the
+exclusion is narrow enough to leave the prose in scope.
 
 **Numbers that describe the netlist should not be maintained by hand at all.**
 

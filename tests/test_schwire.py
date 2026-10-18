@@ -36,8 +36,12 @@ def check(name, cond, detail=""):
         FAILURES.append(name)
 
 
-def build(path, parts, flags=(), desig_at=False, vertical=False):
+def build(path, parts, flags=(), desig_at=False, vertical=False, bodies=None):
     """parts: [(designator, x, y, [(pin_dx, pin_dy, net), ...])]
+
+    `bodies` maps a part index to a half-box, drawn as the symbol's RECT
+    -- so a fixture can put an obstacle where no pin sits, which is what
+    the router has to go round rather than through.
 
     Each pin gets a symbol PIN record and a labelled stub ending on it,
     exactly as the importer emits, so the tool's transform check passes.
@@ -46,8 +50,17 @@ def build(path, parts, flags=(), desig_at=False, vertical=False):
     component carrying **no Designator**, which is how netflags.py mints
     them and what keeps them out of the BOM. Put one on a stub endpoint
     and that stub's pin counts as connected by symbol.
+
+    `vertical` says which parts' stubs leave their pin perpendicular to
+    the row: True and False mean all and none, and a set of indices means
+    those. Two parts whose stubs differ in direction is not a shape the
+    importer makes on its own, and it is the shape the label rule turns
+    on: a lead lying along the drawn wire has been taken over by it, and
+    a lead sticking out of the node has not.
     """
     recs, t = [], 0
+    vert = ((lambda i: bool(vertical)) if isinstance(vertical, bool)
+            else (lambda i: i in vertical))
 
     def add(h, b):
         nonlocal t
@@ -72,7 +85,7 @@ def build(path, parts, flags=(), desig_at=False, vertical=False):
             px, py = cx + dx, cy + dy
             add({"type": "WIRE", "id": wid}, {"groupId": "", "zIndex": 1})
             ex_, ey_ = ((px, py + 20 * (1 if dy >= 0 else -1))
-                        if vertical else (px - 20, py))
+                        if vert(i) else (px - 20, py))
             add({"type": "LINE", "id": f"l{i}_{j}"},
                 {"lineGroup": wid, "startX": px, "startY": py,
                  "endX": ex_, "endY": ey_, "strokeWidth": 1})
@@ -98,6 +111,10 @@ def build(path, parts, flags=(), desig_at=False, vertical=False):
             # symbol outline would change what they are testing.
             add({"type": "RECT", "id": f"rc{i}"},
                 {"dotX1": -10, "dotY1": -15, "dotX2": 10, "dotY2": 15})
+        if bodies and i in bodies:
+            hx, hy = bodies[i]
+            add({"type": "RECT", "id": f"rb{i}"},
+                {"dotX1": -hx, "dotY1": -hy, "dotX2": hx, "dotY2": hy})
 
     lines = [f"{json.dumps(h, separators=(',', ':'))}||"
              f"{json.dumps(b, separators=(',', ':'))}|" for h, b in recs]
@@ -129,6 +146,53 @@ def wires(path):
     return segs
 
 
+def drawn(path):
+    """Every LINE this tool drew, as (x0, y0, x1, y1).
+
+    The hand wires are in the file too, and they are what a drawn wire
+    must be clear of, so they are the one thing this leaves out.
+    """
+    z = zipfile.ZipFile(path)
+    out = []
+    for line in z.read("doc.epru").decode("utf-8").split("\n"):
+        if "||" not in line:
+            continue
+        h, _, b = line.partition("||")
+        h, b = json.loads(h), json.loads(b.rstrip("|"))
+        if (h.get("type") == "LINE"
+                and not str(b.get("lineGroup", "")).startswith("hw")):
+            out.append((b["startX"], b["startY"], b["endX"], b["endY"]))
+    return out
+
+
+def _crosses(p, q, r, s):
+    (x1, y1), (x2, y2) = p, q
+    (x3, y3), (x4, y4) = r, s
+    d = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
+    if d == 0:
+        return False
+    t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / d
+    u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / d
+    return 0 < t < 1 and 0 < u < 1
+
+
+def hand_wire(path, a, b):
+    """Add a `hw`-prefixed WIRE and LINE, as handplace.py mints them."""
+    z = zipfile.ZipFile(path)
+    entries = {n: z.read(n) for n in z.namelist()}
+    z.close()
+    wid = "hwtest"
+    entries["doc.epru"] += (
+        f'\n{{"type":"WIRE","id":"{wid}"}}||'
+        f'{{"groupId":"","zIndex":1}}|'
+        f'\n{{"type":"LINE","id":"{wid}l"}}||'
+        f'{{"lineGroup":"{wid}","startX":{a[0]},"startY":{a[1]},'
+        f'"endX":{b[0]},"endY":{b[1]},"strokeWidth":1}}|').encode("utf-8")
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as w:
+        for n, data in entries.items():
+            w.writestr(n, data)
+
+
 def run(*args):
     p = subprocess.run([sys.executable, str(TOOL), *map(str, args)],
                        capture_output=True, text=True)
@@ -153,6 +217,129 @@ def visible(path):
         if b.get("valueVisible") is True:
             c[b["value"]] += 1
     return c
+
+
+def test_hand_wire_crossing(tmp):
+    """A hand-drawn lead across another net's wire is refused here.
+
+    handplace.py checks its own wires when it writes them, and at that
+    point schwire has not drawn anything yet -- so a hand lead that
+    crosses a rail laid down here is invisible to every check the chain
+    has. It was found by eye, twice, and both times the route's *ends*
+    were right; only the way it got there was wrong.
+
+    Two answers, and the second is what keeps the first from being a rule
+    that fires on correct drawings: a hand wire ending on another wire of
+    its own net is a junction, which is what half of them are for.
+    """
+    d = tmp / "handcross"
+    d.mkdir()
+    parts = [("R1", 0, 0, [(0, 0, "GND")]),
+             ("R2", 0, 100, [(0, 0, "GND")]),
+             ("R3", 10, 50, [(0, 0, "SIG")])]
+    netlist(d / "n.json", parts)
+    build(d / "in.epro2", parts)
+    # R3's stub runs from (10, 50) to (-10, 50) -- across the line
+    # the hand wire takes from one ground pin to the other, in
+    # the middle of both.
+    hand_wire(d / "in.epro2", (0, 0), (0, 100))
+    rc, log = run(d / "in.epro2", d / "n.json", "-o", d / "out.epro2")
+    check("a hand wire across another net's wire is refused",
+          rc == 1 and "CROSS" in log, log)
+    check("...and the output is deleted", not (d / "out.epro2").exists())
+
+    # The inverse: no crossing part, same hand wire, and it is drawn.
+    parts2 = [("R1", 0, 0, [(0, 0, "GND")]),
+              ("R2", 0, 100, [(0, 0, "GND")])]
+    netlist(d / "n2.json", parts2)
+    build(d / "in2.epro2", parts2)
+    hand_wire(d / "in2.epro2", (0, 0), (0, 100))
+    rc, log = run(d / "in2.epro2", d / "n2.json", "-o", d / "out2.epro2")
+    check("...whereas the same wire with nothing in its way is not",
+          rc == 0 and "CROSS" not in log, log)
+
+
+def test_hand_wire_steered_round(tmp):
+    """A hand wire is routed around, not reported after the fact.
+
+    Checking the finished geometry is necessary and not sufficient: the
+    first version of it read `rows`, the *input*, so it could not see the
+    wires it exists to check the hand wires against. Then, once it did,
+    the maze still proposed paths straight through a hand lead and
+    `collides` threw every one away -- and two nets that had been drawn
+    came back as labels, which is worse than the crossing.
+    """
+    d = tmp / "handsteer"
+    d.mkdir()
+    parts = [("R1", 0, 0, [(0, 0, "SIG")]),
+             ("R2", 0, 100, [(0, 0, "SIG")])]
+    netlist(d / "n.json", parts)
+    build(d / "in.epro2", parts)
+    # Straight up the middle, which is exactly where the hand wire is.
+    hand_wire(d / "in.epro2", (-40, 50), (40, 50))
+    rc, log = run(d / "in.epro2", d / "n.json", "-o", d / "out.epro2")
+    check("a hand wire in the way is routed round, not refused",
+          rc == 0, log)
+    if rc != 0:
+        return
+    segs = drawn(d / "out.epro2")
+    check("...and the net is still drawn", bool(segs), segs)
+    check("...with no segment crossing the hand wire",
+          not any(_crosses((s[0], s[1]), (s[2], s[3]),
+                           (-40, 50), (40, 50)) for s in segs), segs)
+
+    # The inverse: move the hand wire out of the corridor and the route
+    # is the straight line again. Without this, a tool that always
+    # detoured would pass the probe above.
+    build(d / "in2.epro2", parts)
+    hand_wire(d / "in2.epro2", (200, 50), (260, 50))
+    rc, log = run(d / "in2.epro2", d / "n.json", "-o", d / "out2.epro2")
+    check("...and with the hand wire elsewhere it is a straight line",
+          rc == 0 and (0, 0, 0, 100) in drawn(d / "out2.epro2"),
+          drawn(d / "out2.epro2"))
+
+
+def test_hand_wire_keeps_the_name(tmp):
+    """A hand wire over a node must not take that node's only name.
+
+    `dead_tails` drops a stub a wire already reaches, and hides the
+    label with it, on the argument that the name has left the tail for
+    something else on the sheet. That argument holds for a ground bus --
+    the ground *symbol* at the end of the run names the node -- and it
+    does not hold for a hand-drawn lead on a net that carries no symbol.
+    It hid all three visible `COMP_5V` names on the supply sheet, leaving
+    a drawn wire with nothing on the sheet saying which net it was.
+
+    Asked of the node rather than the net, and the second half is why: a
+    symbol on one node of a net must not excuse eating the name on
+    another. Both halves ride on a pin in the *middle* of the hand wire
+    being one node with its ends, which is what half of these joins are.
+    """
+    d = tmp / "handname"
+    d.mkdir()
+    # Too far apart for the router's span, so the net stays a label and
+    # the host-wire branch is the one under test.
+    parts = [("R1", 0, 0, [(0, 0, "SIG")]),
+             ("R2", 0, 500, [(0, 0, "SIG")])]
+    netlist(d / "n.json", parts)
+    build(d / "in.epro2", parts)
+    hand_wire(d / "in.epro2", (0, 0), (0, 500))
+    rc, log = run(d / "in.epro2", d / "n.json", "-o", d / "out.epro2")
+    check("a hand wire over a net with no symbol keeps its names",
+          rc == 0 and visible(d / "out.epro2")["SIG"] == 2,
+          (rc, visible(d / "out.epro2")))
+
+    # ...and with a symbol naming that node, the stubs go and the names
+    # with them: the flag is the name. R3's pin sits in the *middle* of
+    # the hand wire, so this only holds if a T is one node.
+    parts3 = parts + [("R3", 0, 250, [(0, 0, "SIG")])]
+    netlist(d / "n3.json", parts3)
+    build(d / "in3.epro2", parts3, flags=[(-20, 250)])
+    hand_wire(d / "in3.epro2", (0, 0), (0, 500))
+    rc, log = run(d / "in3.epro2", d / "n3.json", "-o", d / "out3.epro2")
+    check("...and where a symbol names the node, only its own name stays",
+          rc == 0 and visible(d / "out3.epro2")["SIG"] == 1,
+          (rc, visible(d / "out3.epro2")))
 
 
 def main():
@@ -182,9 +369,14 @@ def main():
           "landing on a labelled stub" in log and "NOSTUB" not in log, log)
 
     if out.exists():
-        after = len(wires(out))
-        check("a wire was drawn for the adjacent 2-pin net", after > before,
-              f"{before} -> {after}")
+        # Counted as a set difference, not as a line count. A count no
+        # longer moves on its own: the rule that drops a stub the wire has
+        # made dead deletes as many lines as the router adds, and on this
+        # fixture it deleted exactly as many, so `10 -> 10` read as "nothing
+        # drawn" on a file that had been drawn on.
+        new = set(wires(out)) - set(wires(src))
+        check("a wire was drawn for the adjacent 2-pin net", new,
+              f"{before} -> {len(wires(out))}, new {sorted(new)}")
         check("the 5-pin rail is left as a label",
               "more than 4 pins (rail or bus)" in log, log)
 
@@ -213,15 +405,10 @@ def main():
         # fallback detours instead, which is what a human would draw -- so
         # the assertion is no longer "nothing was drawn" but the stronger
         # "something was drawn and it misses the pin".
-        import json as _j
-        z = zipfile.ZipFile(o2)
-        recs = [( _j.loads(l.partition("||")[0]), _j.loads(l.partition("||")[2].rstrip("|")))
-                for l in z.read("doc.epru").decode("utf-8").split("\n") if "||" in l]
-        netof = {b["parentId"] for h, b in recs
-                 if h.get("type") == "ATTR" and b.get("key") == "NET"}
-        drawn = [(b["startX"], b["startY"], b["endX"], b["endY"])
-                 for h, b in recs if h.get("type") == "LINE"
-                 and b.get("lineGroup") not in netof]
+        # Again by set difference: the drawn wire now carries the net label
+        # of the stub it replaced, so "a line with no label on it" is no
+        # longer the same question as "a line schwire drew".
+        drawn = sorted(set(wires(o2)) - set(wires(s2)))
         check("...a detour was drawn instead", len(drawn) > 0,
               f"{len(drawn)} segment(s)")
         import importlib.util as _i
@@ -386,6 +573,30 @@ def main():
           withstub.step_blocked(60, 0, 100, 0, set(), "SIG") is True)
     check("...and not for the net that owns it",
           withstub.step_blocked(60, 0, 100, 0, set(), "VCC") is False)
+
+    # --- a reserved label box walls every net but the one it names -------
+    # Label boxes were handed to the obstacle map anonymously, so a box
+    # blocked its *own* net -- and a net whose own label sat on the only
+    # way in was walled out of its own pin. Three answers, because the
+    # data can be absent: the owner steps through, everyone else stops,
+    # and a name nobody claims is nobody's.
+    #
+    # These four pin the invariant on the class, not on the call site:
+    # they pass whichever way `schwire` hands its boxes over, so none of
+    # them is the probe that finds a revert. The end-to-end fixture
+    # further down is, and it is the one to keep an eye on.
+    owned = schwire.Obstacles([], [], (), 0, 0, [(-4, -4, 4, 4, "SIG")])
+    check("a step through the label box of its own net is allowed",
+          owned.step_blocked(0, -20, 0, 20, set(), "SIG") is False)
+    check("...refused for another net",
+          owned.step_blocked(0, -20, 0, 20, set(), "OTHER") is True)
+    check("...and refused when the step names no net at all",
+          owned.step_blocked(0, -20, 0, 20, set()) is True)
+    # ...and the same box as an anonymous body stops its owner, which is
+    # what made the fault: the two shapes must not be interchangeable.
+    anon = schwire.Obstacles([(-4, -4, 4, 4)], [])
+    check("...whereas the same box as an anonymous body stops its owner",
+          anon.step_blocked(0, -20, 0, 20, set(), "SIG") is True)
 
     # --- clearance: not touching is not the same as reading apart -------
     # At clearance 0 the maze takes the only free corridor and that runs
@@ -637,6 +848,65 @@ def main():
     check("without --local-rail a flagged rail stays flags",
           rc == 0 and "one node rather than a rail" not in log, log)
 
+    # --- a flagged pin inside the node being drawn stays in it ----------
+    # C8's supply ended in a VBUS flag beside a wire that ran from C9 to
+    # U4's VIN pin: one rail drawn as two, which reads as two nets. The
+    # net is drawn for its local node and its far pin left to the flag --
+    # but the fallback dropped *every* flagged pin, including the one in
+    # the node being drawn, and then had too few left to route at all.
+    d3 = tmp / "flagged-node"
+    d3.mkdir()
+    parts3 = [("C8", 0, 0, [(0, 0, "VBUS")]),
+              ("C9", 120, 0, [(0, 0, "VBUS")]),
+              ("U4", 2000, 0, [(0, 0, "VBUS")])]
+    netlist(d3 / "n.json", parts3)
+    build(d3 / "in.epro2", parts3, flags=[(-20, 0), (100, 0)])
+    rc, log = run(d3 / "in.epro2", d3 / "n.json", "--max-span", "4000",
+                  "--skip-flagged", "--local-rail", "400",
+                  "-o", d3 / "out.epro2")
+    check("a net drawn for its node keeps the flagged pin in it",
+          rc == 0 and "1 net(s) routed" in log, log)
+    if rc == 0:
+        # Added wires only: the file's own stubs already end on (0, 0), so
+        # reading every segment would pass on a run that drew nothing.
+        before = set(wires(d3 / "in.epro2"))
+        ends = {e for s in wires(d3 / "out.epro2") if s not in before
+                for e in ((s[0], s[1]), (s[2], s[3]))}
+        check("...so the flagged pin is reached by a wire, not left alone",
+              (0, 0) in ends, sorted(ends)[:8])
+
+    # --- the name goes on the wire, not on a spur -----------------------
+    # Two names on one node, one of them on a lead lying along the drawn
+    # wire and the other on a lead sticking out of it. Reading order kept
+    # whichever sat higher -- on the supply sheet that was C6's, whose
+    # stub points away from its own body into empty space, so the name
+    # was the only thing stopping the spur being dropped and the reader
+    # got a thirty-unit stub with a vertical label on it.
+    d4 = tmp / "name-on-wire"
+    d4.mkdir()
+    # C1 sits at y=10 with its pin offset -10, so its pin is on the row at
+    # (0) and its lead leaves *upwards*. That matters: reading order is
+    # topmost first, so a lead going down would put its name below R1's
+    # and plain reading order would pick R1's anyway -- the probe would
+    # pass without the rule. Going up is the shape C6 has on the sheet.
+    parts4 = [("R1", 0, 0, [(0, 0, "MID")]),
+              ("C1", -100, 10, [(0, -10, "MID")])]
+    netlist(d4 / "n.json", parts4)
+    build(d4 / "in.epro2", parts4, vertical={1})
+    rc, log = run(d4 / "in.epro2", d4 / "n.json", "--labels-outward",
+                  "-o", d4 / "out.epro2")
+    check("a node drawn as a wire keeps one name", rc == 0, log)
+    if rc == 0:
+        vis = [b for b in net_attrs(d4 / "out.epro2")
+               if b.get("value") == "MID" and b.get("valueVisible") is True]
+        check("...keeping exactly one of the two", len(vis) == 1, vis)
+        # ...and the one it kept is the one on the wire, which is what
+        # lets the spur go: a name on C1's perpendicular lead would have
+        # to stay visible to keep that lead alive.
+        spur = [s for s in wires(d4 / "out.epro2") if s[0] == s[2] == -100]
+        check("...so the lead sticking out of the node is dropped",
+              not spur, spur)
+
     # --- labels off the body, and the exception that allows it ----------
     # 46 of 261 visible labels overlapped a symbol: a stub is three pin
     # pitches long and `NC_EFUSE1_MODE` does not fit in that. Moving the
@@ -774,6 +1044,204 @@ def main():
         check("names down a pin row are not staggered", len(xs) == 1, xs)
     check("...and the tool reports no label adrift",
           rc == 0 and "0 net label(s) sit nearer a foreign stub" in log, log)
+
+    # --- a net whose own label box covers its own pin ---------------------
+    # Two pins on a long-named net, twenty units of stub each, so the
+    # label box laid on past the free end reaches back over the pin.
+    # The line between them is refused by a foreign body, which leaves
+    # the maze -- and every first step out of R1 crosses that box. With
+    # the box anonymous the maze is walled in at its own starting pin
+    # and the run reports "no clean path" for a net it can plainly see.
+    # Measured both ways: with the boxes handed over anonymously this
+    # fixture reports `1 net(s) have no clean path`, and with them
+    # owned it reports `1 net(s) routed`.
+    d = tmp / "ownbox"; d.mkdir()
+    oparts = [("R1", 0, 0, [(0, 0, "ANALOG_RETURN")]),
+              ("R2", 0, 200, [(0, 0, "ANALOG_RETURN")]),
+              ("W1", 0, 100, [])]
+    netlist(d / "n.json", oparts)
+    build(d / "in.epro2", oparts, bodies={2: (20, 10)})
+    rc, log = run(d / "in.epro2", d / "n.json", "--labels-outward",
+                  "-o", d / "out.epro2")
+    check("a net is not walled out by its own label box",
+          rc == 0 and "no clean path" not in log
+          and "1 net(s) routed" in log, log)
+    check("...and the wire between the two pins is drawn",
+          rc == 0 and set(wires(d / "out.epro2")) - set(wires(d / "in.epro2")),
+          sorted(set(wires(d / "out.epro2")) - set(wires(d / "in.epro2")))
+          if rc == 0 else log)
+    # The control: with no reserved label boxes there is nothing to be
+    # owned, so this is not the ownership rule doing the drawing.
+    rc, log = run(d / "in.epro2", d / "n.json", "-o", d / "no.epro2")
+    check("...and it draws with no label boxes reserved at all",
+          rc == 0 and "1 net(s) routed" in log, log)
+
+    # --- the stub a drawn wire has made dead is deleted -------------------
+    # A pin's stub leads out to where its name sits. Once the rail is drawn
+    # *through* the pin, the rest of the stub is a wire to nowhere -- on the
+    # 5 V node, C10 and C11 each kept a cable standing in the air beside a
+    # pin the rail already reached. Three pins on one line, their stubs all
+    # dropping away, is that shape. The flag sits on the first stub's far
+    # end, so it is the flag's lead and must survive; the other two are dead.
+    d = tmp / "tails"; d.mkdir()
+    tparts = [("R1", 0, 0, [(0, 0, "SIG")]),
+              ("R2", 100, 0, [(0, 0, "SIG")]),
+              ("R3", 200, 0, [(0, 0, "SIG")])]
+    netlist(d / "n.json", tparts)
+    build(d / "noflag.epro2", tparts, vertical=True)
+    build(d / "flag.epro2", tparts, flags=[(0, 20)], vertical=True)
+
+    def gone(src, out):
+        """The segments the run removed -- all of them, by construction,
+        stubs: nothing else is ever deleted."""
+        return set(wires(src)) - set(wires(out))
+
+    def nets_with_wire(path):
+        """Every NET attribute as (net, parentId still a live WIRE)."""
+        live, out = set(), []
+        for line in zipfile.ZipFile(path).read("doc.epru").decode(
+                "utf-8").split("\n"):
+            if "||" not in line:
+                continue
+            h, _, b = line.partition("||")
+            try:
+                hh, bb = json.loads(h), json.loads(b.rstrip("|"))
+            except json.JSONDecodeError:
+                continue
+            if hh.get("type") == "WIRE":
+                live.add(hh["id"])
+            elif hh.get("type") == "ATTR" and bb.get("key") == "NET":
+                out.append((bb.get("value"), bb.get("parentId")))
+        return out, live
+
+    # Two probes, because one alone is passable by a no-op: the tails must
+    # go *and* the flag's lead must stay. Against the old code (nothing
+    # deleted) the first fails; against a rule that dropped every stub
+    # whose pin the wire reaches, the second does.
+    rc, log = run(d / "flag.epro2", d / "n.json", "--skip-flagged",
+                  "--local-rail", "200", "--labels-outward",
+                  "-o", d / "out.epro2")
+    before, _ = nets_with_wire(d / "flag.epro2")
+    after, live = nets_with_wire(d / "out.epro2")
+    check("a stub whose pin the drawn wire reaches is deleted",
+          rc == 0 and len(gone(d / "flag.epro2", d / "out.epro2")) == 2,
+          f"{sorted(gone(d / 'flag.epro2', d / 'out.epro2')) if rc == 0 else log}")
+    check("...but the one carrying the flag stays, it is the flag's lead",
+          rc == 0 and (0, 0, 0, 20) not in gone(d / "flag.epro2",
+                                                d / "out.epro2"),
+          f"{sorted(gone(d / 'flag.epro2', d / 'out.epro2')) if rc == 0 else log}")
+    check("...and a wire was drawn to make them dead in the first place",
+          rc == 0 and set(wires(d / "out.epro2")) - set(wires(d / "flag.epro2")),
+          log)
+    check("...and it says how many it dropped", "stub(s) dropped" in log, log)
+    # The name leaves with the stub only if nobody carried it: `epro.py
+    # diff` counts one ATTR key=NET per pin, so a deletion that took the
+    # label too would show up as a lost pin the moment the sheet is
+    # checked, and as nothing at all to a reader.
+    check("...every net name survives the deletion, one per pin",
+          rc == 0 and len(before) == len(after) == 3, f"{before} -> {after}")
+    check("...re-parented onto a wire that is still in the file",
+          rc == 0 and all(p in live for _, p in after), after)
+
+    # The name a node has left on screen is worth more than the tidier
+    # drawing: with no flag, one label per node stays visible, and the stub
+    # under that label keeps its line.
+    rc2, log2 = run(d / "noflag.epro2", d / "n.json", "--labels-outward",
+                    "-o", d / "k.epro2")
+    k_gone = gone(d / "noflag.epro2", d / "k.epro2")
+    check("a stub whose label is the node's visible name is kept",
+          rc2 == 0 and len(k_gone) == 2 and (0, 0, 0, 20) not in k_gone
+          and visible(d / "k.epro2").get("SIG") == 1,
+          f"{sorted(k_gone) if rc2 == 0 else log2} "
+          f"{visible(d / 'k.epro2') if rc2 == 0 else ''}")
+    # ...and --keep-text turns the whole rule off, because with every label
+    # visible no stub is redundant-looking enough to drop. A probe that
+    # cannot fail is what this file exists to avoid, so the mechanism gets
+    # a switch and the switch gets a probe.
+    rc3, log3 = run(d / "noflag.epro2", d / "n.json", "--keep-text",
+                    "-o", d / "kt2.epro2")
+    check("...and --keep-text keeps every stub, so the rule is not a no-op",
+          rc3 == 0 and not gone(d / "noflag.epro2", d / "kt2.epro2"),
+          f"{sorted(gone(d / 'noflag.epro2', d / 'kt2.epro2')) if rc3 == 0 else log3}")
+
+    # --- the stub a *pre-existing* wire has made dead ---------------------
+    # `netflags --ground-bus` runs one line through the ground pins of a
+    # row, so the members' own stubs hang below it as the comb the bus was
+    # drawn to replace. That wire is not one schwire drew and its net --
+    # ground -- is never drawn, so nothing else in the tool can reach these
+    # stubs: the drawn-wire path above is closed to them by construction.
+    # The name is on screen as the ground symbol at the end of the run, so
+    # the tail's own label goes rather than being kept for naming the node.
+    d = tmp / "bus"; d.mkdir()
+    bparts = [("R1", 0, 0, [(0, 0, "GND")]),
+              ("R2", 100, 0, [(0, 0, "GND")]),
+              ("R3", 200, 0, [(0, 0, "GND")])]
+    netlist(d / "n.json", bparts)
+    build(d / "plain.epro2", bparts, flags=[(0, 20)], vertical=True)
+
+    def add_bus(src, dst, seg, net=None):
+        """Splice a bare WIRE+LINE through `seg` into the sheet.
+
+        No NET attribute on it, which is the shape netflags writes and the
+        reason the label has to travel to it by id: there is no net name on
+        the wire to re-derive one from. `net` adds one, for the probe that
+        asks what happens when the wire says a net of its own.
+        """
+        z = zipfile.ZipFile(src)
+        lines = z.read("doc.epru").decode("utf-8").split("\n")
+        k = next(i for i, l in enumerate(lines) if '"SYMBOL"' in l)
+        wid = "buswire"
+        lines[k:k] = [
+            json.dumps({"type": "WIRE", "ticket": 900, "id": wid})
+            + "||" + json.dumps({"zIndex": 99}) + "|",
+            json.dumps({"type": "LINE", "ticket": 901, "id": "busline"})
+            + "||" + json.dumps({"lineGroup": wid, "startX": seg[0],
+                                 "startY": seg[1], "endX": seg[2],
+                                 "endY": seg[3]}) + "|"]
+        if net is not None:
+            lines[k + 2:k + 2] = [
+                json.dumps({"type": "ATTR", "ticket": 902, "id": "busnet"})
+                + "||" + json.dumps({"key": "NET", "value": net,
+                                     "parentId": wid, "valueVisible": False})
+                + "|"]
+        with zipfile.ZipFile(dst, "w") as w:
+            w.writestr("doc.epru", "\n".join(lines))
+
+    add_bus(d / "plain.epro2", d / "bus.epro2", (0, 0, 200, 0))
+    rc4, log4 = run(d / "bus.epro2", d / "n.json", "-o", d / "bout.epro2")
+    b_before, _ = nets_with_wire(d / "bus.epro2")
+    b_after, b_live = nets_with_wire(d / "bout.epro2")
+    b_gone = gone(d / "bus.epro2", d / "bout.epro2")
+    check("a stub the ground bus reaches is deleted", rc4 == 0
+          and b_gone == {(100, 0, 100, 20), (200, 0, 200, 20)}, b_gone or log4)
+    check("...but the run's own symbol lead stays, it is the flag's lead",
+          rc4 == 0 and (0, 0, 0, 20) not in b_gone, b_gone or log4)
+    check("...and every name survives, carried by the bus wire",
+          rc4 == 0 and len(b_before) == len(b_after) == 3
+          and all(p == "buswire" or p in b_live for _, p in b_after),
+          b_after)
+    check("...and the vacated text is hidden, the symbol naming the node",
+          rc4 == 0 and visible(d / "bout.epro2").get("GND") == 1,
+          visible(d / "bout.epro2") if rc4 == 0 else log4)
+    # The inverse: without the bus nothing reaches those pins and ground is
+    # never drawn, so every stub stays. This is the probe that fails if the
+    # rule is loosened to "any stub whose pin it cannot see is dead".
+    rc5, log5 = run(d / "plain.epro2", d / "n.json", "-o", d / "pout.epro2")
+    check("...and with no bus reaching them, nothing is dropped",
+          rc5 == 0 and not gone(d / "plain.epro2", d / "pout.epro2"),
+          f"{sorted(gone(d / 'plain.epro2', d / 'pout.epro2')) if rc5 == 0 else log5}")
+    # ...and a wire that names a net of its own is not a bus. Trimming a
+    # stub onto it would be documenting a short as if it were a rail, so it
+    # is refused and the geometry is left for `erc.py` to report.
+    add_bus(d / "plain.epro2", d / "sig.epro2", (0, 0, 200, 0), net="SIG")
+    rc6, log6 = run(d / "sig.epro2", d / "n.json", "-o", d / "sout.epro2")
+    check("...and a wire naming another net is not one",
+          rc6 == 0 and not gone(d / "sig.epro2", d / "sout.epro2"),
+          f"{sorted(gone(d / 'sig.epro2', d / 'sout.epro2')) if rc6 == 0 else log6}")
+
+    test_hand_wire_crossing(tmp)
+    test_hand_wire_steered_round(tmp)
+    test_hand_wire_keeps_the_name(tmp)
 
     print()
     if FAILURES:
