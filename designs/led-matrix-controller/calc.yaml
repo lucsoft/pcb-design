@@ -1,0 +1,3009 @@
+# The derived numbers this design rests on.
+#
+#   ./tools/calc.py eval     designs/led-matrix-controller
+#   ./tools/calc.py check    designs/led-matrix-controller
+#   ./tools/calc.py affected designs/led-matrix-controller MODULE_FULL_W
+#
+# Every `inputs:` entry says where its number came from; everything under
+# `derived:` is computed, never typed. README.md cites these by name, so a
+# changed input moves the document rather than contradicting it.
+
+meta:
+  design: led-matrix-controller
+  documents: [README.md]
+  # Count labels the prose writes as if they were units. All dimensionless;
+  # they exist so "20 modules" can be checked without the matcher guessing
+  # which trailing word is a unit and which is a noun.
+  units:
+    modules: ""
+    LEDs: ""
+    ICs: ""
+    pkt: "Hz"
+    fps: "Hz"
+    # Byte counts. Each entry states its own scale in its source, so these are
+    # plain labels: a quantity recorded in kB is cited in kB.
+    B: ""
+    kB: ""
+    bit: ""
+    signals: ""
+    pads: ""
+
+inputs:
+
+  # ---- the PD contract ------------------------------------------------
+
+  V_BUS:
+    value: 36
+    unit: V
+    source: "EPR fixed PDO, chosen as the highest the modules survive (XL1509 40 V operating)"
+    provenance: chosen
+  I_CONTRACT:
+    value: 5.0
+    unit: A
+    source: "the 36 V EPR fixed PDO's current, matching the brief's 180 W"
+    provenance: chosen
+  PDO_TOLERANCE:
+    value: 5
+    unit: "%"
+    source: "USB PD: a compliant fixed PDO may sit +/-5% of nominal"
+    provenance: datasheet
+  V_PDO_9:
+    value: 9
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  V_PDO_12:
+    value: 12
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  V_PDO_15:
+    value: 15
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  V_PDO_20:
+    value: 20
+    unit: V
+    source: "USB PD fixed PDO"
+    provenance: datasheet
+  P_BUDGET_28V:
+    value: 140
+    unit: W
+    source: "the 28 V / 5 A EPR PDO, the alternative weighed in Why not 240 W"
+    provenance: datasheet
+  P_BUDGET_48V:
+    value: 240
+    unit: W
+    source: "the 48 V / 5 A EPR PDO, the alternative rejected in Why not 240 W"
+    provenance: datasheet
+  CONN_RATING:
+    value: 10
+    unit: A
+    source: "Wago picoMAX 3.5 (2091 series) contact rating"
+    provenance: datasheet
+  I_CONTRACT_12V:
+    value: 3
+    unit: A
+    source: "the current a 12 V or 15 V fixed PDO offers"
+    provenance: datasheet
+  V_GPIO_MODE:
+    value: 28
+    unit: V
+    source: "HUSB238A datasheet: GPIO mode's highest PDO"
+    provenance: datasheet
+  I_GPIO_MODE:
+    value: 3.25
+    unit: A
+    source: "HUSB238A datasheet: GPIO mode's current at 28 V"
+    provenance: datasheet
+  P_CONTROLLER_ALLOWANCE:
+    value: 5
+    unit: W
+    source: "chosen allowance for the controller board; the thermal budget's computed 4.01 W plus deliberate headroom"
+    provenance: chosen
+
+  # ---- the module -----------------------------------------------------
+
+  MODULE_FULL_W:
+    value: 10.8
+    unit: W
+    source: "20 mA per LED channel x 3 x 36 LEDs x 5 V; the 20 mA is the WS2812D-F8 p.3 TEST CONDITION for V_F and I_v, not a rating of the internal sink -- see Assumptions, the single most load-bearing unsourced number here"
+    provenance: assumed
+  ETA_MODULE:
+    value: 75
+    unit: "%"
+    source: "XL1509 buck efficiency, characterised at 28 V and applied at 36 V -- see Assumptions"
+    provenance: assumed
+  CAP_THERMAL:
+    value: 70
+    unit: "%"
+    source: "the module's own sustained thermal ceiling"
+    provenance: assumed
+  GAMMA:
+    value: 2.2
+    unit: ""
+    source: "perceptual gamma; the standard figure for apparent brightness"
+    provenance: chosen
+  LEDS_PER_MODULE:
+    value: 36
+    unit: ""
+    source: "V3 module, 6x6"
+    provenance: measured
+  T_PER_LED:
+    value: 30
+    unit: us
+    source: "24 bits at 800 kbps"
+    provenance: datasheet
+  T_RESET:
+    value: 0.28
+    unit: ms
+    source: "WS2812 latch time between frames"
+    provenance: datasheet
+  V_MODULE_RAIL:
+    value: 5
+    unit: V
+    source: "the module's own regulated rail, XL1509 output"
+    provenance: datasheet
+  V_MODULE_IN_MIN:
+    value: 6.5
+    unit: V
+    source: "XL1509 5 V out plus its 1.5 V minimum dropout, datasheet p.1"
+    provenance: datasheet
+  C_MODULE_BULK:
+    value: 330
+    unit: uF
+    source: "the module's bulk electrolytic, 220-330 uF radial; the upper bound is used"
+    provenance: measured
+  I_Q_PER_IC_LO:
+    value: 0.5
+    unit: mA
+    source: "SK6812 family quiescent current, low end of 0.5-1 mA; the WS2812D-F8 specifies none"
+    provenance: inferred
+  I_Q_PER_IC_HI:
+    value: 1.0
+    unit: mA
+    source: "SK6812 family quiescent current, high end of 0.5-1 mA"
+    provenance: inferred
+
+  # ---- the wall -------------------------------------------------------
+
+  N_MODULES:
+    value: 20
+    unit: ""
+    source: "design target: what 180 W supports before brightness falls off"
+    provenance: chosen
+  N_CHANNELS:
+    value: 2
+    unit: ""
+    source: "chosen; see Why two channels"
+    provenance: chosen
+
+  # ---- cable ----------------------------------------------------------
+
+  RHO_CU:
+    value: 0.0172
+    unit: ohm*mm2/m
+    source: "resistivity of copper at 20 C, IEC 60228"
+    provenance: datasheet
+  CSA_025:
+    value: 0.25
+    unit: mm2
+    source: "IEC 60228 cross-section, swept in the cable table"
+    provenance: chosen
+  CSA_034:
+    value: 0.34
+    unit: mm2
+    source: "IEC 60228 cross-section, swept in the cable table"
+    provenance: chosen
+  CSA_100:
+    value: 1.0
+    unit: mm2
+    source: "IEC 60228 cross-section, swept in the cable table"
+    provenance: chosen
+  CSA_REF:
+    value: 0.5
+    unit: mm2
+    source: "chosen reference cross-section for the controller-to-first-module run"
+    provenance: chosen
+  CSA_ALT:
+    value: 0.75
+    unit: mm2
+    source: "the next IEC 60228 size up, recommended past 9 m"
+    provenance: chosen
+  L_REF:
+    value: 10
+    unit: m
+    source: "the design's reference run, controller to first module"
+    provenance: chosen
+  DROP_BUDGET:
+    value: 5
+    unit: "%"
+    source: "chosen efficiency limit on cable drop, not a functional one"
+    provenance: chosen
+  V_DROP_EXAMPLE:
+    value: 1.6
+    unit: V
+    source: "illustrative cable drop, for the comparison against a 5 V bus"
+    provenance: chosen
+  F_PWM:
+    value: 400
+    unit: Hz
+    source: "WS2812 constant-current sink duty-cycling rate, approximate"
+    provenance: inferred
+  R_LOOP_SHORT:
+    value: 0.35
+    unit: ohm
+    source: "loop resistance of the ~5 m short-cable case including switch and sense"
+    provenance: calculated
+  R_LOOP_REF:
+    value: 0.69
+    unit: ohm
+    source: "loop resistance at the 10 m reference run including switch and sense"
+    provenance: calculated
+
+  # ---- the 5 V rail and its converter ---------------------------------
+
+  V_VSAFE5V_LO:
+    value: 4.75
+    unit: V
+    source: "USB Type-C vSafe5V low tolerance"
+    provenance: datasheet
+  V_VSAFE5V_NOM:
+    value: 5.00
+    unit: V
+    source: "USB Type-C vSafe5V nominal"
+    provenance: datasheet
+  V_RAIL5_NOM:
+    value: 5.0
+    unit: V
+    source: "TPS54360B feedback divider 53.6k/10.2k against VREF 0.8 V, datasheet p.28"
+    provenance: datasheet
+  I_RAIL5:
+    value: 0.7
+    unit: A
+    source: "the 5 V rail's load, used everywhere in this document"
+    provenance: calculated
+  V_F_SS36:
+    value: 0.5
+    unit: V
+    source: "SS36 forward drop around 0.6 A; consistent with every row of the dropout and cooling tables"
+    provenance: inferred
+  R_DS_TYP:
+    value: 0.12
+    unit: ohm
+    source: "TPS54360B datasheet Figure 1, the BOOT-SW = 3 V curve, which §8.2 says applies at low dropout"
+    provenance: datasheet
+  R_DS_6V_MAX:
+    value: 190
+    unit: mohm
+    source: "TPS54360B datasheet p.5 electrical table, at VIN = 12 V and BOOT-SW = 6 V -- NOT this design's drive"
+    provenance: datasheet
+  R_DS_RATIO_LO:
+    value: 1.25
+    unit: ""
+    source: "Figure 1: the 3 V curve runs 1.25-1.30x the 6 V one, read off the plot"
+    provenance: inferred
+  R_DS_RATIO_HI:
+    value: 1.30
+    unit: ""
+    source: "Figure 1: the 3 V curve runs 1.25-1.30x the 6 V one, read off the plot"
+    provenance: inferred
+  R_DS_APPLICABLE:
+    value: 0.24
+    unit: ohm
+    source: "the 0.2375-0.247 ohm band the Figure 1 ratio gives, rounded to the one figure this document works at everywhere"
+    provenance: inferred
+  R_DCR_L1:
+    value: 72.5
+    unit: mohm
+    source: "SPM6530T-100M DCR"
+    provenance: datasheet
+  R_DCR_ALT:
+    value: 163
+    unit: mohm
+    source: "a higher-DCR 10 uH alternative, for the sensitivity check"
+    provenance: datasheet
+  V_BUFFER_MIN:
+    value: 4.5
+    unit: V
+    source: "74AHCT541 VCC minimum, datasheet; recorded as vMin on the KB record's VCC pin"
+    provenance: datasheet
+  V_D14_DROP:
+    value: 0.37
+    unit: V
+    source: "RB751V-40 forward drop, 0.37 V max at 1 mA (datasheet p.2)"
+    provenance: datasheet
+  I_FAN_25MM:
+    value: 50
+    unit: mA
+    source: "25 mm fan, typical"
+    provenance: inferred
+  I_FAN_58:
+    value: 58
+    unit: mA
+    source: "a 58 mA fan, the row that brackets 25 and 30 mm parts"
+    provenance: inferred
+  I_FAN_30MM:
+    value: 70
+    unit: mA
+    source: "30 mm fan, typical"
+    provenance: inferred
+  I_FAN_40MM:
+    value: 100
+    unit: mA
+    source: "40 mm fan, typical"
+    provenance: inferred
+
+  # ---- the HUSB238A VBUS pin ------------------------------------------
+
+  V_VBUS_PIN_MIN:
+    value: 3.15
+    unit: V
+    source: "HUSB238A p.4: VBUS pin minimum with VDD tied to 3.3 V"
+    provenance: datasheet
+  V_VBUS_PIN_MIN_NOVDD:
+    value: 4.5
+    unit: V
+    source: "HUSB238A p.4: VBUS pin minimum when VDD is unpowered"
+    provenance: datasheet
+  V_VBPRS_R_TYP:
+    value: 4.0
+    unit: V
+    source: "HUSB238A p.7, VBUS_OK rising threshold typ (3.67 min / 4.4 max)"
+    provenance: datasheet
+  V_VBPRS_R_MAX:
+    value: 4.4
+    unit: V
+    source: "HUSB238A p.7, VBUS_OK rising threshold max"
+    provenance: datasheet
+  UV_BAND_F1:
+    value: 80
+    unit: "%"
+    source: "HUSB238A p.7, vVBUV_F1: 80% of the requested voltage for 10 V >= RDO > 5 V"
+    provenance: datasheet
+  UV_BAND_F0:
+    value: 86
+    unit: "%"
+    source: "HUSB238A p.7, vVBUV_F0: 86% of the requested voltage for 26 V > RDO > 10 V"
+    provenance: datasheet
+
+  # ---- the 3.3 V rail --------------------------------------------------
+
+  I_ESP32_TX:
+    value: 382
+    unit: mA
+    source: "ESP32-C6-WROOM-1 datasheet Table 13, 802.11b at 20.5 dBm, 100% duty"
+    provenance: datasheet
+  P_ETH_MODULE:
+    value: 0.50
+    unit: W
+    source: "W5500 module draw, same as the bare PHY"
+    provenance: datasheet
+  I_MAX3485_ICC:
+    value: 2
+    unit: mA
+    source: "MAX3485 supply current, datasheet"
+    provenance: datasheet
+  I_MAX3485_LINE:
+    value: 12
+    unit: mA
+    source: "estimated line current with DE asserted into 120 ohm; the datasheet gives neither a loaded I_CC nor a V_OD -- see Assumptions"
+    provenance: assumed
+  R_TERM:
+    value: 120
+    unit: ohm
+    source: "far-end termination on the differential pair"
+    provenance: chosen
+  I_HUSB_VDD:
+    value: 4.5
+    unit: mA
+    source: "HUSB238A VDD active sink current"
+    provenance: datasheet
+  I_INA_AND_PULLUPS:
+    value: 6
+    unit: mA
+    source: "INA226 plus the I2C pull-ups, estimated"
+    provenance: inferred
+  P_RAIL3V3_SIZED:
+    value: 2.3
+    unit: W
+    source: "the ceiling the 3.3 V rail is sized for, above its computed draw"
+    provenance: chosen
+  ETA_CASCADE:
+    value: 78
+    unit: "%"
+    source: "36 -> 5 -> 3.3 V through TPS54360B then SY8089"
+    provenance: inferred
+  ETA_SINGLE:
+    value: 80
+    unit: "%"
+    source: "a hypothetical single 36 -> 3.3 V buck"
+    provenance: inferred
+  V_RAIL3V3:
+    value: 3.3
+    unit: V
+    source: "SY8089 feedback divider 100k/22.1k against VREF 0.600 V, datasheet p.2"
+    provenance: datasheet
+  VIH_SK6812_RATIO:
+    value: 0.6
+    unit: ""
+    source: "SK6812-EC20 VIH, 0.6 x VDD -- the most permissive of the three variants evaluated"
+    provenance: datasheet
+  VOH_ESP32_RATIO:
+    value: 0.8
+    unit: ""
+    source: "ESP32-C6 guaranteed V_OH, 0.8 x VDD"
+    provenance: datasheet
+
+  # ---- the PD front end: Q3, R44 and the Zener clamp -------------------
+
+  V_BE_Q3:
+    value: 0.80
+    unit: V
+    source: "MMBT5551 Fig.5 p.3 read at I_C = 1 mA gives ~0.63 V at 25 C; extrapolated to -20 C at -2 mV/C it is ~0.72 V, and 0.80 V is the conservative end. No tabulated V_BE(on) exists -- see Assumptions"
+    provenance: assumed
+  V_BE_Q3_LO:
+    value: 0.60
+    unit: V
+    source: "the low end of the same silicon-junction band"
+    provenance: assumed
+  H_FE_Q3:
+    value: 60
+    unit: ""
+    source: "deliberately below the datasheet's 80 min at I_C = 1.0 mA, because this follower runs at V_CE ~0.84 V on a 12 V contract where beta droops"
+    provenance: assumed
+  H_FE_DATASHEET_MIN:
+    value: 80
+    unit: ""
+    source: "MMBT5551 datasheet p.1, I_C = 1.0 mA and V_CE = 5.0 V"
+    provenance: datasheet
+  R44:
+    value: 3.24
+    unit: kohm
+    source: "chosen: the value at which the 12 V margin stops depending on the unpublished VBUS pin current, with the resistor still comfortably derated"
+    provenance: chosen
+  R44_ALT_47:
+    value: 4.7
+    unit: kohm
+    source: "the value R44 passed through, kept for the sensitivity table"
+    provenance: chosen
+  R44_ALT_22:
+    value: 2.2
+    unit: kohm
+    source: "the next step down, kept for the sensitivity table"
+    provenance: chosen
+  I_VBUS_PIN_MAX:
+    value: 800
+    unit: uA
+    source: "HUSB238A p.6, VBUS pin current max at VDD = 3.3 V and VBUS = 5 V -- the only condition published"
+    provenance: datasheet
+  I_VBUS_PIN_TYP:
+    value: 330
+    unit: uA
+    source: "HUSB238A p.6, VBUS pin current typ at VDD = 3.3 V and VBUS = 5 V"
+    provenance: datasheet
+  I_VBUS_PIN_MID:
+    value: 1.8
+    unit: mA
+    source: "an intermediate point between the two published rows, for the sensitivity table"
+    provenance: inferred
+  I_VBUS_PIN_NOVDD_TYP:
+    value: 4.0
+    unit: mA
+    source: "HUSB238A p.6, VBUS pin current typ at 29.4 V with VDD unpowered"
+    provenance: datasheet
+  I_VBUS_PIN_NOVDD_MAX:
+    value: 4.5
+    unit: mA
+    source: "HUSB238A p.6, VBUS pin current max at 29.4 V with VDD unpowered -- the binding end"
+    provenance: datasheet
+  V_ZENER_LO:
+    value: 25.65
+    unit: V
+    source: "BZT52C27 (C173421) low bin"
+    provenance: datasheet
+  V_ZENER_NOM:
+    value: 27
+    unit: V
+    source: "BZT52C27 nominal"
+    provenance: datasheet
+  V_ZENER_HI:
+    value: 28.35
+    unit: V
+    source: "BZT52C27 (C173421) high bin"
+    provenance: datasheet
+  V_ZENER_C20_NOM:
+    value: 20
+    unit: V
+    source: "BZT52C20, the part this design carried for four revisions"
+    provenance: datasheet
+  V_ZENER_C20_LO:
+    value: 19
+    unit: V
+    source: "BZT52C20 low bin"
+    provenance: datasheet
+  V_ZENER_C20_HI:
+    value: 21
+    unit: V
+    source: "BZT52C20 high bin"
+    provenance: datasheet
+  V_GS_BSS138_LO:
+    value: 0.8
+    unit: V
+    source: "BSS138 V_GS at 800 uA, low end"
+    provenance: datasheet
+  V_GS_BSS138_TYP:
+    value: 1.5
+    unit: V
+    source: "BSS138 V_GS(th) as other vendors publish it; the fitted C7420339 is 1.6 V max"
+    provenance: inferred
+  V_GS_BSS138_MAX:
+    value: 1.6
+    unit: V
+    source: "C7420339 BSS138 V_GS(th) max"
+    provenance: datasheet
+  V_UV_F2:
+    value: 22.4
+    unit: V
+    source: "HUSB238A p.7, vVBUV_F2: a flat 22.4 V for RDO >= 26 V"
+    provenance: datasheet
+  OV_BAND:
+    value: 120
+    unit: "%"
+    source: "HUSB238A VBUS_OV, 120% of the requested voltage"
+    provenance: datasheet
+  P_RATING_0402:
+    value: 62.5
+    unit: mW
+    source: "thick-film 0402 rating"
+    provenance: datasheet
+  V_TVS_CLAMP:
+    value: 64.5
+    unit: V
+    source: "SMCJ40CA headline clamping voltage at its rated 23.3 A surge"
+    provenance: datasheet
+  V_CEO_MMBT5551:
+    value: 160
+    unit: V
+    source: "MMBT5551 datasheet V_CEO"
+    provenance: datasheet
+  V_DS_BSS138:
+    value: 50
+    unit: V
+    source: "BSS138 V_DS rating, for the comparison the NPN replaced"
+    provenance: datasheet
+
+  # ---- the channel eFuses ---------------------------------------------
+
+  R_ILIM:
+    value: 3.24
+    unit: kohm
+    source: "TPS16630 §10.2.2.1; the datasheet tabulates 3 kOhm -> 6 A and 4.02 kOhm -> 4.5 A"
+    provenance: datasheet
+  ILIM_PRODUCT:
+    value: 18
+    unit: kohm*A
+    source: "TPS16630: I x R is about 18 kOhm.A across the tabulated pairs"
+    provenance: datasheet
+  ILIM_TOLERANCE:
+    value: 7
+    unit: "%"
+    source: "TPS16630 current-limit accuracy"
+    provenance: datasheet
+  C_DVDT:
+    value: 220
+    unit: nF
+    source: "chosen: sets the output slew and so the inrush"
+    provenance: chosen
+  K_DVDT:
+    value: 20.8e3
+    unit: A^-1
+    source: "TPS16630 Eq. 2, t(dVdT) = 20.8e3 x V_IN x C_dVdT"
+    provenance: datasheet
+  GAIN_DVDT_MIN:
+    value: 23.5
+    unit: ""
+    source: "TPS16630 p.7, GAIN(dVdT) 23.5 / 25 / 26 V/V"
+    provenance: datasheet
+  GAIN_DVDT_MAX:
+    value: 26
+    unit: ""
+    source: "TPS16630 p.7, GAIN(dVdT) max"
+    provenance: datasheet
+  I_DVDT_TYP:
+    value: 2.0
+    unit: uA
+    source: "TPS16630 dVdT pin current, typ"
+    provenance: datasheet
+  I_DVDT_MIN:
+    value: 1.775
+    unit: uA
+    source: "TPS16630 dVdT pin current, min"
+    provenance: datasheet
+  I_DVDT_MAX:
+    value: 2.225
+    unit: uA
+    source: "TPS16630 dVdT pin current, max"
+    provenance: datasheet
+  T_TURN_ON_BASE:
+    value: 742
+    unit: us
+    source: "TPS16630 turn-on delay, the constant term"
+    provenance: datasheet
+  T_TURN_ON_PER_NF:
+    value: 49.5
+    unit: us/nF
+    source: "TPS16630 turn-on delay, the term per nF of C_dVdT"
+    provenance: datasheet
+  R_UV1:
+    value: 732
+    unit: kohm
+    source: "chosen 1% E96 value, IN to UVLO"
+    provenance: chosen
+  R_UV2:
+    value: 255
+    unit: kohm
+    source: "chosen 1% E96 value, UVLO to OVP"
+    provenance: chosen
+  R_UV3:
+    value: 30.0
+    unit: kohm
+    source: "chosen 1% E96 value, OVP to GND"
+    provenance: chosen
+  V_REF_EFUSE:
+    value: 1.2
+    unit: V
+    source: "TPS16630 UVLO and OVP reference, 1.176 / 1.2 / 1.224 V (+/-2%)"
+    provenance: datasheet
+  V_REF_EFUSE_MIN:
+    value: 1.176
+    unit: V
+    source: "TPS16630 reference, -2%"
+    provenance: datasheet
+  V_REF_EFUSE_MAX:
+    value: 1.224
+    unit: V
+    source: "TPS16630 reference, +2%"
+    provenance: datasheet
+  V_OVPF_MIN:
+    value: 1.09
+    unit: V
+    source: "TPS16630 p.7, V(OVPF) falling threshold min (1.122 typ / 1.15 max)"
+    provenance: datasheet
+  V_OVPF_MAX:
+    value: 1.15
+    unit: V
+    source: "TPS16630 p.7, V(OVPF) falling threshold max"
+    provenance: datasheet
+  RES_TOL:
+    value: 1
+    unit: "%"
+    source: "1% resistors throughout the divider string"
+    provenance: chosen
+  UVLO_HYST:
+    value: 78
+    unit: mV
+    source: "TPS16630 UVLO hysteresis at the pin, typ"
+    provenance: datasheet
+  V_EFUSE_MIN_OP:
+    value: 4.5
+    unit: V
+    source: "TPS16630 minimum operating voltage"
+    provenance: datasheet
+  V_MODULE_ABS_MAX:
+    value: 45
+    unit: V
+    source: "XL1509 absolute maximum on the module"
+    provenance: datasheet
+  V_MODULE_OP_MAX:
+    value: 40
+    unit: V
+    source: "XL1509 maximum operating voltage on the module"
+    provenance: datasheet
+  C_TI_DEMO:
+    value: 15
+    unit: mF
+    source: "TPS16630 Figure 16, the capacitance TI demonstrates powering into"
+    provenance: datasheet
+  V_TI_DEMO:
+    value: 24
+    unit: V
+    source: "TPS16630 Figure 16, V_IN for that demonstration, with dVdT open"
+    provenance: datasheet
+  T_TREG_TIMEOUT:
+    value: 1.1
+    unit: s
+    source: "TPS16630 p.8, t(Treg_timeout) minimum (1.25 typ, 1.5 max) -- the binding end"
+    provenance: datasheet
+  P_FIG13_TIMEOUT_LO:
+    value: 5.9
+    unit: W
+    source: "TPS16630 Figure 13's 25 C trace at the timeout, low of two extractions of a light-grey curve"
+    provenance: inferred
+  P_FIG13_TIMEOUT_HI:
+    value: 7.0
+    unit: W
+    source: "TPS16630 Figure 13's 25 C trace at the timeout, high of two extractions"
+    provenance: inferred
+  E_FIG13_85C:
+    value: 4.5
+    unit: J
+    source: "Figure 13's 85 C trace at the timeout, about 4 W over 1.1 s"
+    provenance: inferred
+
+  # ---- the enable network ---------------------------------------------
+
+  R_SHDN_PULLDOWN:
+    value: 10
+    unit: kohm
+    source: "chosen: fail-safe off through MCU reset"
+    provenance: chosen
+  R_GPIO_SERIES:
+    value: 1
+    unit: kohm
+    source: "chosen: lets the FAULT transistor override a driven-high GPIO"
+    provenance: chosen
+  I_SHDN_SOURCE:
+    value: 10
+    unit: uA
+    source: "TPS16630 SHDN pin internal source, <=10 uA"
+    provenance: datasheet
+  V_SHDN_THRESHOLD:
+    value: 0.8
+    unit: V
+    source: "TPS16630 guaranteed-shutdown threshold"
+    provenance: datasheet
+  V_SHUTR:
+    value: 2
+    unit: V
+    source: "TPS16630 V(SHUTR), the turn-on threshold"
+    provenance: datasheet
+  R_DS_EFUSE_85C_MAX:
+    value: 45
+    unit: mohm
+    source: "TPS16630 p.7, integrated FET at T_J = 85 C, max (the 85 C row has no typ column)"
+    provenance: datasheet
+
+  # ---- the thermal budget ---------------------------------------------
+
+  BOARD_W:
+    value: 72
+    unit: mm
+    source: "estimated envelope at 45% utilisation, 2-layer"
+    provenance: calculated
+  BOARD_H:
+    value: 74
+    unit: mm
+    source: "estimated envelope at 45% utilisation, 2-layer"
+    provenance: calculated
+  W_PER_CM2:
+    value: 0.09
+    unit: W/cm2
+    source: "free-air rule of thumb for a 40 C rise from 25 C ambient, per cm2 -- see Assumptions"
+    provenance: assumed
+  P_TPS54360B_IC:
+    value: 0.5
+    unit: W
+    source: "conduction plus switching at ~1 MHz, estimated"
+    provenance: inferred
+  I_CATCH_AVG:
+    value: 0.60
+    unit: A
+    source: "SS36 catch-diode average current at 0.7 A out, conducting 86% of the cycle"
+    provenance: calculated
+  P_SY8089:
+    value: 0.19
+    unit: W
+    source: "SY8089 and its inductor, estimated"
+    provenance: inferred
+  P_74AHCT541:
+    value: 0.02
+    unit: W
+    source: "74AHCT541 driving the status chain, estimated"
+    provenance: inferred
+  R_SHUNT:
+    value: 5
+    unit: mohm
+    source: "R1, the low-side current-sense shunt"
+    provenance: chosen
+  I_EFUSE_IQ:
+    value: 1.7
+    unit: mA
+    source: "TPS16630 quiescent current, max"
+    provenance: datasheet
+  R2_BLEEDER:
+    value: 10
+    unit: kohm
+    source: "R2, the bus bleeder, continuous across 36 V"
+    provenance: chosen
+  I_D15_LEAK:
+    value: 50
+    unit: uA
+    source: "MBRS3100T3G reverse leakage at 25 C and 36 V, which is 36% of its 100 V rating"
+    provenance: datasheet
+  P_SWITCHED_DISCRETE:
+    value: 0.35
+    unit: W
+    source: "the discrete NSS085N100S plus a 10 mOhm shunt this eFuse replaced"
+    provenance: calculated
+  R_DS_DISCRETE:
+    value: 9.5
+    unit: mohm
+    source: "NSS085N100S R_DS(on), the discrete FET the eFuse replaced"
+    provenance: datasheet
+  R_SHUNT_DISCRETE:
+    value: 10
+    unit: mohm
+    source: "the per-channel sense resistor the discrete arrangement needed"
+    provenance: calculated
+
+  # ---- the status chain ------------------------------------------------
+
+  N_STATUS_LEDS:
+    value: 8
+    unit: ""
+    source: "chosen: six as a power bar, one for power limiting, one for thermal"
+    provenance: chosen
+  LED_COLOURS:
+    value: 3
+    unit: ""
+    source: "SK6812 has three 12 mA constant-current drivers"
+    provenance: datasheet
+  I_LED_CHANNEL:
+    value: 12
+    unit: mA
+    source: "SK6812-EC20 I_DOUT per channel, typ"
+    provenance: datasheet
+  LED_CAP_BUDGETED:
+    value: 25
+    unit: "%"
+    source: "chosen firmware cap: one colour at 25% greyscale"
+    provenance: chosen
+  LED_CAP_DATASHEET:
+    value: 70
+    unit: "%"
+    source: "SK6812 p.3: when illuminating the tricolor light, use 70% greyscale"
+    provenance: datasheet
+  N_LEDS_THREE_OPTION:
+    value: 5
+    unit: ""
+    source: "the rejected alternative: three bar LEDs showing two colours each, plus the two fault indicators"
+    provenance: chosen
+  I_PLAIN_LED:
+    value: 2
+    unit: mA
+    source: "a plain 0805 indicator LED through a series resistor"
+    provenance: chosen
+
+  # ---- surge protection -------------------------------------------------
+
+  V_BR_SMCJ40_LO:
+    value: 44.4
+    unit: V
+    source: "SMCJ40CA breakdown, low corner"
+    provenance: datasheet
+  V_BR_SMCJ40_HI:
+    value: 49.1
+    unit: V
+    source: "SMCJ40CA breakdown, high corner"
+    provenance: datasheet
+  V_C_SMCJ40:
+    value: 64.5
+    unit: V
+    source: "SMCJ40CA clamping voltage at its rated 23.3 A surge"
+    provenance: datasheet
+  I_PP_SMCJ40:
+    value: 23.3
+    unit: A
+    source: "SMCJ40CA rated peak pulse current, 1.5 kW SMC"
+    provenance: datasheet
+  V_BR_SMAJ36_HI:
+    value: 44.2
+    unit: V
+    source: "SMAJ36CA breakdown, high corner"
+    provenance: datasheet
+  V_C_SMAJ36:
+    value: 58.1
+    unit: V
+    source: "SMAJ36CA clamping voltage at its rated 6.9 A surge"
+    provenance: datasheet
+  I_PP_SMAJ36:
+    value: 6.9
+    unit: A
+    source: "SMAJ36CA rated peak pulse current, 400 W SMA"
+    provenance: datasheet
+  V_EFUSE_ABS_MAX:
+    value: 67
+    unit: V
+    source: "TPS16630 absolute maximum (75 V for 10 ms)"
+    provenance: datasheet
+  V_60V_CLASS:
+    value: 60
+    unit: V
+    source: "the TPS54360B and SS36 rating, which is what the surge has to stay under"
+    provenance: datasheet
+  V_J1_RATING:
+    value: 48
+    unit: V
+    source: "CX90B-16P USB-C receptacle, rated 48 V AC/DC"
+    provenance: datasheet
+  I_SURGE_REF:
+    value: 10
+    unit: A
+    source: "a reference surge current, for comparing the two TVS parts on equal terms"
+    provenance: chosen
+
+  # ---- the bus-voltage ADC divider --------------------------------------
+
+  R31:
+    value: 470
+    unit: kohm
+    source: "chosen: upper leg of the bus-voltage divider into an ESP32-C6 ADC"
+    provenance: chosen
+  R32:
+    value: 27
+    unit: kohm
+    source: "chosen: lower leg, sized against the SAR's usable ceiling rather than the rail"
+    provenance: chosen
+  C_ADC_TAP:
+    value: 100
+    unit: nF
+    source: "chosen: fixes the source impedance the SAR sees"
+    provenance: chosen
+  V_ADC_USABLE:
+    value: 3.1
+    unit: V
+    source: "ESP32-C6 SAR usable top at 12 dB attenuation"
+    provenance: inferred
+  V_ADC_POINT_50:
+    value: 50
+    unit: V
+    source: "an illustrative overvoltage event, for the ADC's scaling"
+    provenance: chosen
+  V_ADC_POINT_60:
+    value: 60
+    unit: V
+    source: "an illustrative overvoltage event, for the ADC's scaling"
+    provenance: chosen
+  FPS_TARGET:
+    value: 90
+    unit: Hz
+    source: "the design's frame rate at 10 modules per channel, rounded; what the protocol table is worked at"
+    provenance: chosen
+  R31_ALT:
+    value: 330
+    unit: kohm
+    source: "the obvious divider pick this one was chosen over"
+    provenance: chosen
+  R32_ALT:
+    value: 33
+    unit: kohm
+    source: "the obvious divider pick this one was chosen over"
+    provenance: chosen
+
+  # ---- IPC-2221 trace width ---------------------------------------------
+
+  IPC_K_EXTERNAL:
+    value: 0.048
+    unit: ""
+    source: "IPC-2221 constant for an external layer"
+    provenance: datasheet
+  OZ_COPPER_UM:
+    value: 35
+    unit: um
+    source: "1 oz copper = 35 um"
+    provenance: datasheet
+
+  # ---- the UDP frame protocol -------------------------------------------
+
+  BYTES_PER_LED:
+    value: 3
+    unit: ""
+    source: "one byte per colour channel"
+    provenance: chosen
+  MTU_BYTES:
+    value: 1400
+    unit: ""
+    source: "chosen datagram ceiling, under the usual 1500 B MTU"
+    provenance: chosen
+  W5500_PACKET_INFO:
+    value: 8
+    unit: ""
+    source: "W5500 prepends an 8-byte PACKET-INFO header per datagram"
+    provenance: datasheet
+  W5500_RX_TOTAL:
+    value: 16
+    unit: ""
+    source: "W5500 RX buffer, kB shared across eight sockets (§3.3 p.30)"
+    provenance: datasheet
+  W5500_RX_DEFAULT:
+    value: 2
+    unit: ""
+    source: "W5500 default Sn_RXBUF_SIZE per socket, kB (p.52)"
+    provenance: datasheet
+  W5500_RX_PIXEL:
+    value: 8
+    unit: ""
+    source: "chosen Sn_RXBUF_SIZE for the pixel socket, kB"
+    provenance: chosen
+  SPI_CLOCK_FAST:
+    value: 80
+    unit: MHz
+    source: "W5500 SPI maximum"
+    provenance: datasheet
+  SPI_CLOCK_SLOW:
+    value: 40
+    unit: MHz
+    source: "a conservative SPI clock"
+    provenance: chosen
+  LINK_RATE:
+    value: 100
+    unit: MHz
+    source: "100 Mbit/s Ethernet link, bits per second"
+    provenance: datasheet
+  ETH_WIRE_OVERHEAD:
+    value: 70
+    unit: ""
+    source: "UDP and IP headers, Ethernet header and FCS, preamble and interframe gap"
+    provenance: inferred
+
+  # ---- the mechanical envelope ------------------------------------------
+
+  IPHONE_W:
+    value: 71.6
+    unit: mm
+    source: "iPhone 16, the size target"
+    provenance: measured
+  IPHONE_H:
+    uncited: "stated in the size target beside IPHONE_W, which carries the anchor"
+    value: 147.6
+    unit: mm
+    source: "iPhone 16, the size target"
+    provenance: measured
+  TARGET_H:
+    value: 98
+    unit: mm
+    source: "two thirds of the iPhone's 147.6 mm, rounded"
+    provenance: chosen
+  AREA_ITEMISED:
+    value: 1546
+    unit: mm2
+    source: "the rows of the mechanical table, summed"
+    provenance: calculated
+  AREA_UNITEMISED:
+    value: 900
+    unit: mm2
+    source: "everything the table does not list -- sixteen diodes, three transistors, two inductors, the USB-C receptacle, two transceivers, the buffer, two converters, the PD controller, the current sense, the fan header, and J2/J3 at roughly 100-150 mm2 each"
+    provenance: inferred
+  AREA_ESP32:
+    value: 459
+    unit: mm2
+    source: "ESP32-C6-WROOM-1-N8, 18 x 25.5 mm"
+    provenance: datasheet
+  ANTENNA_W:
+    value: 18
+    unit: mm
+    source: "ESP32-C6-WROOM-1 datasheet Figure 10 p.30, keep-out width"
+    provenance: datasheet
+  ANTENNA_H:
+    value: 6
+    unit: mm
+    source: "ESP32-C6-WROOM-1 datasheet Figure 10 p.30, keep-out height"
+    provenance: datasheet
+  ETH_MODULE_W:
+    value: 25
+    unit: mm
+    source: "W5500 module outline"
+    provenance: measured
+  ETH_MODULE_H:
+    value: 23
+    unit: mm
+    source: "W5500 module outline"
+    provenance: measured
+  AREA_ETH_DISCRETE:
+    value: 496
+    unit: mm2
+    source: "the chip, crystal, jack and support passives the module replaced"
+    provenance: calculated
+  AREA_SMC:
+    value: 50.6
+    unit: mm2
+    source: "SMC package maximum envelope"
+    provenance: datasheet
+  AREA_SMA:
+    value: 26
+    unit: mm2
+    source: "SMA package maximum envelope"
+    provenance: datasheet
+  N_BUS_TVS:
+    value: 3
+    unit: ""
+    source: "D7 to GND, D8/D9 to LED_RTN"
+    provenance: chosen
+  LED_SIDE:
+    value: 2
+    unit: mm
+    source: "SK6812-EC20, 2 x 2 mm top-view"
+    provenance: datasheet
+  UTILISATION_2LAYER:
+    value: 45
+    unit: "%"
+    source: "area utilisation assumed for a relaxed 2-layer board"
+    provenance: assumed
+  UTILISATION_4LAYER:
+    uncited: "the 4-layer dimensions are quoted as a pair, which no single anchor reaches"
+    value: 60
+    unit: "%"
+    source: "area utilisation assumed for a dense 4-layer board"
+    provenance: assumed
+  EDGE_COMMITTED:
+    value: 75
+    unit: mm
+    source: "USB-C, two angled picoMAX and the RJ45, summed"
+    provenance: calculated
+
+  # ---- running from a USB port -------------------------------------------
+
+  I_BUS_FLASHING:
+    value: 80
+    unit: mA
+    source: "WiFi off, Ethernet idle, through two conversions rather than one LDO"
+    provenance: calculated
+  I_BUS_FULL:
+    value: 464
+    unit: mA
+    source: "WiFi TX peak plus Ethernet, through two conversions"
+    provenance: calculated
+  I_USB_LEGACY:
+    value: 500
+    unit: mA
+    source: "legacy USB-A port budget"
+    provenance: datasheet
+  P_USB_PORT:
+    value: 15
+    unit: W
+    source: "a MacBook USB-C port as a source, 5 V at 3 A"
+    provenance: datasheet
+  R_MODULE_PATH:
+    value: 0.175
+    unit: ohm
+    source: "the board's own 55 mOhm, a metre of 0.5 mm2 cable and the module inductor's DCR; reconstructed from the rail table, which it reproduces at every row"
+    provenance: inferred
+  XL1509_VCE_A:
+    value: 0.30
+    unit: V
+    source: "fitted to the single datasheet point, 1.2 V at 2 A -- see Assumptions"
+    provenance: assumed
+  XL1509_VCE_B:
+    value: 0.45
+    unit: ohm
+    source: "fitted to the single datasheet point, 1.2 V at 2 A -- see Assumptions"
+    provenance: assumed
+  V_WS2812_MIN:
+    value: 3.5
+    unit: V
+    source: "WS2812D-F8 supply minimum"
+    provenance: datasheet
+  I_MODULE_HOLDS:
+    value: 1.0
+    unit: A
+    source: "the current at which the module rail still clears 3.5 V at the bottom of vSafe5V"
+    provenance: calculated
+
+  # ---- what each contract buys -------------------------------------------
+
+  V_APPLE_96:
+    value: 20.5
+    unit: V
+    source: "Apple 96 W charger PDO"
+    provenance: datasheet
+  I_APPLE_96:
+    value: 4.7
+    unit: A
+    source: "Apple 96 W charger PDO"
+    provenance: datasheet
+  V_APPLE_140:
+    value: 28
+    unit: V
+    source: "Apple 140 W charger, an EPR fixed PDO"
+    provenance: datasheet
+  I_APPLE_140:
+    value: 5
+    unit: A
+    source: "Apple 140 W charger PDO"
+    provenance: datasheet
+
+  # ---- odds and ends the prose still states ------------------------------
+
+  R44_VENDOR_STEP:
+    value: 4.7
+    unit: kohm
+    source: "the value R44 came down from; the vendor's own figure was 10 kOhm"
+    provenance: chosen
+  C_HOLDUP_PROPOSED:
+    value: 100
+    unit: uF
+    source: "the hold-up capacitor that was designed three times and deleted"
+    provenance: chosen
+  XL1509_VSAT_MAX:
+    value: 1.4
+    unit: V
+    source: "XL1509 datasheet p.7, saturation voltage max at 2 A (1.2 V typ)"
+    provenance: datasheet
+  I_MODULE_SATURATED:
+    uncited: "the 2.5 A the module draws in pass-through; named in the sentence v_module_rail_saturated anchors"
+    value: 2.5
+    unit: A
+    source: "the module's full draw with its buck in pass-through"
+    provenance: calculated
+  N_GPIO_PADS:
+    value: 23
+    unit: ""
+    source: "ESP32-C6-WROOM-1 datasheet Table 3 pp.10-11: 0-13 and 15-23"
+    provenance: datasheet
+  T_FIG13_13W_0C:
+    value: 475
+    unit: ms
+    source: "TPS16630 Figure 13, 13 W boundary at 0 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_13W_25C:
+    value: 120
+    unit: ms
+    source: "TPS16630 Figure 13, 13 W boundary at 25 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_13W_85C:
+    value: 58
+    unit: ms
+    source: "TPS16630 Figure 13, 13 W boundary at 85 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_26W_0C:
+    value: 68
+    unit: ms
+    source: "TPS16630 Figure 13, 26 W boundary at 0 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_26W_25C:
+    value: 38
+    unit: ms
+    source: "TPS16630 Figure 13, 26 W boundary at 25 C, extracted from the curve"
+    provenance: inferred
+  T_FIG13_26W_85C:
+    value: 14
+    unit: ms
+    source: "TPS16630 Figure 13, 26 W boundary at 85 C, extracted from the curve"
+    provenance: inferred
+
+derived:
+
+  # ---- budget ---------------------------------------------------------
+
+  p_budget:
+    expr: V_BUS * I_CONTRACT
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_modules:
+    expr: p_budget - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_gpio_mode:
+    expr: V_GPIO_MODE * I_GPIO_MODE
+    unit: W
+    display: { unit: W, digits: 2 }
+  v_bus_max:
+    expr: V_BUS * (1 + PDO_TOLERANCE)
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_bus_min:
+    expr: V_BUS * (1 - PDO_TOLERANCE)
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  p_modules_48v:
+    expr: P_BUDGET_48V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+    uncited: true
+  conn_share_balanced:
+    expr: i_channel_balanced / CONN_RATING
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  conn_share_worst:
+    expr: i_channel_worst / CONN_RATING
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  conn_margin:
+    expr: CONN_RATING / i_channel_worst
+    unit: ""
+    display: { unit: "x", digits: 2 }
+
+  # ---- brightness and frame rate --------------------------------------
+
+  modules_per_channel:
+    expr: N_MODULES / N_CHANNELS
+    unit: ""
+    display: { unit: "", digits: 2 }
+  brightness_10:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (10 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  brightness_14:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (14 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  brightness_20:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (N_MODULES * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  brightness_24:
+    expr: min(CAP_THERMAL, p_modules * ETA_MODULE / (24 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_10:
+    expr: brightness_10 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_14:
+    expr: brightness_14 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_20:
+    expr: brightness_20 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_24:
+    expr: brightness_24 ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  fps_at_5:
+    expr: 1 / (5 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 3 }
+  fps_at_7:
+    expr: 1 / (7 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 3 }
+  fps_design:
+    expr: 1 / (modules_per_channel * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+  fps_at_12:
+    expr: 1 / (12 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+  fps_at_15:
+    expr: 1 / (15 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+  fps_at_20:
+    expr: 1 / (20 * LEDS_PER_MODULE * T_PER_LED + T_RESET)
+    unit: Hz
+    display: { unit: fps, digits: 2 }
+
+  # the 140 W / 28 V alternative, for Why not 28 V
+  p_modules_28v:
+    expr: P_BUDGET_28V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+    uncited: true
+  brightness_14_at_28v:
+    expr: min(CAP_THERMAL, p_modules_28v * ETA_MODULE / (14 * MODULE_FULL_W))
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_14_at_28v:
+    expr: brightness_14_at_28v ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_20_at_28v:
+    expr: min(CAP_THERMAL, p_modules_28v * ETA_MODULE / (N_MODULES * MODULE_FULL_W)) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  # ---- current --------------------------------------------------------
+
+  i_module_full:
+    expr: MODULE_FULL_W / V_MODULE_RAIL
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_wall_full_5v:
+    expr: N_MODULES * i_module_full
+    unit: A
+    display: { unit: A, digits: 3 }
+  p_wall_full:
+    uncited: "an intermediate; the contract table cites what it feeds"
+    expr: N_MODULES * MODULE_FULL_W
+    unit: W
+    display: { unit: W, digits: 3 }
+  limiter_divisor:
+    expr: V_BUS * ETA_MODULE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_divisor_20V:
+    expr: V_PDO_20 * ETA_MODULE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_divisor_12V:
+    expr: V_PDO_12 * ETA_MODULE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_divisor_error_12V:
+    expr: limiter_divisor / limiter_divisor_12V
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  limiter_divisor_wrong:
+    expr: V_BUS / V_MODULE_RAIL / ETA_MODULE
+    unit: ""
+    display: { unit: "", digits: 2 }
+  limiter_underprediction:
+    expr: 1 - limiter_divisor / limiter_divisor_wrong
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  i_bus_full_white:
+    expr: i_wall_full_5v / limiter_divisor
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_channel_flash:
+    expr: i_bus_full_white / N_CHANNELS
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_channel_balanced:
+    expr: i_channel_flash * brightness_20
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_channel_worst:
+    expr: i_channel_flash * CAP_THERMAL
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_channel_balanced_margin:
+    expr: 1 - i_channel_balanced / i_channel_worst
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  n_ics:
+    expr: N_MODULES * LEDS_PER_MODULE
+    unit: ""
+    display: { unit: "", digits: 3 }
+  i_quiescent_lo:
+    expr: n_ics * I_Q_PER_IC_LO
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_quiescent_hi:
+    expr: n_ics * I_Q_PER_IC_HI
+    unit: A
+    display: { unit: A, digits: 2 }
+  p_quiescent_lo:
+    expr: i_quiescent_lo * V_MODULE_RAIL / ETA_MODULE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_quiescent_hi:
+    expr: i_quiescent_hi * V_MODULE_RAIL / ETA_MODULE
+    unit: W
+    display: { unit: W, digits: 2 }
+  quiescent_share_lo:
+    expr: p_quiescent_lo / p_budget
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  quiescent_share_hi:
+    expr: p_quiescent_hi / p_budget
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  # ---- cable ----------------------------------------------------------
+
+  r_cable_ref:
+    uncited: "an intermediate; the cable table and the power figures cite what it feeds"
+    expr: 2 * RHO_CU * L_REF / CSA_REF
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+  v_drop_ref:
+    uncited: "the 10 m / 0.5 mm2 cell of the generated cable table, which is rendered from the expression"
+    expr: i_channel_worst * r_cable_ref
+    unit: V
+    display: { unit: V, digits: 3 }
+  p_cable_balanced:
+    expr: i_channel_balanced ** 2 * r_cable_ref
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_cable_worst:
+    expr: i_channel_worst ** 2 * r_cable_ref
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_cable_total:
+    expr: N_CHANNELS * p_cable_balanced
+    unit: W
+    display: { unit: W, digits: 2 }
+  i_contract_with_cable:
+    expr: (p_budget + p_cable_total) / V_BUS
+    unit: A
+    display: { unit: A, digits: 2 }
+  v_drop_allowed:
+    expr: DROP_BUDGET * V_BUS
+    unit: V
+    display: { unit: V, digits: 2 }
+  l_max_worst:
+    expr: v_drop_allowed * CSA_REF / (2 * RHO_CU * i_channel_worst)
+    unit: m
+    display: { unit: m, digits: 2 }
+  l_max_balanced:
+    expr: v_drop_allowed * CSA_REF / (2 * RHO_CU * i_channel_balanced)
+    unit: m
+    display: { unit: m, digits: 3 }
+  l_max_alt:
+    expr: v_drop_allowed * CSA_ALT / (2 * RHO_CU * i_channel_worst)
+    unit: m
+    display: { unit: m, digits: 3 }
+  v_module_headroom:
+    expr: V_BUS - V_MODULE_IN_MIN
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # ---- the PWM ripple divider -----------------------------------------
+
+  c_channel_bank:
+    expr: modules_per_channel * C_MODULE_BULK
+    unit: F
+    display: { unit: mF, digits: 2 }
+  z_bank:
+    expr: 1 / (2 * pi * F_PWM * c_channel_bank)
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+  bus_share_short:
+    expr: z_bank / sqrt(R_LOOP_SHORT ** 2 + z_bank ** 2)
+    unit: ""
+    display: { unit: "%", digits: 3 }
+  bus_share_ref:
+    expr: z_bank / sqrt(R_LOOP_REF ** 2 + z_bank ** 2)
+    unit: ""
+    display: { unit: "%", digits: 3 }
+  ripple_up_short:
+    expr: (i_channel_flash - i_channel_balanced) * bus_share_short
+    unit: A
+    display: { unit: A, digits: 2 }
+  ripple_down_short:
+    expr: -i_channel_balanced * bus_share_short
+    unit: A
+    display: { unit: A, digits: 2 }
+  ripple_up_ref:
+    expr: (i_channel_flash - i_channel_balanced) * bus_share_ref
+    unit: A
+    display: { unit: A, digits: 2 }
+  ripple_down_ref:
+    expr: -i_channel_balanced * bus_share_ref
+    unit: A
+    display: { unit: A, digits: 2 }
+
+  t_pwm_period:
+    expr: 1 / F_PWM
+    unit: s
+    display: { unit: ms, digits: 2 }
+  drop_share_5v:
+    expr: V_DROP_EXAMPLE / V_MODULE_RAIL
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  drop_share_36v:
+    expr: V_DROP_EXAMPLE / V_BUS
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  # ---- the 5 V rail ----------------------------------------------------
+  #
+  # TPS54360B datasheet p.12 Eq. 1, inverted:
+  #   V_OUT = 0.99 V_IN + 0.99 V_F - 0.99 R_DS I_OUT - V_F - R_dc I_OUT
+  # capped at the regulated 5.0 V, which is what the rail does once the input
+  # rises far enough to leave pass-through.
+
+  r_ds_applicable_lo:
+    expr: R_DS_6V_MAX * R_DS_RATIO_LO
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+    uncited: true
+  r_ds_applicable_hi:
+    expr: R_DS_6V_MAX * R_DS_RATIO_HI
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+    uncited: true
+  r_ds_applicable_check:
+    expr: R_DS_APPLICABLE
+    unit: ohm
+    display: { unit: ohm, digits: 2 }
+    limit: { min: r_ds_applicable_lo, max: r_ds_applicable_hi,
+             why: "the working value has to stay inside the band Figure 1's ratio gives" }
+    uncited: true
+
+  v_rail5_typ_lo:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_TYP + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_rail5_typ_nom:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_NOM - 0.01 * V_F_SS36 - (0.99 * R_DS_TYP + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_rail5_6v_max:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_6V_MAX + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_rail5_applicable:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_APPLICABLE + R_DCR_L1) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_rail5_alt_dcr:
+    expr: min(V_RAIL5_NOM, 0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - (0.99 * R_DS_TYP + R_DCR_ALT) * I_RAIL5)
+    unit: V
+    display: { unit: V, digits: 3 }
+  r_ds_at_buffer_floor:
+    expr: (0.99 * V_VSAFE5V_LO - 0.01 * V_F_SS36 - V_BUFFER_MIN - R_DCR_L1 * I_RAIL5) / (0.99 * I_RAIL5)
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+  margin_buffer_typ:
+    expr: v_rail5_typ_lo - V_BUFFER_MIN
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_buffer_applicable:
+    uncited: "the prose states this one as a shortfall; see shortfall_buffer_applicable"
+    expr: v_rail5_applicable - V_BUFFER_MIN
+    unit: V
+    display: { unit: mV, digits: 2 }
+
+  # ---- what D14 holds the VBUS pin at ----------------------------------
+
+  shortfall_buffer_applicable:
+    expr: V_BUFFER_MIN - v_rail5_applicable
+    unit: V
+    display: { unit: mV, digits: 2 }
+  shortfall_uv_f0:
+    expr: uv_bound_f0 - v_pin_applicable
+    unit: V
+    display: { unit: V, digits: 2 }
+
+  v_pin_typ:
+    expr: v_rail5_typ_lo - V_D14_DROP
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_pin_applicable:
+    expr: v_rail5_applicable - V_D14_DROP
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_pin_6v_max:
+    expr: v_rail5_6v_max - V_D14_DROP
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_pin_min:
+    expr: v_pin_typ - V_VBUS_PIN_MIN
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_vbprs_typ_at_applicable:
+    expr: v_pin_applicable - V_VBPRS_R_TYP
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_vbprs_max_at_applicable:
+    expr: v_pin_applicable - V_VBPRS_R_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_vbprs_typ_at_typ:
+    expr: v_pin_typ - V_VBPRS_R_TYP
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_vbprs_max_at_typ:
+    expr: v_pin_typ - V_VBPRS_R_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  uv_bound_f1:
+    expr: UV_BAND_F1 * V_VSAFE5V_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+  uv_bound_f0:
+    expr: UV_BAND_F0 * V_VSAFE5V_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_uv_f1_applicable:
+    expr: v_pin_applicable - uv_bound_f1
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_uv_f0_applicable:
+    expr: v_pin_applicable - uv_bound_f0
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_uv_f1_typ:
+    expr: v_pin_typ - uv_bound_f1
+    unit: V
+    display: { unit: V, digits: 2 }
+
+  # ---- logic levels ----------------------------------------------------
+
+  vih_status_chain:
+    expr: VIH_SK6812_RATIO * V_RAIL5_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+  vih_status_at_sag:
+    expr: VIH_SK6812_RATIO * v_rail5_typ_lo
+    unit: V
+    display: { unit: V, digits: 3 }
+  voh_esp32:
+    expr: VOH_ESP32_RATIO * V_RAIL3V3
+    unit: V
+    display: { unit: V, digits: 3 }
+  logic_shortfall:
+    expr: vih_status_chain - voh_esp32
+    unit: V
+    display: { unit: mV, digits: 3 }
+
+  # ---- the 3.3 V rail --------------------------------------------------
+
+  i_eth_module:
+    expr: P_ETH_MODULE / V_RAIL3V3
+    unit: A
+    display: { unit: mA, digits: 3 }
+  i_max3485_pair:
+    expr: N_CHANNELS * (I_MAX3485_ICC + I_MAX3485_LINE)
+    unit: A
+    display: { unit: mA, digits: 2 }
+  i_rail3v3:
+    expr: I_ESP32_TX + i_eth_module + i_max3485_pair + I_HUSB_VDD + I_INA_AND_PULLUPS
+    unit: A
+    display: { unit: mA, digits: 3 }
+  p_rail3v3:
+    expr: i_rail3v3 * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_max3485_total:
+    expr: i_max3485_pair * V_RAIL3V3
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_max3485_termination:
+    expr: N_CHANNELS * I_MAX3485_LINE ** 2 * R_TERM
+    unit: W
+    display: { unit: mW, digits: 2 }
+  share_offboard:
+    expr: p_max3485_termination / p_max3485_total
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  share_onboard:
+    expr: 1 - share_offboard
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_max3485_onboard:
+    expr: p_max3485_total - p_max3485_termination
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_ldo_alternative:
+    expr: (v_rail5_typ_nom - V_RAIL3V3) * I_ESP32_TX
+    unit: W
+    display: { unit: W, digits: 1 }
+
+  loss_cascade_draw:
+    expr: p_rail3v3 * (1 / ETA_CASCADE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  loss_single_draw:
+    expr: p_rail3v3 * (1 / ETA_SINGLE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  penalty_draw:
+    expr: loss_cascade_draw - loss_single_draw
+    unit: W
+    display: { unit: mW, digits: 2 }
+  loss_cascade_sized:
+    expr: P_RAIL3V3_SIZED * (1 / ETA_CASCADE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  loss_single_sized:
+    expr: P_RAIL3V3_SIZED * (1 / ETA_SINGLE - 1)
+    unit: W
+    display: { unit: W, digits: 3 }
+  penalty_sized:
+    expr: loss_cascade_sized - loss_single_sized
+    unit: W
+    display: { unit: mW, digits: 2 }
+
+  # ---- the follower ----------------------------------------------------
+  #
+  # R44 is the only path into the base, so the base sits I_B x R44 below the
+  # collector and the emitter one V_BE below that. The disconnect threshold is
+  # a percentage of the REQUESTED voltage, so a fixed offset is a bigger
+  # fraction of a smaller contract -- which is what makes 12 V the pinch point.
+
+  i_base:
+    expr: I_VBUS_PIN_MAX / H_FE_Q3
+    unit: A
+    display: { unit: uA, digits: 2 }
+  v_r44_drop:
+    expr: i_base * R44
+    unit: V
+    display: { unit: mV, digits: 2 }
+  pin_at_9v:
+    expr: 0.95 * V_PDO_9 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_at_12v:
+    expr: 0.95 * V_PDO_12 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_at_15v:
+    expr: 0.95 * V_PDO_15 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_at_20v:
+    expr: 0.95 * V_PDO_20 - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_clamped:
+    expr: V_ZENER_LO - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 4 }
+  pin_clamped_hi:
+    expr: V_ZENER_HI - V_BE_Q3_LO
+    unit: V
+    display: { unit: V, digits: 4 }
+  margin_9v:
+    expr: pin_at_9v - UV_BAND_F1 * V_PDO_9
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_12v:
+    expr: pin_at_12v - UV_BAND_F0 * V_PDO_12
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_15v:
+    expr: pin_at_15v - UV_BAND_F0 * V_PDO_15
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_20v:
+    expr: pin_at_20v - UV_BAND_F0 * V_PDO_20
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_clamped:
+    expr: pin_clamped - V_UV_F2
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_12v_fraction:
+    expr: margin_12v / (UV_BAND_F0 * V_PDO_12)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  margin_12v_at_hfe80:
+    expr: 0.95 * V_PDO_12 - I_VBUS_PIN_MAX / H_FE_DATASHEET_MIN * R44 - V_BE_Q3 - UV_BAND_F0 * V_PDO_12
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_bus_at_uv_f2:
+    expr: V_UV_F2 + V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_bus_ov_trip:
+    expr: OV_BAND * V_BUS
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # what a MOSFET follower would have needed, and what the 20 V clamp gave
+  v_min_for_bss138:
+    expr: V_GS_BSS138_MAX / (0.95 - UV_BAND_F0)
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_20v_bss138:
+    expr: 0.95 * V_PDO_20 - V_GS_BSS138_MAX - UV_BAND_F0 * V_PDO_20
+    unit: V
+    display: { unit: V, digits: 1 }
+  pin_c20_nom:
+    expr: V_ZENER_C20_NOM - V_GS_BSS138_TYP
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_c20_lo:
+    expr: V_ZENER_C20_LO - V_GS_BSS138_MAX
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_c20_hi:
+    expr: V_ZENER_C20_HI - V_GS_BSS138_LO
+    unit: V
+    display: { unit: V, digits: 3 }
+  below_uv_f2_c20:
+    expr: V_UV_F2 - pin_c20_nom
+    unit: V
+    display: { unit: V, digits: 2 }
+
+  # ---- what the follower does at the bottom of vSafe5V -----------------
+
+  pin_follower_lo:
+    expr: V_VSAFE5V_LO - v_r44_drop - V_BE_Q3
+    unit: V
+    display: { unit: V, digits: 3 }
+  pin_follower_hi:
+    expr: V_VSAFE5V_LO - v_r44_drop - V_BE_Q3_LO
+    unit: V
+    display: { unit: V, digits: 3 }
+  margin_follower_vbus_min:
+    expr: pin_follower_lo - V_VBUS_PIN_MIN
+    unit: V
+    display: { unit: V, digits: 2 }
+  margin_follower_vbprs:
+    expr: pin_follower_lo - V_VBPRS_R_TYP
+    unit: V
+    display: { unit: V, digits: 2 }
+  vbus_pin_requirement_drop:
+    expr: V_VBUS_PIN_MIN_NOVDD - V_VBUS_PIN_MIN
+    unit: V
+    display: { unit: V, digits: 3 }
+  vbus_pin_current_ratio:
+    expr: I_VBUS_PIN_NOVDD_MAX / I_VBUS_PIN_MAX
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  pin_at_36v_nominal:
+    expr: V_ZENER_NOM - (V_BE_Q3 + V_BE_Q3_LO) / 2
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_schottky_reverse:
+    expr: pin_at_36v_nominal - V_RAIL5_NOM
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # ---- Q3 and R44 at the corners ---------------------------------------
+
+  v_ce_q3_normal:
+    expr: v_bus_max - pin_clamped
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_ce_q3_clamp:
+    expr: V_TVS_CLAMP - pin_clamped
+    unit: V
+    display: { unit: V, digits: 4 }
+  v_ce_bss138_ratio:
+    expr: V_DS_BSS138 / v_ce_q3_clamp
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  v_across_r44_nominal:
+    expr: V_BUS - V_ZENER_NOM
+    unit: V
+    display: { unit: V, digits: 2 }
+  i_zener:
+    expr: v_across_r44_nominal / R44
+    unit: A
+    display: { unit: mA, digits: 3 }
+  p_r44_nominal:
+    expr: v_across_r44_nominal ** 2 / R44
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_r44_vendor_step:
+    expr: v_across_r44_nominal ** 2 / R44_ALT_47
+    unit: W
+    display: { unit: mW, digits: 2 }
+  derating_r44_nominal:
+    expr: p_r44_nominal / P_RATING_0402
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  derating_r44_vendor_step:
+    expr: p_r44_vendor_step / P_RATING_0402
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  v_across_r44_corner:
+    expr: v_bus_max - V_ZENER_LO
+    unit: V
+    display: { unit: V, digits: 4 }
+  p_r44_corner:
+    expr: v_across_r44_corner ** 2 / R44
+    unit: W
+    display: { unit: mW, digits: 3 }
+  derating_r44_corner:
+    expr: p_r44_corner / P_RATING_0402
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  v_across_r44_clamp:
+    expr: V_TVS_CLAMP - V_ZENER_LO
+    unit: V
+    display: { unit: V, digits: 4 }
+  p_r44_clamp:
+    expr: v_across_r44_clamp ** 2 / R44
+    unit: W
+    display: { unit: mW, digits: 3 }
+  derating_r44_clamp:
+    expr: p_r44_clamp / P_RATING_0402
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  p_zener:
+    expr: V_ZENER_NOM * i_zener
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_q3_collector:
+    expr: (V_BUS - (V_ZENER_NOM - V_BE_Q3)) * I_VBUS_PIN_MAX
+    unit: W
+    display: { unit: mW, digits: 2 }
+  p_front_end:
+    expr: p_q3_collector + p_r44_nominal + p_zener
+    unit: W
+    display: { unit: W, digits: 2 }
+
+  # ---- the eFuse's programmed values -----------------------------------
+
+  i_limit:
+    expr: ILIM_PRODUCT / R_ILIM
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_limit_low_corner:
+    expr: i_limit * (1 - ILIM_TOLERANCE)
+    unit: A
+    display: { unit: A, digits: 3 }
+    uncited: true
+  ilim_margin:
+    expr: i_limit_low_corner / i_channel_flash
+    unit: ""
+    display: { unit: "x", digits: 3 }
+  gain_dvdt_check:
+    expr: 1 / (K_DVDT * I_DVDT_TYP)
+    unit: ""
+    display: { unit: "", digits: 3 }
+  t_dvdt:
+    expr: K_DVDT * V_BUS * C_DVDT
+    unit: s
+    display: { unit: ms, digits: 3 }
+  t_dvdt_lo:
+    expr: V_BUS * C_DVDT / (GAIN_DVDT_MAX * I_DVDT_MAX)
+    unit: s
+    display: { unit: ms, digits: 3 }
+  t_dvdt_hi:
+    expr: V_BUS * C_DVDT / (GAIN_DVDT_MIN * I_DVDT_MIN)
+    unit: s
+    display: { unit: ms, digits: 3 }
+  i_inrush:
+    expr: c_channel_bank * V_BUS / t_dvdt
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_inrush_lo:
+    expr: c_channel_bank * V_BUS / t_dvdt_hi
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_inrush_hi:
+    expr: c_channel_bank * V_BUS / t_dvdt_lo
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_inrush_both:
+    expr: N_CHANNELS * i_inrush
+    unit: A
+    display: { unit: A, digits: 3 }
+  inrush_share_36v:
+    expr: i_inrush_both / I_CONTRACT
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  inrush_share_12v:
+    expr: i_inrush_both / I_CONTRACT_12V
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  t_turn_on:
+    expr: T_TURN_ON_BASE + T_TURN_ON_PER_NF * C_DVDT
+    unit: s
+    display: { unit: ms, digits: 3 }
+  c_channel_bank_20:
+    expr: 2 * c_channel_bank
+    unit: F
+    display: { unit: mF, digits: 2 }
+  i_inrush_20:
+    expr: c_channel_bank_20 * V_BUS / t_dvdt
+    unit: A
+    display: { unit: A, digits: 3 }
+
+  # ---- the ramp as energy ----------------------------------------------
+
+  energy_channel:
+    expr: 0.5 * c_channel_bank * V_BUS ** 2
+    unit: J
+    display: { unit: J, digits: 3 }
+  energy_ti_demo:
+    expr: 0.5 * C_TI_DEMO * V_TI_DEMO ** 2
+    unit: J
+    display: { unit: J, digits: 3 }
+  energy_ratio:
+    expr: energy_ti_demo / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  energy_channel_20:
+    expr: 0.5 * c_channel_bank_20 * V_BUS ** 2
+    unit: J
+    display: { unit: J, digits: 3 }
+  energy_ratio_20:
+    expr: energy_ti_demo / energy_channel_20
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  p_inrush:
+    expr: 0.5 * V_BUS * i_inrush
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_inrush_both:
+    expr: N_CHANNELS * p_inrush
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_inrush_lo:
+    expr: 0.5 * V_BUS * i_inrush_lo
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_inrush_hi:
+    expr: 0.5 * V_BUS * i_inrush_hi
+    unit: W
+    display: { unit: W, digits: 3 }
+  energy_available_lo:
+    expr: P_FIG13_TIMEOUT_LO * T_TREG_TIMEOUT
+    unit: J
+    display: { unit: J, digits: 2 }
+  energy_available_hi:
+    expr: P_FIG13_TIMEOUT_HI * T_TREG_TIMEOUT
+    unit: J
+    display: { unit: J, digits: 2 }
+  margin_treg_lo:
+    expr: energy_available_lo / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  margin_treg_hi:
+    expr: energy_available_hi / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 2 }
+  p_fig13_85c:
+    expr: E_FIG13_85C / T_TREG_TIMEOUT
+    unit: W
+    display: { unit: W, digits: 1 }
+  margin_treg_85c:
+    expr: E_FIG13_85C / energy_channel
+    unit: ""
+    display: { unit: "x", digits: 1 }
+  margin_treg_85c_20:
+    expr: E_FIG13_85C / energy_channel_20
+    unit: ""
+    display: { unit: "x", digits: 3 }
+
+  # ---- the UVLO / OVP divider ------------------------------------------
+
+  r_divider_total:
+    expr: R_UV1 + R_UV2 + R_UV3
+    unit: ohm
+    display: { unit: kohm, digits: 4 }
+    uncited: true
+  uvlo_trip:
+    expr: V_REF_EFUSE * r_divider_total / (R_UV2 + R_UV3)
+    unit: V
+    display: { unit: V, digits: 3 }
+  uvlo_falling:
+    expr: (V_REF_EFUSE - UVLO_HYST) * r_divider_total / (R_UV2 + R_UV3)
+    unit: V
+    display: { unit: V, digits: 3 }
+  divider_ratio:
+    expr: r_divider_total / R_UV3
+    unit: ""
+    display: { unit: "", digits: 3 }
+  ovp_trip:
+    expr: V_REF_EFUSE * divider_ratio
+    unit: V
+    display: { unit: V, digits: 4 }
+  i_divider:
+    expr: V_BUS / r_divider_total
+    unit: A
+    display: { unit: uA, digits: 3 }
+  ratio_min:
+    expr: ((R_UV1 + R_UV2) * (1 - RES_TOL) + R_UV3 * (1 + RES_TOL)) / (R_UV3 * (1 + RES_TOL))
+    unit: ""
+    display: { unit: "", digits: 4 }
+    uncited: true
+  ratio_max:
+    expr: ((R_UV1 + R_UV2) * (1 + RES_TOL) + R_UV3 * (1 - RES_TOL)) / (R_UV3 * (1 - RES_TOL))
+    unit: ""
+    display: { unit: "", digits: 4 }
+    uncited: true
+  ovp_trip_lo:
+    expr: V_REF_EFUSE_MIN * ratio_min
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_trip_hi:
+    expr: V_REF_EFUSE_MAX * ratio_max
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_comparator_lo:
+    expr: V_OVPF_MIN * divider_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_comparator_hi:
+    expr: V_OVPF_MAX * divider_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_lo:
+    expr: V_OVPF_MIN * ratio_min
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_release_hi:
+    expr: V_OVPF_MAX * ratio_max
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_trip_above_bus:
+    expr: ovp_trip_lo - v_bus_max
+    unit: V
+    display: { unit: V, digits: 2 }
+  ovp_trip_below_abs:
+    expr: V_MODULE_ABS_MAX - ovp_trip_hi
+    unit: V
+    display: { unit: V, digits: 2 }
+  ovp_trip_above_operating:
+    expr: ovp_trip_hi - V_MODULE_OP_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  ratio_retune:
+    expr: v_bus_max / V_OVPF_MIN * divider_ratio / ratio_min
+    unit: ""
+    display: { unit: "", digits: 4 }
+  ovp_trip_hi_retune:
+    expr: ovp_trip_hi * ratio_retune / divider_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  ovp_retune_above_operating:
+    expr: ovp_trip_hi_retune - V_MODULE_OP_MAX
+    unit: V
+    display: { unit: V, digits: 2 }
+  ovp_retune_below_abs:
+    expr: V_MODULE_ABS_MAX - ovp_trip_hi_retune
+    unit: V
+    display: { unit: V, digits: 1 }
+
+  # ---- the enable network ----------------------------------------------
+
+  v_shdn_pulldown:
+    expr: I_SHDN_SOURCE * R_SHDN_PULLDOWN
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_shdn_pulldown_100k:
+    expr: I_SHDN_SOURCE * 10 * R_SHDN_PULLDOWN
+    unit: V
+    display: { unit: V, digits: 2 }
+    uncited: true
+  v_shdn_driven:
+    expr: V_RAIL3V3 * R_SHDN_PULLDOWN / (R_SHDN_PULLDOWN + R_GPIO_SERIES)
+    unit: V
+    display: { unit: V, digits: 2 }
+  r_thevenin_shdn:
+    expr: R_SHDN_PULLDOWN * R_GPIO_SERIES / (R_SHDN_PULLDOWN + R_GPIO_SERIES)
+    unit: ohm
+    display: { unit: ohm, digits: 3 }
+  r_ds_required_fault:
+    expr: r_thevenin_shdn * V_SHDN_THRESHOLD / (v_shdn_driven - V_SHDN_THRESHOLD)
+    unit: ohm
+    display: { unit: ohm, digits: 2 }
+  i_gpio_through_fault:
+    expr: (V_RAIL3V3 - v_shdn_pulldown) / R_GPIO_SERIES
+    unit: A
+    display: { unit: mA, digits: 2 }
+
+  # ---- the thermal budget ---------------------------------------------
+
+  board_area:
+    expr: BOARD_W * BOARD_H
+    unit: mm2
+    display: { unit: cm2, digits: 3 }
+  thermal_capacity:
+    expr: W_PER_CM2 * board_area
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_esp32:
+    expr: I_ESP32_TX * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_catch_diode:
+    expr: I_CATCH_AVG * V_F_SS36
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_efuse_each:
+    expr: i_channel_balanced ** 2 * R_DS_EFUSE_85C_MAX
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_efuse_worst:
+    expr: i_channel_worst ** 2 * R_DS_EFUSE_85C_MAX
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_efuse_fets:
+    expr: N_CHANNELS * p_efuse_each
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_efuse_quiescent:
+    expr: N_CHANNELS * (I_EFUSE_IQ * v_bus_max + v_bus_max ** 2 / r_divider_total)
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_switched_path:
+    expr: p_efuse_fets + p_efuse_quiescent
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_switched_discrete_conduction:
+    expr: N_CHANNELS * i_channel_balanced ** 2 * (R_DS_DISCRETE + R_SHUNT_DISCRETE)
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_switched_delta:
+    expr: p_switched_path - P_SWITCHED_DISCRETE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_shunt:
+    expr: I_CONTRACT ** 2 * R_SHUNT
+    unit: W
+    display: { unit: W, digits: 3 }
+  i_two_efuses:
+    expr: N_CHANNELS * i_limit
+    unit: A
+    display: { unit: A, digits: 3 }
+  p_shunt_fault:
+    expr: i_two_efuses ** 2 * R_SHUNT
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_inductor:
+    expr: I_RAIL5 ** 2 * R_DCR_L1
+    unit: W
+    display: { unit: W, digits: 1 }
+  p_r2_bleeder:
+    expr: V_BUS ** 2 / R2_BLEEDER
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_d15_leak:
+    expr: N_CHANNELS * I_D15_LEAK * V_BUS
+    unit: W
+    display: { unit: W, digits: 1 }
+
+  p_status_leds:
+    expr: N_STATUS_LEDS * I_LED_CHANNEL * V_RAIL5_NOM * LED_CAP_BUDGETED
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_full_colour:
+    expr: N_STATUS_LEDS * LED_COLOURS * I_LED_CHANNEL * V_RAIL5_NOM
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_status_leds_70pc:
+    expr: p_status_leds_full_colour * LED_CAP_DATASHEET
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_status_leds_one_colour:
+    expr: N_STATUS_LEDS * I_LED_CHANNEL * V_RAIL5_NOM
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_plain:
+    expr: N_STATUS_LEDS * I_PLAIN_LED * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_mixed:
+    expr: 2 * I_LED_CHANNEL * V_RAIL5_NOM * LED_CAP_BUDGETED + 6 * I_PLAIN_LED * V_RAIL3V3
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_status_leds_three:
+    expr: N_LEDS_THREE_OPTION * I_LED_CHANNEL * V_RAIL5_NOM * LED_CAP_BUDGETED
+    unit: W
+    display: { unit: W, digits: 3 }
+  p_status_led_premium:
+    expr: p_status_leds - p_status_leds_plain
+    unit: W
+    display: { unit: mW, digits: 2 }
+
+  p_board_total:
+    expr: p_esp32 + P_ETH_MODULE + p_catch_diode + P_TPS54360B_IC + p_efuse_fets
+          + p_efuse_quiescent + p_shunt + P_SY8089 + p_inductor + p_front_end
+          + p_max3485_onboard + P_74AHCT541 + p_r2_bleeder + p_d15_leak
+          + p_status_leds
+    unit: W
+    display: { unit: W, digits: 3 }
+  thermal_headroom:
+    expr: thermal_capacity / p_board_total
+    unit: ""
+    display: { unit: "x", digits: 3 }
+  p_controller_slack:
+    expr: P_CONTROLLER_ALLOWANCE - p_board_total
+    unit: W
+    display: { unit: W, digits: 2 }
+  status_led_share:
+    expr: p_status_led_premium / p_board_total
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_board_total_70pc:
+    expr: p_board_total - p_status_leds + p_status_leds_70pc
+    unit: W
+    display: { unit: W, digits: 3 }
+  thermal_overrun_70pc:
+    expr: p_board_total_70pc / thermal_capacity
+    unit: ""
+    display: { unit: "x", digits: 3 }
+
+  # ---- surge: what the node actually clamps at --------------------------
+  #
+  # A headline clamping voltage is quoted at that part's own rated surge, so
+  # comparing two parts' headlines compares two different currents. What
+  # decides the board is the dynamic resistance, R_d = (Vc - Vbr) / Ipp.
+
+  rd_smcj40:
+    expr: (V_C_SMCJ40 - V_BR_SMCJ40_HI) / I_PP_SMCJ40
+    unit: ohm
+    display: { unit: Ω, digits: 2 }
+  rd_smaj36:
+    expr: (V_C_SMAJ36 - V_BR_SMAJ36_HI) / I_PP_SMAJ36
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+  clamp_smcj40_at_10a:
+    expr: V_BR_SMCJ40_HI + rd_smcj40 * I_SURGE_REF
+    unit: V
+    display: { unit: V, digits: 3 }
+  clamp_smaj36_at_10a:
+    expr: V_BR_SMAJ36_HI + rd_smaj36 * I_SURGE_REF
+    unit: V
+    display: { unit: V, digits: 3 }
+  i_smcj40_at_60v:
+    expr: (V_60V_CLASS - V_BR_SMCJ40_HI) / rd_smcj40
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_smaj36_at_60v:
+    expr: (V_60V_CLASS - V_BR_SMAJ36_HI) / rd_smaj36
+    unit: A
+    display: { unit: A, digits: 2 }
+  i_smcj40_at_efuse_max:
+    expr: (V_EFUSE_ABS_MAX - V_BR_SMCJ40_HI) / rd_smcj40
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_smaj36_at_efuse_max:
+    expr: (V_EFUSE_ABS_MAX - V_BR_SMAJ36_HI) / rd_smaj36
+    unit: A
+    display: { unit: A, digits: 3 }
+  i_at_j1_rating:
+    expr: (V_J1_RATING - V_BR_SMCJ40_LO) / rd_smcj40
+    unit: A
+    display: { unit: A, digits: 2 }
+  r_cable_return:
+    expr: RHO_CU * L_REF / CSA_REF
+    unit: ohm
+    display: { unit: Ω, digits: 3 }
+    uncited: true
+  v_return_ir_balanced:
+    expr: i_channel_balanced * r_cable_return
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_return_ir_flash:
+    expr: i_channel_flash * r_cable_return
+    unit: V
+    display: { unit: V, digits: 3 }
+
+  # ---- the ADC divider ---------------------------------------------------
+
+  adc_ratio:
+    expr: R32 / (R31 + R32)
+    unit: ""
+    display: { unit: "", digits: 4 }
+    uncited: true
+  v_adc_at_36v:
+    expr: V_BUS * adc_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_adc_at_50v:
+    expr: V_ADC_POINT_50 * adc_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_adc_at_60v:
+    expr: V_ADC_POINT_60 * adc_ratio
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_bus_at_adc_ceiling:
+    expr: V_ADC_USABLE / adc_ratio
+    unit: V
+    display: { unit: V, digits: 2 }
+  v_adc_alt_at_36v:
+    expr: V_BUS * R32_ALT / (R31_ALT + R32_ALT)
+    unit: V
+    display: { unit: V, digits: 3 }
+  r_adc_source:
+    expr: R31 * R32 / (R31 + R32)
+    unit: ohm
+    display: { unit: kohm, digits: 3 }
+  tau_adc:
+    expr: r_adc_source * C_ADC_TAP
+    unit: s
+    display: { unit: ms, digits: 3 }
+
+  # ---- IPC-2221, external layer -----------------------------------------
+  #
+  #   A[mil^2] = (I / (k * dT^0.44))^(1/0.725),  w = A / (1.378 * oz)
+  #
+  # An empirical fit: its constants carry units nobody publishes, so the
+  # dimension check is switched off here rather than left to warn forever.
+
+  w_bus_1oz_20c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_bus_1oz_10c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_bus_2oz_20c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  w_bus_2oz_10c:
+    expr: (I_CONTRACT / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_ch_1oz_20c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  w_ch_1oz_10c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 3 }
+  w_ch_2oz_20c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 20 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  w_ch_2oz_10c:
+    expr: (i_channel_worst / (IPC_K_EXTERNAL * 10 ** 0.44)) ** (1 / 0.725) / 1.378 / 2 * 0.0254e-3
+    unit: m
+    dim: empirical
+    display: { unit: mm, digits: 2 }
+  copper_2oz_um:
+    expr: 2 * OZ_COPPER_UM
+    unit: m
+    display: { unit: um, digits: 2 }
+
+  # ---- the UDP frame protocol -------------------------------------------
+
+  bytes_per_module:
+    expr: LEDS_PER_MODULE * BYTES_PER_LED
+    unit: ""
+    display: { unit: "", digits: 3 }
+    uncited: true
+  pixel_bytes_10:
+    expr: 10 * bytes_per_module
+    unit: ""
+    display: { unit: "", digits: 4 }
+  pixel_bytes_20:
+    expr: N_MODULES * bytes_per_module
+    unit: ""
+    display: { unit: "", digits: 4 }
+  pixel_bytes_30:
+    expr: 30 * bytes_per_module
+    unit: ""
+    display: { unit: "", digits: 4 }
+  packets_20:
+    expr: ceil(pixel_bytes_20 / MTU_BYTES)
+    unit: ""
+    display: { unit: "", digits: 1 }
+    uncited: true
+  packet_rate_20:
+    expr: packets_20 * FPS_TARGET
+    unit: Hz
+    display: { unit: pkt, digits: 3 }
+  bitrate_20:
+    expr: pixel_bytes_20 * 8 * FPS_TARGET
+    unit: Hz
+    display: { unit: MHz, digits: 3 }
+  packet_occupancy:
+    expr: pixel_bytes_20 / packets_20 + W5500_PACKET_INFO
+    unit: ""
+    display: { unit: "", digits: 4 }
+  rx_free_after_packet:
+    expr: W5500_RX_DEFAULT * 1024 - packet_occupancy
+    unit: ""
+    display: { unit: "", digits: 3 }
+  spi_drain_fast:
+    expr: packet_occupancy * 8 / SPI_CLOCK_FAST
+    unit: s
+    display: { unit: us, digits: 3 }
+  spi_drain_slow:
+    expr: packet_occupancy * 8 / SPI_CLOCK_SLOW
+    unit: s
+    display: { unit: us, digits: 3 }
+  packet_gap:
+    expr: (pixel_bytes_20 / packets_20 + ETH_WIRE_OVERHEAD) * 8 / LINK_RATE
+    unit: s
+    display: { unit: us, digits: 2 }
+  rx_allocation_wrong:
+    expr: W5500_RX_PIXEL + 7 * W5500_RX_DEFAULT
+    unit: ""
+    display: { unit: "", digits: 2 }
+
+  # ---- the mechanical envelope ------------------------------------------
+
+  target_area:
+    expr: IPHONE_W * TARGET_H
+    unit: m2
+    display: { unit: mm2, digits: 4 }
+  area_components:
+    expr: AREA_ITEMISED + AREA_UNITEMISED
+    unit: m2
+    display: { unit: mm2, digits: 4 }
+  area_antenna_keepout:
+    expr: ANTENNA_W * ANTENNA_H
+    unit: m2
+    display: { unit: mm2, digits: 3 }
+  area_eth_module:
+    expr: ETH_MODULE_W * ETH_MODULE_H
+    unit: m2
+    display: { unit: mm2, digits: 3 }
+  area_eth_delta:
+    expr: area_eth_module - AREA_ETH_DISCRETE
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+    uncited: true
+  area_tvs_change_each:
+    expr: AREA_SMC - AREA_SMA
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_tvs_change_total:
+    expr: N_BUS_TVS * area_tvs_change_each
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_led:
+    expr: LED_SIDE ** 2
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_leds_total:
+    expr: N_STATUS_LEDS * area_led
+    unit: m2
+    display: { unit: mm2, digits: 2 }
+  area_board_2layer:
+    expr: area_components / UTILISATION_2LAYER
+    unit: m2
+    display: { unit: mm2, digits: 4 }
+    uncited: true
+  perimeter:
+    expr: 2 * (BOARD_W + BOARD_H)
+    unit: m
+    display: { unit: mm, digits: 3 }
+  edge_share:
+    expr: EDGE_COMMITTED / perimeter
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  # ---- running from a USB port -------------------------------------------
+
+  usb_share_flashing:
+    expr: I_BUS_FLASHING / I_USB_LEGACY
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  usb_share_full:
+    expr: I_BUS_FULL / I_USB_LEGACY
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_usb_for_leds:
+    expr: P_USB_PORT - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  i_usb_for_leds:
+    expr: p_usb_for_leds / V_MODULE_RAIL
+    unit: A
+    display: { unit: A, digits: 2 }
+  v_module_rail_at_1a:
+    expr: V_VSAFE5V_NOM - (XL1509_VCE_A + XL1509_VCE_B * I_MODULE_HOLDS) - I_MODULE_HOLDS * R_MODULE_PATH
+    unit: V
+    display: { unit: V, digits: 3 }
+  v_module_rail_at_1a_lo:
+    expr: V_VSAFE5V_LO - (XL1509_VCE_A + XL1509_VCE_B * I_MODULE_HOLDS) - I_MODULE_HOLDS * R_MODULE_PATH
+    unit: V
+    display: { unit: V, digits: 3 }
+  share_full_white_at_1a:
+    expr: I_MODULE_HOLDS / i_module_full
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_at_1a:
+    expr: share_full_white_at_1a ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  p_wall_full_bus:
+    expr: p_wall_full / ETA_MODULE
+    unit: W
+    display: { unit: W, digits: 3 }
+
+  # ---- what each contract buys -------------------------------------------
+
+  p_leds_9v:
+    expr: V_PDO_9 * I_CONTRACT_12V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_leds_12v:
+    expr: V_PDO_12 * I_CONTRACT_12V - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_leds_apple96:
+    expr: V_APPLE_96 * I_APPLE_96 - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 2 }
+  p_leds_apple140:
+    expr: V_APPLE_140 * I_APPLE_140 - P_CONTROLLER_ALLOWANCE
+    unit: W
+    display: { unit: W, digits: 3 }
+  perceived_9v:
+    expr: min(CAP_THERMAL, p_leds_9v * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_12v:
+    expr: min(CAP_THERMAL, p_leds_12v * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_apple96:
+    expr: min(CAP_THERMAL, p_leds_apple96 * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  perceived_apple140:
+    expr: min(CAP_THERMAL, p_leds_apple140 * ETA_MODULE / p_wall_full) ** (1 / GAMMA)
+    unit: ""
+    display: { unit: "%", digits: 2 }
+  apple96_power_share:
+    expr: p_leds_apple96 / p_modules
+    unit: ""
+    display: { unit: "%", digits: 2 }
+
+  p_clamp_branch:
+    expr: p_r44_nominal + p_zener
+    unit: W
+    display: { unit: mW, digits: 1 }
+  p_clamp_branch_vendor_step:
+    expr: v_across_r44_nominal ** 2 / R44_VENDOR_STEP + V_ZENER_NOM * v_across_r44_nominal / R44_VENDOR_STEP
+    unit: W
+    display: { unit: mW, digits: 2 }
+  t_holdup_with_leds:
+    expr: C_HOLDUP_PROPOSED * (V_BUS - V_MODULE_RAIL) / I_CONTRACT
+    unit: s
+    display: { unit: ms, digits: 2 }
+  v_module_rail_saturated:
+    expr: V_VSAFE5V_LO - XL1509_VSAT_MAX
+    unit: V
+    display: { unit: V, digits: 3 }
+  n_gpio_used:
+    expr: 4 + 2 + 2 + 2 + 1 + N_CHANNELS + N_CHANNELS + 1 + 1 + 2 + 1
+    unit: ""
+    display: { unit: "", digits: 2 }
+
+tables:
+
+  power-budget:
+    columns: ["Modules", "Power", "Perceived", "fps (2 ch)", "Binds on"]
+    align: [right, right, right, right, left]
+    rows:
+      - ["10", "=brightness_10", "=perceived_10", "=fps_at_5 @ ,3", "thermal"]
+      - ["14", "=brightness_14", "=perceived_14", "=fps_at_7 @ ,3", "thermal"]
+      - ["20", "=brightness_20", "=perceived_20", "=fps_design @ ,2", "power"]
+      - ["24", "=brightness_24", "=perceived_24", "=fps_at_12 @ ,2", "power"]
+
+  cable-drop:
+    columns: ["mm²", "5 m", "10 m", "15 m", "max at 5%"]
+    align: [left, right, right, right, right]
+    rows:
+      - ["0.25", "=i_channel_worst*2*RHO_CU*5/CSA_025 @ V,3",
+                "=i_channel_worst*2*RHO_CU*10/CSA_025 @ V,3",
+                "=i_channel_worst*2*RHO_CU*15/CSA_025 @ V,3",
+                "=v_drop_allowed*CSA_025/(2*RHO_CU*i_channel_worst) @ m,2"]
+      - ["0.34", "=i_channel_worst*2*RHO_CU*5/CSA_034 @ V,3",
+                "=i_channel_worst*2*RHO_CU*10/CSA_034 @ V,3",
+                "=i_channel_worst*2*RHO_CU*15/CSA_034 @ V,3",
+                "=v_drop_allowed*CSA_034/(2*RHO_CU*i_channel_worst) @ m,2"]
+      - ["**0.50**", "**{=i_channel_worst*2*RHO_CU*5/CSA_REF @ V,2}**",
+                     "**{=i_channel_worst*2*RHO_CU*10/CSA_REF @ V,3}**",
+                     "{=i_channel_worst*2*RHO_CU*15/CSA_REF @ V,3}",
+                     "**{=l_max_worst @ m,2}**"]
+      - ["0.75", "=i_channel_worst*2*RHO_CU*5/CSA_ALT @ V,2",
+                "=i_channel_worst*2*RHO_CU*10/CSA_ALT @ V,3",
+                "=i_channel_worst*2*RHO_CU*15/CSA_ALT @ V,3",
+                "=l_max_alt @ m,3"]
+      - ["1.00", "=i_channel_worst*2*RHO_CU*5/CSA_100 @ V,2",
+                "=i_channel_worst*2*RHO_CU*10/CSA_100 @ V,2",
+                "=i_channel_worst*2*RHO_CU*15/CSA_100 @ V,3",
+                "=v_drop_allowed*CSA_100/(2*RHO_CU*i_channel_worst) @ m,3"]
+
+  pwm-ripple:
+    columns: ["cable", "R (loop)", "bus share", "ripple seen"]
+    align: [left, right, right, right]
+    rows:
+      - ["~5 m, 0.5 mm²", "=R_LOOP_SHORT @ Ω,2", "=bus_share_short",
+         "**+{=ripple_up_short @ ,2} / −{=-ripple_down_short @ ,2} A**"]
+      - ["10 m, 0.5 mm²", "=R_LOOP_REF @ Ω,2", "=bus_share_ref",
+         "**+{=ripple_up_ref @ ,2} / −{=-ripple_down_ref @ ,2} A**"]
+
+  two-channels:
+    columns: ["channels", "modules/ch", "fps", "A/ch balanced", "% of 10 A", "A/ch worst case", "%"]
+    align: [right, right, right, right, right, right, right]
+    rows:
+      - ["**2**", "**{=modules_per_channel @ ,2}**", "**{=fps_design @ ,2}**",
+         "**{=i_channel_balanced @ A,3}**", "**{=conn_share_balanced @ %,2}**",
+         "{=i_channel_worst @ A,3}", "{=conn_share_worst @ %,2}"]
+      - ["3", "=N_MODULES/3 @ ,2", "=1/(N_MODULES/3*LEDS_PER_MODULE*T_PER_LED+T_RESET) @ ,3",
+         "=i_bus_full_white*brightness_20/3 @ A,3", "=i_bus_full_white*brightness_20/3/CONN_RATING @ %,2",
+         "=i_bus_full_white*CAP_THERMAL/3 @ A,3", "=i_bus_full_white*CAP_THERMAL/3/CONN_RATING @ %,2"]
+      - ["4", "=N_MODULES/4 @ ,2", "=1/(N_MODULES/4*LEDS_PER_MODULE*T_PER_LED+T_RESET) @ ,3",
+         "=i_bus_full_white*brightness_20/4 @ A,3", "=i_bus_full_white*brightness_20/4/CONN_RATING @ %,2",
+         "=i_bus_full_white*CAP_THERMAL/4 @ A,3", "=i_bus_full_white*CAP_THERMAL/4/CONN_RATING @ %,2"]
+
+  rail5-dropout:
+    columns: ["bus", "5 V rail", "74AHCT541 needs 4.5-5.5 V"]
+    align: [left, right, left]
+    rows:
+      - ["4.75 V (USB-C low tolerance)", "**{=v_rail5_typ_lo @ V,3}**",
+         "{=margin_buffer_typ @ V,1} over the floor"]
+      - ["5.00 V", "=v_rail5_typ_nom", "ok"]
+      - [">= 5.25 V", "=V_RAIL5_NOM @ V,3", "ok"]
+
+  rail3v3-loads:
+    columns: ["Load", "mA", "Note"]
+    align: [left, right, left]
+    rows:
+      - ["ESP32-C6, TX peak", "=I_ESP32_TX @ [mA],3",
+         "datasheet Table 13, 802.11b at 20.5 dBm, 100% duty — pessimistic as a continuous figure"]
+      - ["Ethernet module", "=i_eth_module @ [mA],3", "0.50 W at 3.3 V"]
+      - ["2x MAX3485", "~{=i_max3485_pair @ [mA],2}",
+         "2 mA I_CC each **plus ~12 mA each of line current** — a driver with DE asserted pulls load current 100% of the time"]
+      - ["HUSB238A VDD", "=I_HUSB_VDD @ [mA],2", "active sink"]
+      - ["INA226 + pull-ups", "~{=I_INA_AND_PULLUPS @ [mA],1}", ""]
+      - ["**total**", "**~{=i_rail3v3 @ mA,3} = {=p_rail3v3 @ W,3}**",
+         "inside the ~2.3 W the rail is sized for"]
+
+  cascade-penalty:
+    columns: ["", "efficiency", "lost at the 1.89 W draw", "at the 2.3 W sizing ceiling"]
+    align: [left, right, right, right]
+    rows:
+      - ["cascade, 36 -> 5 -> 3.3 V", "~{=ETA_CASCADE @ %,2}", "=loss_cascade_draw", "=loss_cascade_sized"]
+      - ["hypothetical single 36 -> 3.3 V", "~{=ETA_SINGLE @ %,2}", "=loss_single_draw", "=loss_single_sized"]
+      - ["**penalty**", "", "**{=penalty_draw @ mW,2}**", "**{=penalty_sized @ mW,2}**"]
+
+  cooling-fan:
+    columns: ["fan", "R_DS typ (0.12 Ω)", "6 V-drive max (0.190 Ω)", "**applicable max (≈0.24 Ω)**"]
+    align: [left, right, right, right]
+    rows:
+      - ["none", "=v_rail5_typ_lo @ V,4", "=v_rail5_6v_max @ V,4", "**{=v_rail5_applicable @ V,4}**"]
+      - ["25 mm, ~50 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_25MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_25MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_25MM) @ V,4"]
+      - ["58 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_58) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_58) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_58) @ V,4"]
+      - ["30 mm, ~70 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_30MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_30MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_30MM) @ V,4"]
+      - ["40 mm, ~100 mA",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_TYP+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_6V_MAX+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4",
+         "=0.99*V_VSAFE5V_LO-0.01*V_F_SS36-(0.99*R_DS_APPLICABLE+R_DCR_L1)*(I_RAIL5+I_FAN_40MM) @ V,4"]
+
+  follower-margins:
+    columns: ["PDO", "band", "threshold", "pin at a −5% bus", "margin"]
+    align: [left, left, right, right, right]
+    rows:
+      - ["9 V", "F1, 80%", "=UV_BAND_F1*V_PDO_9 @ V,3", "=pin_at_9v @ V,3", "+{=margin_9v @ V,2}"]
+      - ["**12 V**", "F0, 86%", "=UV_BAND_F0*V_PDO_12 @ V,4", "=pin_at_12v @ V,4",
+         "**+{=margin_12v @ V,2}**"]
+      - ["15 V", "F0, 86%", "=UV_BAND_F0*V_PDO_15 @ V,4", "=pin_at_15v @ V,4", "+{=margin_15v @ V,2}"]
+      - ["20 V", "F0, 86%", "=UV_BAND_F0*V_PDO_20 @ V,4", "=pin_at_20v @ V,4", "+{=margin_20v @ V,2}"]
+      - ["28 V", "F2, flat", "=V_UV_F2 @ V,4", "=pin_clamped @ V,4", "+{=margin_clamped @ V,3}"]
+      - ["36 V", "F2, flat", "=V_UV_F2 @ V,4", "=pin_clamped @ V,4", "+{=margin_clamped @ V,3}"]
+
+  r44-sensitivity:
+    columns: ["R44", "at 800 µA", "at 1.8 mA", "at 4.0 mA", "at **4.5 mA**"]
+    align: [left, right, right, right, right]
+    rows:
+      - ["4.7 kΩ",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MAX/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MID/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_TYP/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_MAX/H_FE_Q3*R44_ALT_47-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2}**"]
+      - ["**3.24 kΩ**",
+         "**{=margin_12v @ V,3}**",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_MID/H_FE_Q3*R44-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3}**",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_TYP/H_FE_Q3*R44-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2}**",
+         "**{=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_MAX/H_FE_Q3*R44-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,2}**"]
+      - ["2.2 kΩ",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MAX/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_MID/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_TYP/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3",
+         "=0.95*V_PDO_12-I_VBUS_PIN_NOVDD_MAX/H_FE_Q3*R44_ALT_22-V_BE_Q3-UV_BAND_F0*V_PDO_12 @ V,3"]
+
+  thermal-budget:
+    columns: ["Source", "W", "Note"]
+    align: [left, right, left]
+    rows:
+      - ["ESP32-C6 (TX peak)", "=p_esp32 @ [W],3", "382 mA at 3.3 V, module datasheet"]
+      - ["W5500 module", "=P_ETH_MODULE @ [W],2", "module draws the same as the bare PHY"]
+      - ["TPS54360B catch diode", "=p_catch_diode @ [W],2", "0.60 A average at 0.7 A out, conducts 86% of the cycle"]
+      - ["TPS54360B IC", "~{=P_TPS54360B_IC @ [W],1}", "conduction + switching at ~1 MHz"]
+      - ["2x TPS16630 FET", "=p_efuse_fets @ [W],2", "45 mΩ max at 85 °C, 2.43 A each"]
+      - ["2x TPS16630 IQ + dividers", "=p_efuse_quiescent @ [W],2", "1.7 mA max at 37.8 V, plus the 1 MΩ strings"]
+      - ["shunt 5 mΩ", "=p_shunt @ [W],3", "at full 5 A"]
+      - ["SY8089 + inductor", "=P_SY8089 @ [W],2", ""]
+      - ["10 µH inductor DCR", "=p_inductor @ [W],1", "72 mΩ at 0.7 A"]
+      - ["MMBT5551 follower + 3.24 kΩ + D1", "=p_front_end @ [W],2",
+         "{=p_q3_collector @ mW,2} collector at the 800 µA the pin draws with VDD tied; the 27 V clamp draws {=i_zener @ mA,3} through R44, so {=p_r44_nominal @ mW,2} in the resistor and {=p_zener @ mW,2} in the Zener"]
+      - ["2x MAX3485 driving 120 Ω", "=p_max3485_onboard @ [W],1", "DE tied high, line never idle"]
+      - ["74AHCT541", "=P_74AHCT541 @ [W],1", ""]
+      - ["R2 bus bleeder", "=p_r2_bleeder @ [W],2", "36 V across 10 kΩ, continuous"]
+      - ["D15/D16 leakage", "~{=p_d15_leak @ [W],1}",
+         "2 × 50 µA at 25 °C and 36 V, which is 36% of the part's 100 V rating. A reverse-biased diode drawing µA self-heats by nothing, so it sits at ambient and the 5 mA 125 °C figure does not apply. Two SS36 here would have been 0.036 W"]
+      - ["status LEDs, capped", "=p_status_leds @ [W],2", "eight at one colour, 25% — see below"]
+      - ["**total**", "**{=p_board_total @ [W],3}**", "TVS leakage not counted; D15/D16 are"]
+
+  status-led-cap:
+    columns: ["Case", "Power", ""]
+    align: [left, right, left]
+    rows:
+      - ["all eight, three colours, 100%", "=p_status_leds_full_colour @ W,3", "above the datasheet's own limit"]
+      - ["all eight, three colours, **70%**", "**{=p_status_leds_70pc @ W,3}**",
+         "the datasheet's ceiling (p.3: \"when illuminating the tricolor light, use 70% greyscale\")"]
+      - ["all eight, one colour, 100%", "=p_status_leds_one_colour @ W,2", ""]
+      - ["**all eight, one colour, 25%**", "**{=p_status_leds @ W,2}**", "**the budgeted case**"]
+
+  trace-width:
+    columns: ["", "5 A bus", "2.80 A channel (worst case)"]
+    align: [left, right, right]
+    rows:
+      - ["1 oz, 20 °C rise", "=w_bus_1oz_20c", "=w_ch_1oz_20c"]
+      - ["1 oz, 10 °C rise", "=w_bus_1oz_10c", "=w_ch_1oz_10c"]
+      - ["**2 oz, 20 °C rise**", "**{=w_bus_2oz_20c @ mm,2}**", "**{=w_ch_2oz_20c @ mm,2}**"]
+      - ["2 oz, 10 °C rise", "=w_bus_2oz_10c", "=w_ch_2oz_10c"]
+
+  tvs-comparison:
+    columns: ["", "SMAJ36CA (SMA, 400 W)", "**SMCJ40CA (SMC, 1.5 kW)**"]
+    align: [left, right, right]
+    rows:
+      - ["Vrwm", "36 V — **under the 37.8 V bus**", "**40 V**"]
+      - ["R_d", "=rd_smaj36", "**{=rd_smcj40 @ Ω,2}**"]
+      - ["clamp at 10 A", "=clamp_smaj36_at_10a", "**{=clamp_smcj40_at_10a @ V,3}**"]
+      - ["reaches 60 V at", "=i_smaj36_at_60v", "**{=i_smcj40_at_60v @ A,3}**"]
+      - ["reaches the eFuse's 67 V at", "=i_smaj36_at_efuse_max", "**{=i_smcj40_at_efuse_max @ A,3}**"]
+
+  udp-frames:
+    columns: ["Modules", "Pixel bytes", "Packets at 1400 B MTU", "packets/s **if run at 90 fps**"]
+    align: [right, right, right, right]
+    rows:
+      - ["10", "=pixel_bytes_10 @ ,4", "=ceil(pixel_bytes_10/MTU_BYTES) @ ,1",
+         "{=ceil(pixel_bytes_10/MTU_BYTES)*FPS_TARGET @ ,2} pkt/s"]
+      - ["20", "=pixel_bytes_20 @ ,4", "=packets_20 @ ,1", "{=packet_rate_20 @ [Hz],3} pkt/s"]
+      - ["30", "=pixel_bytes_30 @ ,4", "=ceil(pixel_bytes_30/MTU_BYTES) @ ,1",
+         "{=ceil(pixel_bytes_30/MTU_BYTES)*FPS_TARGET @ ,3} pkt/s"]
+
+  module-at-vsafe5v:
+    columns: ["module current", "rail at a 5.0 V bus", "at the 4.75 V corner", "share of full white", "perceived"]
+    align: [right, right, right, right, right]
+    rows:
+      - ["0.6 A",
+         "=V_VSAFE5V_NOM-(XL1509_VCE_A+XL1509_VCE_B*0.6)-0.6*R_MODULE_PATH @ V,3",
+         "=V_VSAFE5V_LO-(XL1509_VCE_A+XL1509_VCE_B*0.6)-0.6*R_MODULE_PATH @ V,3",
+         "=0.6/i_module_full @ %,2", "**{=(0.6/i_module_full)**(1/GAMMA) @ %,2}**"]
+      - ["1.0 A", "=v_module_rail_at_1a @ V,3", "=v_module_rail_at_1a_lo @ V,3",
+         "=share_full_white_at_1a @ %,2", "**{=perceived_at_1a @ %,2}**"]
+      - ["1.5 A",
+         "=V_VSAFE5V_NOM-(XL1509_VCE_A+XL1509_VCE_B*1.5)-1.5*R_MODULE_PATH @ V,3",
+         "=V_VSAFE5V_LO-(XL1509_VCE_A+XL1509_VCE_B*1.5)-1.5*R_MODULE_PATH @ V,3",
+         "=1.5/i_module_full @ %,2", "{=(1.5/i_module_full)**(1/GAMMA) @ %,2}"]
+      - ["2.16 A",
+         "=V_VSAFE5V_NOM-(XL1509_VCE_A+XL1509_VCE_B*i_module_full)-i_module_full*R_MODULE_PATH @ V,3",
+         "=V_VSAFE5V_LO-(XL1509_VCE_A+XL1509_VCE_B*i_module_full)-i_module_full*R_MODULE_PATH @ V,3",
+         "100%", "**dark**"]
+
+  contract-brightness:
+    columns: ["Source", "PDO", "for LEDs", "perceived brightness"]
+    align: [left, left, right, left]
+    rows:
+      - ["MacBook port, as a source", "5 V / 15 W", "~5 W usable",
+         "**~{=perceived_at_1a @ %,2} of one module** — the module buck cannot regulate below 6.5 V in, so the rail sags with current and caps it near 1.0 A, well before the port's 10 W. See Recovery and debug"]
+      - ["9 V PDO", "8.55–9.45 V", "{=p_leds_9v @ W,2}",
+         "**~{=perceived_9v @ %,2}** — 9 V × 3 A less the 5 W controller, on the same basis as the row below. The lowest PDO that clears the module converter's 6.5 V input, so the first one that produces full-colour light"]
+      - ["12 V PDO", "11.4–12.6 V", "{=p_leds_12v @ W,2}", "~{=perceived_12v @ %,2}"]
+      - ["Apple 96 W charger", "20.5 V / 4.7 A", "{=p_leds_apple96 @ W,2}", "**{=perceived_apple96 @ %,2}**"]
+      - ["Apple 140 W charger", "28 V / 5 A", "{=p_leds_apple140 @ W,3}", "**{=perceived_apple140 @ %,2}**"]
+      - ["180 W EPR charger", "36 V / 5 A", "{=p_modules @ W,3}", "{=perceived_20 @ %,2}"]
+
+  fig13-boundary:
+    columns: ["P_D per device", "0 °C", "**25 °C**", "85 °C"]
+    align: [left, right, right, right]
+    rows:
+      - ["13 W (10 modules on the channel)", "=T_FIG13_13W_0C @ ms,3",
+         "**{=T_FIG13_13W_25C @ ms,3}**", "=T_FIG13_13W_85C @ ms,2"]
+      - ["26 W (20 modules on the channel)", "=T_FIG13_26W_0C @ ms,2",
+         "=T_FIG13_26W_25C @ ms,2", "=T_FIG13_26W_85C @ ms,2"]
+
+  gpio-budget:
+    columns: ["Signal", "Count"]
+    align: [left, right]
+    rows:
+      - ["W5500 SPI: SCLK, MOSI, MISO, SCSn", "4"]
+      - ["W5500 RSTn, INTn", "2"]
+      - ["I2C SDA, SCL", "2"]
+      - ["HUSB238A INT_N, EN_N", "2"]
+      - ["INA226 ALERT", "1"]
+      - ["Channel data to MAX3485 DI x2", "=N_CHANNELS @ ,1"]
+      - ["Channel load-switch enables x2", "=N_CHANNELS @ ,1"]
+      - ["SK6812 status chain", "1"]
+      - ["Bus-voltage ADC divider", "1"]
+      - ["USB D-/D+ (GPIO12/13, fixed)", "2"]
+      - ["TPS16630 PGOOD, both channels wire-ORed", "1"]
+      - ["**total**", "**{=n_gpio_used @ ,2}**"]

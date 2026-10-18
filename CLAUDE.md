@@ -634,6 +634,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   └── <name>/
     │       ├── README.md      decisions, rationale, open questions
     │       ├── design.yaml    rails, buses, suppressed rules
+    │       ├── calc.yaml      the derived numbers README.md cites
     │       ├── netlist.json   the EasyEDA import artefact
     │       ├── figures.py     regenerates the figures
     │       └── figures/       generated SVG+PNG, light and dark
