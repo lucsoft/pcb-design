@@ -35,6 +35,26 @@ cd "$ROOT"
 
 RAW=${RAW:-/tmp/hand-supply-raw.epro2}
 OUT=${1:-$D/../../figures/supply-sheet-handplaced.png}
+# Which coordinates to place. The hand sheet is the default, and the
+# automatic one is the same chain with `PLACEMENT` pointed at what
+# `tools/autoplace.py` wrote -- which is what makes the two comparable:
+# the flags, the wires and the frame are identical, so a difference
+# between the two pictures is a difference in placement and nothing else.
+PLACEMENT=${PLACEMENT:-$D/placement.txt}
+# The one lead the importer aims along its own package rather than out of
+# it -- U4's thermal pad -- because a ground symbol on the end of a lead
+# that runs along the IC lands inside the IC. `autoplace.py` writes the
+# coordinate it placed the pad at, as a comment on the placement it
+# emitted, so the automatic sheet does not depend on where the hand sheet
+# happened to put U4. A placement without that comment, which is the hand
+# one, falls back to the coordinate of the hand sheet.
+PAD=$(sed -n 's/^# pin-stub //p' "$PLACEMENT" | head -1)
+PAD=${PAD:-GND@330,90}
+# And the rectangle the preview is cut to, for the same reason: the
+# automatic layout puts the same block somewhere else, and a fixed crop
+# would photograph the wrong part of the sheet.
+CROP=$(sed -n 's/^# crop //p' "$PLACEMENT" | head -1)
+CROP=${CROP:-100,-70,900,300}
 SCRATCH=${SCRATCH:-/tmp/lmc-supply-build}
 mkdir -p "$SCRATCH"
 S="$SCRATCH"
@@ -47,7 +67,7 @@ if [ ! -f "$RAW" ]; then
 fi
 
 # 1. Place the parts where placement.txt says, and nothing else.
-python3 tools/handplace.py "$RAW" "$D/placement.txt" \
+python3 tools/handplace.py "$RAW" "$PLACEMENT" \
     -o "$S/1-placed.epro2" > "$S/1.log"
 
 # 2. Rail flags. One per node, so a rail that is one node on the sheet is
@@ -110,7 +130,7 @@ python3 tools/netflags.py "$S/1-placed.epro2" \
     --nets 'GND,BUS_5V=+5V,BUS_3V3=+5V,VBUS=+5V,FB_5V=+5V,FB_3V3=+5V' \
     --one-per-part --one-per-node 200 --strict-flags \
     --flag-clearance 15 --flag-lead 10 --ground-bus 220 \
-    --lead-turn FB_5V --pin-stub 'GND@330,90' \
+    --lead-turn FB_5V --pin-stub "$PAD" \
     -o "$S/2-flagged.epro2" > "$S/2.log"
 
 # 3. Draw the local wires. 200 units is the node threshold, and it is the
@@ -150,7 +170,7 @@ python3 tools/epro.py diff "$S/5-titled.epro2" "$D/netlist.json" > "$S/6.log"
 # which sits in the band between the two stages. `--region` measures in
 # canvas units, where one unit is 10 mil.
 python3 tools/schpreview.py "$S/5-titled.epro2" -o "$OUT" --dpi 200 \
-    --region 100,-70,900,300 > /dev/null
+    --region="$CROP" > /dev/null
 
 printf 'sheet      %s\n' "$(grep -oE '[0-9]+ x [0-9]+ units = .*' "$S/1.log" | head -1)"
 printf 'paper      %s\n' "$(grep -oE '[0-9]+ x [0-9]+ mm of content' "$S/5.log" | tail -1)"
