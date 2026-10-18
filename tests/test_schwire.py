@@ -15,6 +15,7 @@ the declared net names are unchanged by a geometric short.
 """
 
 import hashlib
+import collections
 import json
 import subprocess
 import sys
@@ -35,11 +36,16 @@ def check(name, cond, detail=""):
         FAILURES.append(name)
 
 
-def build(path, parts):
+def build(path, parts, flags=(), desig_at=False, vertical=False):
     """parts: [(designator, x, y, [(pin_dx, pin_dy, net), ...])]
 
     Each pin gets a symbol PIN record and a labelled stub ending on it,
     exactly as the importer emits, so the tool's transform check passes.
+
+    `flags` is a list of (x, y) where a rail flag sits -- a placed
+    component carrying **no Designator**, which is how netflags.py mints
+    them and what keeps them out of the BOM. Put one on a stub endpoint
+    and that stub's pin counts as connected by symbol.
     """
     recs, t = [], 0
 
@@ -55,19 +61,30 @@ def build(path, parts):
             {"partId": f"P{i}.1", "x": cx, "y": cy, "rotation": 0,
              "isMirror": False})
         add({"type": "ATTR", "id": f"dg{i}"},
-            {"key": "Designator", "value": d, "parentId": f"c{i}"})
+            ({"key": "Designator", "value": d, "parentId": f"c{i}",
+              "valueVisible": True, "x": cx, "y": cy, "rotation": 0}
+             if desig_at else
+             {"key": "Designator", "value": d, "parentId": f"c{i}"}))
         add({"type": "ATTR", "id": f"sy{i}"},
             {"key": "Symbol", "value": f"sym{i}", "parentId": f"c{i}"})
         for j, (dx, dy, net) in enumerate(pins):
             wid = f"w{i}_{j}"
             px, py = cx + dx, cy + dy
             add({"type": "WIRE", "id": wid}, {"groupId": "", "zIndex": 1})
+            ex_, ey_ = ((px, py + 20 * (1 if dy >= 0 else -1))
+                        if vertical else (px - 20, py))
             add({"type": "LINE", "id": f"l{i}_{j}"},
                 {"lineGroup": wid, "startX": px, "startY": py,
-                 "endX": px - 20, "endY": py, "strokeWidth": 1})
+                 "endX": ex_, "endY": ey_, "strokeWidth": 1})
             add({"type": "ATTR", "id": f"nt{i}_{j}"},
                 {"key": "NET", "value": net, "parentId": wid,
-                 "valueVisible": True, "x": px - 10, "y": py})
+                 "valueVisible": True,
+                 "x": (px + ex_) // 2, "y": (py + ey_) // 2})
+    for k, (fx, fy) in enumerate(flags):
+        add({"type": "COMPONENT", "id": f"flag{k}"},
+            {"partId": f"F{k}.1", "x": fx, "y": fy, "rotation": 0,
+             "isMirror": False})
+
     # the symbol documents the pins live in
     for i, (d, cx, cy, pins) in enumerate(parts):
         add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": f"sym{i}"})
@@ -75,6 +92,12 @@ def build(path, parts):
             add({"type": "PIN", "id": f"p{i}_{j}"},
                 {"partId": f"P{i}.1", "x": dx, "y": dy, "length": 10,
                  "rotation": 0})
+        if desig_at:
+            # A body to be clear of. Only with desig_at, because the
+            # other probes measure routes against a pin field and a
+            # symbol outline would change what they are testing.
+            add({"type": "RECT", "id": f"rc{i}"},
+                {"dotX1": -10, "dotY1": -15, "dotX2": 10, "dotY2": 15})
 
     lines = [f"{json.dumps(h, separators=(',', ':'))}||"
              f"{json.dumps(b, separators=(',', ':'))}|" for h, b in recs]
@@ -112,17 +135,41 @@ def run(*args):
     return p.returncode, p.stdout + p.stderr
 
 
+def net_attrs(path):
+    """Every NET attribute in the export, as dicts."""
+    out = []
+    for line in zipfile.ZipFile(path).read("doc.epru").decode(
+            "utf-8").split("\n"):
+        if '"key":"NET"' not in line:
+            continue
+        out.append(json.loads(line.partition("||")[2].rstrip("|")))
+    return out
+
+
+def visible(path):
+    """net name -> how many of its labels are still visible."""
+    c = collections.Counter()
+    for b in net_attrs(path):
+        if b.get("valueVisible") is True:
+            c[b["value"]] += 1
+    return c
+
+
 def main():
     tmp = Path(tempfile.mkdtemp())
 
-    # GND gets five pins so it is above --max-pins and counts as a rail;
+    # The rail gets five pins so it is above --max-pins and counts as one;
     # with three it would sit under the default and be drawn, which is the
-    # correct behaviour and the wrong fixture for this assertion.
-    parts = [("R1", 0, 0, [(0, 0, "SIG"), (0, -40, "GND")]),
-             ("R2", 100, 0, [(0, 0, "SIG"), (0, -40, "GND")]),
-             ("R3", 200, 0, [(0, 0, "OTHER"), (0, -40, "GND")]),
-             ("R4", 300, 0, [(0, 0, "OTHER"), (0, -40, "GND")]),
-             ("R5", 400, 0, [(0, 0, "SPARE"), (0, -40, "GND")])]
+    # correct behaviour and the wrong fixture for this assertion. It is
+    # deliberately NOT ground: ground is exempt from drawing whatever its
+    # pin count, so a `GND` fixture here would be skipped by that rule
+    # before the pin-count test ever ran and this probe would be measuring
+    # nothing.
+    parts = [("R1", 0, 0, [(0, 0, "SIG"), (0, -40, "RAIL")]),
+             ("R2", 100, 0, [(0, 0, "SIG"), (0, -40, "RAIL")]),
+             ("R3", 200, 0, [(0, 0, "OTHER"), (0, -40, "RAIL")]),
+             ("R4", 300, 0, [(0, 0, "OTHER"), (0, -40, "RAIL")]),
+             ("R5", 400, 0, [(0, 0, "SPARE"), (0, -40, "RAIL")])]
     src, out = tmp / "in.epro2", tmp / "out.epro2"
     build(src, parts)
     nl = tmp / "netlist.json"
@@ -375,6 +422,221 @@ def main():
     check("...and the net's own stub end never blocks it",
           ended.step_blocked(0, 44, 100, 44, set(), "GND") is False)
 
+    # --- a pin that already carries a rail flag needs no wire ------------
+    # The failure this guards against is a quiet one: the option could
+    # stop routing altogether and every counter would improve, because
+    # the cheapest way to have no bad wires is to have no wires. So the
+    # inverse probe is the one that matters -- an unflagged net must
+    # still be drawn with the option on.
+    d = tmp / "flagged"
+    d.mkdir()
+    # Three pins on SIG. The middle one is 600 units away; without a flag
+    # the wire has to span the sheet to collect it.
+    parts = [("U1", 0, 0, [(0, 0, "SIG")]),
+             ("U2", 200, 0, [(0, 0, "SIG")]),
+             ("U3", 800, 0, [(0, 0, "SIG")])]
+    netlist(d / "n.json", parts)
+
+    build(d / "plain.epro2", parts)
+    rc, log = run(d / "plain.epro2", d / "n.json", "--max-span", "2000",
+                  "-o", d / "plain-out.epro2")
+    plain = len(wires(d / "plain-out.epro2")) if rc == 0 else -1
+
+    # the same file with a flag sitting on U3's stub end
+    build(d / "flag.epro2", parts, flags=[(780, 0)])
+    rc, log = run(d / "flag.epro2", d / "n.json", "--max-span", "2000",
+                  "--skip-flagged", "-o", d / "flag-out.epro2")
+    check("a flagged pin is left to its flag", rc == 0, log)
+    check("...and is reported rather than silently dropped",
+          "left to their rail flag" in log, log)
+    if rc == 0:
+        # Against the input, not against a coordinate threshold: every
+        # pin keeps its own stub, and U3's stub is at x=800 whether a
+        # wire reaches it or not. The first version of this check counted
+        # that stub as a wire and failed on a correct file.
+        stubs = set(wires(d / "flag.epro2"))
+        added = [s for s in wires(d / "flag-out.epro2") if s not in stubs]
+        far = [s for s in added if max(s[0], s[2]) > 700]
+        check("...so no drawn wire reaches it", not far, f"{far}")
+        # U1 and U2 are both unflagged, so they must still be joined.
+        check("...while the unflagged pins are still wired together",
+              added, f"{len(added)} added segment(s)")
+
+    # inverse probe: no flag anywhere, option on -- routing must survive
+    rc, log = run(d / "plain.epro2", d / "n.json", "--max-span", "2000",
+                  "--skip-flagged", "-o", d / "noflag-out.epro2")
+    check("--skip-flagged does not disable routing on its own",
+          rc == 0 and len(wires(d / "noflag-out.epro2")) == plain,
+          f"{log}")
+    check("...and reports nothing when there is nothing to report",
+          "left to their rail flag" not in log, log)
+
+    # --- a label on a foreign net's wire, which must still be reported --
+    # The net-aware exemption took this count from 14 to 0 on a real
+    # sheet, and a counter that reads zero right after it was loosened
+    # is the fail-open shape this project warns about everywhere. So:
+    # a label parked on top of a different net's stub, which the tool
+    # must still call out.
+    d = tmp / "onwire"
+    d.mkdir()
+    parts = [("U1", 0, 0, [(0, 0, "AAA")]), ("U2", 0, 200, [(0, 0, "BBB")])]
+    netlist(d / "n.json", parts)
+    build(d / "clean.epro2", parts)
+    rc, log = run(d / "clean.epro2", d / "n.json", "-o", d / "c-out.epro2")
+    check("two labels on their own stubs read as clean",
+          "0 net label(s) lie on a wire" in log, log)
+
+    # move AAA's label onto BBB's stub, which runs from (0,200) to (-20,200)
+    import zipfile as _zf
+    src = _zf.ZipFile(d / "clean.epro2")
+    out = []
+    for line in src.read("doc.epru").decode("utf-8").split("\n"):
+        if '"key":"NET","value":"AAA"' in line:
+            h, _, b = line.partition("||")
+            bb = json.loads(b.rstrip("|"))
+            bb["x"], bb["y"] = -10, 200
+            line = (h + "||" + json.dumps(bb, separators=(",", ":")) + "|")
+        out.append(line)
+    with _zf.ZipFile(d / "dirty.epro2", "w", _zf.ZIP_DEFLATED) as z:
+        z.writestr("project2.json", src.read("project2.json"))
+        z.writestr("doc.epru", "\n".join(out))
+    rc, log = run(d / "dirty.epro2", d / "n.json", "-o", d / "d-out.epro2")
+    check("a label parked on a foreign net's stub is reported",
+          "1 net label(s) lie on a wire" in log, log)
+
+    # --- two copies of one name, and the one that must stay ------------
+    # Hiding a label is the one edit here that can make a connected pin
+    # read as unconnected, so the probe that matters is the negative
+    # one: a lone label must survive. The positive case is a divider's
+    # two halves, whose names land on each other.
+    d = tmp / "dupe"
+    d.mkdir()
+    # The two MID pins have to be close enough that their labels really
+    # land on each other -- 40 units apart they do not, and the first
+    # version of this probe failed against correct code.
+    parts = [("R1", 0, 0, [(0, -20, "TOP"), (0, 20, "MID")]),
+             ("R2", 0, 44, [(0, -20, "MID"), (0, 20, "BOT")])]
+    netlist(d / "n.json", parts)
+    build(d / "dupe.epro2", parts)
+    rc, log = run(d / "dupe.epro2", d / "n.json", "--labels-outward",
+                  "-o", d / "out.epro2")
+    check("two copies of one name on one spot: one is hidden",
+          rc == 0 and "duplicate net label(s) hidden" in log, log)
+    if rc == 0:
+        import zipfile as _z
+        vis = collections.Counter()
+        for line in _z.ZipFile(d / "out.epro2").read(
+                "doc.epru").decode("utf-8").split("\n"):
+            if '"key":"NET"' not in line:
+                continue
+            bb = json.loads(line.partition("||")[2].rstrip("|"))
+            if bb.get("valueVisible") is True:
+                vis[bb["value"]] += 1
+        check("...and exactly one copy of that name stays visible",
+              vis["MID"] == 1, dict(vis))
+        check("...while every other name is untouched",
+              vis["TOP"] == 1 and vis["BOT"] == 1, dict(vis))
+
+    # The negative probe, and the geometry has to be the same as the
+    # positive one. With the two parts far apart nothing overlapped at
+    # all, so deleting the name test changed nothing and the probe
+    # passed against code that would hide any neighbour. Same spacing,
+    # different names: two labels land on each other and both must stay.
+    parts2 = [("R1", 0, 0, [(0, -20, "AAA"), (0, 20, "BBB")]),
+              ("R2", 0, 44, [(0, -20, "CCC"), (0, 20, "DDD")])]
+    netlist(d / "n2.json", parts2)
+    build(d / "solo.epro2", parts2)
+    rc, log = run(d / "solo.epro2", d / "n2.json", "--labels-outward",
+                  "-o", d / "out2.epro2")
+    check("four distinct names: none hidden",
+          rc == 0 and "duplicate net label(s) hidden" not in log, log)
+    if rc == 0:
+        import zipfile as _z2
+        vis2 = collections.Counter()
+        for line in _z2.ZipFile(d / "out2.epro2").read(
+                "doc.epru").decode("utf-8").split("\n"):
+            if '"key":"NET"' not in line:
+                continue
+            bb = json.loads(line.partition("||")[2].rstrip("|"))
+            if bb.get("valueVisible") is True:
+                vis2[bb["value"]] += 1
+        check("...and BBB and CCC, which do land on each other, both stay",
+              vis2["BBB"] == 1 and vis2["CCC"] == 1, dict(vis2))
+
+    # --- designators clear of their own body, labels beside their line --
+    d = tmp / "place"
+    d.mkdir()
+    # An upright two-pin part: pins above and below, body in between.
+    parts = [("R1", 0, 0, [(0, -20, "TOP"), (0, 20, "BOT")])]
+    netlist(d / "n.json", parts)
+    build(d / "in.epro2", parts, desig_at=True, vertical=True)
+    rc, log = run(d / "in.epro2", d / "n.json", "--labels-outward",
+                  "-o", d / "out.epro2")
+    check("the designator is moved clear of its own body",
+          rc == 0 and "designator(s) moved clear" in log, log)
+    if rc == 0:
+        import zipfile as _z3
+        recs = {}
+        for line in _z3.ZipFile(d / "out.epro2").read(
+                "doc.epru").decode("utf-8").split("\n"):
+            if "||" not in line:
+                continue
+            hh, _, bb = line.partition("||")
+            hh, bb = json.loads(hh), json.loads(bb.rstrip("|"))
+            if hh.get("type") == "ATTR":
+                recs.setdefault(bb.get("key"), []).append(bb)
+        dg = [b for b in recs.get("Designator", [])
+              if isinstance(b.get("x"), (int, float))]
+        check("...and carries a position to be moved to", dg, recs.keys())
+        if dg:
+            # the body spans the pins; the name must be outside it in x
+            check("...outside its own outline",
+                  abs(dg[0]["x"]) > 10 or abs(dg[0]["y"]) > 15, dg[0])
+        rot = [b for b in recs.get("NET", [])
+               if (b.get("rotation") or 0) % 180]
+        check("a rotated label is offset sideways from its own line",
+              rot and all(b["x"] != 0 for b in rot),
+              [(b.get("value"), b.get("x")) for b in rot])
+
+    # --- a rail is drawn where it is one node, flagged where it jumps --
+    # A flagged rail used to be dropped end to end, which left the
+    # output capacitors hanging between a +5V flag and a ground
+    # triangle with nothing tying them to the inductor they smooth. A
+    # rail crossing the sheet is still a flag -- that is what flags are
+    # for -- so the rule has to tell the two apart.
+    d = tmp / "rail"
+    d.mkdir()
+    parts = [("U1", 0, 0, [(0, 0, "VCC")]),
+             ("C1", 120, 0, [(0, 0, "VCC")]),
+             ("C2", 240, 0, [(0, 0, "VCC")]),
+             ("U2", 2000, 0, [(0, 0, "VCC")])]
+    netlist(d / "n.json", parts)
+    build(d / "in.epro2", parts, flags=[(-20, 0), (100, 0), (220, 0),
+                                        (1980, 0)])
+    stubs0 = set(wires(d / "in.epro2"))
+    rc, log = run(d / "in.epro2", d / "n.json", "--max-span", "4000",
+                  "--skip-flagged", "--local-rail", "400",
+                  "-o", d / "out.epro2")
+    check("a flagged rail is drawn where its pins sit together",
+          rc == 0 and "one node rather than a rail" in log, log)
+    # Exactly one group: the three close pins. The lone far pin is not a
+    # node and counting it inflates the report without drawing anything,
+    # which is invisible on the sheet and wrong in the log.
+    check("...counted as one node, not as two",
+          "  1  flagged net(s) drawn anyway" in log, log)
+    if rc == 0:
+        added_ = [s for s in wires(d / "out.epro2") if s not in stubs0]
+        near = [s for s in added_ if max(s[0], s[2]) <= 300]
+        far = [s for s in added_ if max(s[0], s[2]) > 300]
+        check("...joining the three that are close", near, f"{added_}")
+        check("...and not reaching across to the far one", not far, f"{far}")
+
+    # Without --local-rail the old behaviour stands: nothing drawn.
+    rc, log = run(d / "in.epro2", d / "n.json", "--max-span", "4000",
+                  "--skip-flagged", "-o", d / "plain.epro2")
+    check("without --local-rail a flagged rail stays flags",
+          rc == 0 and "one node rather than a rail" not in log, log)
+
     # --- labels off the body, and the exception that allows it ----------
     # 46 of 261 visible labels overlapped a symbol: a stub is three pin
     # pitches long and `NC_EFUSE1_MODE` does not fit in that. Moving the
@@ -435,6 +697,83 @@ def main():
                    if a_[k].get(q) != b_[k].get(q)}
                   <= {"x", "y", "align", "rotation"}
                   for k in a_ if k in b_))
+
+    # --- ground is never drawn, however close its pins are ---------------
+    # Every pin of GND already carries a symbol, so a line joining those
+    # symbols says nothing they do not -- and ground is the one net a
+    # reader does not follow. Left to the router it depended on the route
+    # failing, and when it stopped failing the 5 V sheet grew a wire round
+    # six ground pins nobody had drawn. The inverse probe is the one that
+    # matters: with the rule off, the same two pins must be wired, or a
+    # rule that quietly stopped all routing would pass this.
+    d = tmp / "ground"; d.mkdir()
+    gparts = [("R1", 0, 0, [(0, 0, "GND")]), ("R2", 100, 0, [(0, 0, "GND")])]
+    netlist(d / "n.json", gparts)
+    build(d / "in.epro2", gparts)
+    g0 = set(wires(d / "in.epro2"))
+    rc, log = run(d / "in.epro2", d / "n.json", "-o", d / "out.epro2")
+    check("ground is left to its symbols",
+          rc == 0 and "carried by a symbol on every pin" in log, log)
+    check("...and nothing is drawn for it",
+          rc == 0 and not [s for s in wires(d / "out.epro2") if s not in g0],
+          log)
+    rc, log = run(d / "in.epro2", d / "n.json", "--never-draw", "",
+                  "-o", d / "off.epro2")
+    check("...but --never-draw '' wires it, so the rule is not a no-op",
+          rc == 0 and [s for s in wires(d / "off.epro2") if s not in g0], log)
+
+    # --- one name per drawn node, and the flag that replaces them --------
+    # The importer gives every pin its own labelled stub, so once a wire
+    # joins two pins the net is named once per pin. Hiding all but one is
+    # the point of the rule. The negative probe carries it: a node with no
+    # flag must still keep exactly one name, or a rule that hid every
+    # label would pass and the sheet would read as unconnected.
+    d = tmp / "onename"; d.mkdir()
+    oparts = [("R1", 0, 0, [(0, 0, "SIG")]), ("R2", 100, 0, [(0, 0, "SIG")])]
+    netlist(d / "n.json", oparts)
+    build(d / "noflag.epro2", oparts)
+    rc, log = run(d / "noflag.epro2", d / "n.json", "-o", d / "nf.epro2")
+    check("a drawn node keeps exactly one of its names",
+          rc == 0 and visible(d / "nf.epro2").get("SIG") == 1,
+          f"{visible(d / 'nf.epro2') if rc == 0 else log}")
+    rc, log = run(d / "noflag.epro2", d / "n.json", "--keep-text",
+                  "-o", d / "kt.epro2")
+    check("...and --keep-text keeps both, so the rule is not a no-op",
+          rc == 0 and visible(d / "kt.epro2").get("SIG") == 2,
+          f"{visible(d / 'kt.epro2') if rc == 0 else log}")
+    build(d / "flag.epro2", oparts, flags=[(-20, 0)])
+    rc, log = run(d / "flag.epro2", d / "n.json", "-o", d / "fl.epro2")
+    check("...and a flag on the node keeps none of them",
+          rc == 0 and visible(d / "fl.epro2").get("SIG") is None,
+          f"{visible(d / 'fl.epro2') if rc == 0 else log}")
+
+    # --- names down a pin row stay on their own stub ---------------------
+    # A 10-unit pin row holds text 8 tall, so three names down one row do
+    # not touch. The first version of this rule bucketed them on a coarse
+    # 40-unit grid and staggered the second and third outward anyway --
+    # which on the real sheet put NC_BUCK_EN 32 units off its own stub,
+    # nearer C9's pin on VBUS than its own line. Overlap, not proximity,
+    # is what has to be resolved, and the count the tool already keeps
+    # measures it: a name nearer a foreign stub end than its own.
+    d = tmp / "row"; d.mkdir()
+    rparts = [("U1", 0, 0, [(0, 0, "AAA"), (0, 10, "BBB"), (0, 20, "CCC")])]
+    netlist(d / "n.json", rparts)
+    build(d / "in.epro2", rparts)
+    rc, log = run(d / "in.epro2", d / "n.json", "--labels-outward",
+                  "-o", d / "out.epro2")
+    # The offset probe is the one that catches the old behaviour: against
+    # the 40-unit bucket it reports three distinct offsets, -60 / -44 /
+    # -28, for three names that never touched. The adrift counter below
+    # does *not* fire on this fixture -- its own stub end is still the
+    # nearest for every one of the three -- so it is a guard on the
+    # counter being wired up, not the probe that finds the regression.
+    # Saying which is which matters: a line that reads as evidence and
+    # cannot fail is the thing this file exists to avoid.
+    if rc == 0:
+        xs = sorted({b["x"] for b in net_attrs(d / "out.epro2")})
+        check("names down a pin row are not staggered", len(xs) == 1, xs)
+    check("...and the tool reports no label adrift",
+          rc == 0 and "0 net label(s) sit nearer a foreign stub" in log, log)
 
     print()
     if FAILURES:

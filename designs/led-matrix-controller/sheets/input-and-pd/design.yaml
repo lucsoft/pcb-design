@@ -72,6 +72,12 @@ rails:
     type: ground
 
 
+dnf:
+  R48: >-
+    0 R follower bypass. Fitted at 36 V it puts the bus onto the rail feeding a
+    pin rated 33 V absolute and destroys U1. It exists for a <=28 V build, where
+    Q3 and D1 come out; that variant drops R48 from this list.
+
 blocks:
   Bus voltage ADC: [C36, R31, R32]
   Current sense: [C20, R1, R17, R18, R45, R49, R50, U6]

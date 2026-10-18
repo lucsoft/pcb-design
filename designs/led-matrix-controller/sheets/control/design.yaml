@@ -72,6 +72,13 @@ rails:
     type: ground
 
 
+dnf:
+  U3: >-
+    The C-number resolves the symbol and footprint and must not reach a PCBA
+    order, where it buys the $22.89 WIZnet original instead of the EUR 12.30
+    clone that drops into the same footprint. Hand-soldered.
+
+
 blocks:
   Differential link: [C21, C22, D10, D11, D12, D13, R35, R36, R37, R38, R42, R43, U7, U8]
   Ethernet module: [C32, R46, R47, U3]

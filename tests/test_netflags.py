@@ -99,6 +99,119 @@ def target(path, stubs):
     write(path, r)
 
 
+def donor_drawn(path):
+    """A donor whose flag symbol actually draws something.
+
+    The shared donor's symbol carries a PART and a PIN and no graphic
+    primitive at all, so a flag made from it has no extent and can never
+    be found overlapping anything. Nothing about the clash rule was
+    reachable with it.
+    """
+    r, t = [], 0
+
+    def add(h, b):
+        nonlocal t
+        t += 1
+        h["ticket"] = t
+        r.append((h, b))
+
+    add({"type": "DOCHEAD"}, {"docType": "SCH_PAGE", "uuid": "sch"})
+    add({"type": "COMPONENT", "id": "f1"},
+        {"partId": FLAG_PART, "x": 0, "y": 0, "rotation": 0,
+         "isMirror": False})
+    for k, v in (("Symbol", "symG"), ("Device", "devG"), ("Name", "GND")):
+        add({"type": "ATTR", "id": f"fa{k}"},
+            {"key": k, "value": v, "parentId": "f1"})
+    # A supply flag as well, placed on the canvas beside the ground one.
+    # With only a ground symbol on offer every rail in a fixture has to
+    # borrow it -- and then it counts as ground, which is exempt from
+    # the per-node rule, so the probe tested the exemption rather than
+    # the rule. It goes here, with the other canvas records: put after
+    # the ground DEVICE it lands *inside* that document and gets copied
+    # along with it, which broke two older probes by one flag each.
+    add({"type": "COMPONENT", "id": "f2"},
+        {"partId": FLAG_PART, "x": 400, "y": 0, "rotation": 0,
+         "isMirror": False})
+    for k, v in (("Symbol", "symP"), ("Device", "devP"), ("Name", "+5V")):
+        add({"type": "ATTR", "id": f"fb{k}"},
+            {"key": k, "value": v, "parentId": "f2"})
+
+    add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": "symG"})
+    add({"type": "PART", "id": "pG"}, {"BBOX": [-10, -10, 10, -19],
+                                       "title": ""})
+    add({"type": "PIN", "id": "pinG"},
+        {"partId": FLAG_PART, "x": 0, "y": 0, "length": 10, "rotation": 270})
+    # the bar, reaching 55 units each way -- wider than a stub is long,
+    # which is what makes it land back on its own part
+    add({"type": "POLY", "id": "gpoly"},
+        {"points": [{"x": -55, "y": 0}, {"x": 55, "y": 0},
+                    {"x": 55, "y": 30}, {"x": -55, "y": 30}]})
+    add({"type": "DOCHEAD"}, {"docType": "DEVICE", "uuid": "devG"})
+    add({"type": "META", "id": "mG"},
+        {"title": "Ground-GND", "attributes": {"Global Net Name": "GND"}})
+
+    add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": "symP"})
+    add({"type": "PART", "id": "pP"}, {"BBOX": [-10, -10, 10, -19],
+                                       "title": ""})
+    add({"type": "PIN", "id": "pinP"},
+        {"partId": FLAG_PART, "x": 0, "y": 0, "length": 10, "rotation": 270})
+    add({"type": "POLY", "id": "ppoly"},
+        {"points": [{"x": -5, "y": -10}, {"x": 5, "y": -10},
+                    {"x": 5, "y": -5}, {"x": -5, "y": -5}]})
+    add({"type": "DOCHEAD"}, {"docType": "DEVICE", "uuid": "devP"})
+    add({"type": "META", "id": "mP"},
+        {"title": "Power-5V", "attributes": {"Global Net Name": "+5V"}})
+    write(path, r)
+
+
+def target_boxed(path, stubs, half=20, group=None):
+    """Like target(), but every component symbol draws a body.
+
+    `group` maps a stub index to a component index, so several stubs can
+    belong to one part. Without it every stub gets its own component,
+    which made the two-flags-on-one-part case impossible to express.
+    """
+    r, t = [], 0
+
+    def add(h, b):
+        nonlocal t
+        t += 1
+        h["ticket"] = t
+        r.append((h, b))
+
+    add({"type": "DOCHEAD"}, {"docType": "SCH_PAGE", "uuid": "sch"})
+    g = group or {i: i for i in range(len(stubs))}
+    comps = {}
+    for i, (px, py, fx, fy, net) in enumerate(stubs):
+        c = g[i]
+        if c not in comps:
+            comps[c] = (px, py)
+            add({"type": "COMPONENT", "id": f"c{c}"},
+                {"partId": f"P{c}.1", "x": px, "y": py, "rotation": 0,
+                 "isMirror": False})
+            add({"type": "ATTR", "id": f"d{c}"},
+                {"key": "Designator", "value": f"R{c + 1}",
+                 "parentId": f"c{c}"})
+            add({"type": "ATTR", "id": f"s{c}"},
+                {"key": "Symbol", "value": f"sym{c}", "parentId": f"c{c}"})
+        add({"type": "WIRE", "id": f"w{i}"}, {"groupId": "", "zIndex": 1})
+        add({"type": "LINE", "id": f"l{i}"},
+            {"lineGroup": f"w{i}", "startX": px, "startY": py,
+             "endX": fx, "endY": fy})
+        add({"type": "ATTR", "id": f"n{i}"},
+            {"key": "NET", "value": net, "parentId": f"w{i}"})
+    for c, (cx, cy) in comps.items():
+        add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": f"sym{c}"})
+        for i, (px, py, _fx, _fy, _n) in enumerate(stubs):
+            if g[i] == c:
+                add({"type": "PIN", "id": f"p{i}"},
+                    {"partId": f"P{c}.1", "x": px - cx, "y": py - cy,
+                     "length": 10, "rotation": 0})
+        add({"type": "RECT", "id": f"rc{c}"},
+            {"dotX1": -half, "dotY1": -half, "dotX2": half, "dotY2": half})
+    write(path, r)
+
+
 def read(path):
     z = zipfile.ZipFile(path)
     out = []
@@ -108,6 +221,195 @@ def read(path):
         h, _, b = line.partition("||")
         out.append((json.loads(h), json.loads(b.rstrip("|"))))
     return out
+
+
+def test_flag_clash(tmp):
+    """A flag that can only be drawn across a part is not placed at all.
+
+    The pin keeps its net name, which is what names the net; a symbol
+    drawn over a package is a fault the sheet gets marked down for.
+    """
+    dn = tmp / "d2.epro2"
+    donor_drawn(dn)
+
+    # The stub points *left*, back over its own 20-unit-half body, and
+    # the flag bar reaches 55 units -- so wherever it is rooted it lands
+    # on the part. This is J4 on the supply sheet.
+    # Two parts: one whose flag cannot be placed and one whose can. With
+    # only the clashing part the tool skipped it, found nothing left to
+    # place and exited 1, so the probe measured the exit status rather
+    # than the rule.
+    # A part carrying TWO rail nets, both of whose flags would be drawn
+    # across its body. One is skipped; the other is kept, because a part
+    # with no flag and no wire reads as unconnected and that is worse
+    # than a symbol drawn a little close. With only one net the probe
+    # tested nothing: the single flag is that part's only mark and the
+    # rule keeps it, correctly.
+    tg = tmp / "clash.epro2"
+    target_boxed(tg, [(0, -10, -30, -10, "GND"), (0, 10, -30, 10, "VCC"),
+                      (600, 0, 600, 200, "GND")],
+                 group={0: 0, 1: 0, 2: 1})
+    rc, log = run(tg, "--donor", dn, "--nets", "GND,VCC=GND",
+                  "--one-per-part", "-o", tmp / "clash-out.epro2")
+    check("one of two crowded flags on a part is skipped",
+          rc == 0 and "would be drawn across a part" in log, log)
+    # The outcome, not the message: whichever path kept it, the crowded
+    # part must still carry a flag. Asserting the sentence tied the
+    # probe to one of the two ways the rule can reach the right answer.
+    if rc == 0:
+        near = [b for h, b in read(tmp / "clash-out.epro2")
+                if h.get("type") == "COMPONENT"
+                and b.get("partId") == FLAG_PART
+                and abs(b.get("x", 999)) < 100]
+        check("...and the crowded part still carries one", near,
+              [(b.get("x"), b.get("y")) for h, b in
+               read(tmp / "clash-out.epro2")
+               if b.get("partId") == FLAG_PART])
+    if rc == 0:
+        placed = sum(1 for h, b in read(tmp / "clash-out.epro2")
+                     if h.get("type") == "COMPONENT"
+                     and b.get("partId") == FLAG_PART)
+        check("...so two flags land, not three and not one",
+              placed == 2, f"{placed} placed")
+
+    # The inverse: a stub pointing away from a small body has room, and
+    # the flag must still be placed. Without this the rule could skip
+    # everything and the clash count would read zero for the wrong reason.
+    tg2 = tmp / "clear.epro2"
+    target_boxed(tg2, [(0, 0, 0, 200, "GND")], half=5)
+    rc, log = run(tg2, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "-o", tmp / "clear-out.epro2")
+    check("a flag with room is still placed",
+          rc == 0 and "would be drawn across a part" not in log, log)
+    if rc == 0:
+        placed = sum(1 for h, b in read(tmp / "clear-out.epro2")
+                     if h.get("type") == "COMPONENT"
+                     and b.get("partId") == FLAG_PART)
+        check("...and exactly one flag lands", placed == 1, f"{placed} placed")
+
+
+def test_flag_lead(tmp):
+    """A crowded flag is carried out of the pin field, not dropped.
+
+    An IC's pins are ten units apart and a ground symbol is twenty
+    across, so a flag at the stub end of a dense row must touch its
+    neighbours. Dropping it loses the symbol; keeping it loses the
+    reading -- a ground triangle beside an enable stub says the
+    regulator is held off. The lead is the third answer, and it is wire
+    on the net the flag already belongs to.
+    """
+    dn = tmp / "d3.epro2"
+    donor_drawn(dn)
+
+    # Two pins one pitch apart: GND and a signal. The ground flag at the
+    # stub end would sit on the signal stub's end.
+    tg = tmp / "crowd.epro2"
+    target_boxed(tg, [(0, 0, -30, 0, "GND"), (0, 10, -30, 10, "SIG")],
+                 half=5, group={0: 0, 1: 0})
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--strict-flags", "--flag-clearance", "15",
+                  "--flag-lead", "40", "-o", tmp / "crowd-out.epro2")
+    check("a crowded flag is led out of the pin field",
+          rc == 0 and "carried 40 units out" in log, log)
+    if rc == 0:
+        recs = read(tmp / "crowd-out.epro2")
+        flag = [b for h, b in recs if h.get("type") == "COMPONENT"
+                and b.get("partId") == FLAG_PART]
+        check("...and the flag sits at the lead's tip, not the stub end",
+              flag and flag[0]["x"] <= -70, flag)
+        leads = [b for h, b in recs if h.get("type") == "LINE"
+                 and abs(b.get("startX", 0) - b.get("endX", 0)) == 40]
+        check("...with the lead drawn on its own net's line group",
+              leads and leads[0].get("lineGroup"), leads)
+
+    # The clearance: a foreign stub end sitting where the lead would go
+    # must stop it. Without this the rule could carry a flag straight
+    # through somebody else's pin and the probes above would still pass.
+    tg2 = tmp / "blocked.epro2"
+    target_boxed(tg2, [(0, 0, -30, 0, "GND"), (0, 10, -30, 10, "SIG"),
+                       (-100, 0, -70, 0, "OTHER")],
+                 half=5, group={0: 0, 1: 0, 2: 1})
+    rc, log = run(tg2, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--strict-flags", "--flag-clearance", "15",
+                  "--flag-lead", "40", "-o", tmp / "blocked-out.epro2")
+    # Not "no lead": a lead may turn now, so a blocker straight ahead is
+    # a reason to go round rather than to give up. What must hold is
+    # that nothing the lead draws comes near the foreign stub end --
+    # which is the property the rule exists for. Asserting the absence
+    # of a lead tested the old implementation, not the rule.
+    if rc == 0:
+        near = []
+        for h, b in read(tmp / "blocked-out.epro2"):
+            if h.get("type") != "LINE" or "startX" not in b:
+                continue
+            ends = ((b["startX"], b["startY"]), (b["endX"], b["endY"]))
+            # The blocker's own stub ends there by construction; it is
+            # the lead that must stay away. The first version of this
+            # check counted the blocker and failed against correct code.
+            if (-100, 0) in ends:
+                continue
+            for px, py in ends:
+                if abs(px - (-70)) <= 12 and abs(py - 0) <= 12:
+                    near.append((px, py))
+        check("no lead segment reaches the foreign stub end", not near,
+              f"{near}\n{log}")
+        # And it must actually go round, not quietly give up: a blocker
+        # straight ahead is a reason to turn. Without this the probe
+        # passed whether the turning lead existed or not.
+        check("...and the lead goes round it", "carried" in log, log)
+        turns = [b for h, b in read(tmp / "blocked-out.epro2")
+                 if h.get("type") == "LINE" and "startX" in b
+                 and b["startX"] == b["endX"]
+                 and abs(b["endY"] - b["startY"]) == 40]
+        check("...with a segment across its own stub", turns,
+              f"{len(turns)} turned segment(s)\n{log}")
+    else:
+        check("a blocked lead is refused rather than forced", True, log)
+
+    # Without the option the flag stays put: the lead must be the
+    # difference, not some other change made at the same time.
+    rc, log = run(tg, "--donor", dn, "--nets", "GND", "--one-per-part",
+                  "--strict-flags", "--flag-clearance", "15",
+                  "-o", tmp / "noled-out.epro2")
+    check("without --flag-lead nothing is carried out",
+          "carried" not in log, log)
+
+
+def test_one_per_node(tmp):
+    """One flag per node, not per pin -- and ground keeps all of them.
+
+    A rail that is drawn as a wire needs one name. Four +5V flags along
+    one drawn rail say the same thing four times, and one of them sat
+    on a stub that ended free below the line and read as an open
+    connection.
+
+    Ground is the exception and the probe has to show it: ground is
+    never drawn as a wire here, so collapsing it to one symbol per node
+    leaves most ground pins with nothing at all -- which is what one
+    flag for the whole sheet looked like.
+    """
+    dn = tmp / "d4.epro2"
+    donor_drawn(dn)
+
+    # Three VCC pins close together, one far away; four ground pins.
+    stubs = [(0, 0, -30, 0, "VCC"), (120, 0, 90, 0, "VCC"),
+             (240, 0, 210, 0, "VCC"), (2000, 0, 1970, 0, "VCC"),
+             (0, 200, -30, 200, "GND"), (120, 200, 90, 200, "GND"),
+             (240, 200, 210, 200, "GND"), (2000, 200, 1970, 200, "GND")]
+    tg = tmp / "node.epro2"
+    target_boxed(tg, stubs, half=5)
+    rc, log = run(tg, "--donor", dn, "--nets", "GND,VCC=+5V",
+                  "--one-per-part", "--one-per-node", "400",
+                  "-o", tmp / "node-out.epro2")
+    check("one flag per node is accepted", rc == 0, log)
+    if rc == 0:
+        import re as _re
+        got = dict(_re.findall(r"place\s+(\d+) x (\S+)", log))
+        got = {v: int(k) for k, v in got.items()}
+        check("...so the three close VCC pins share one flag",
+              got.get("VCC") == 2, got)
+        check("...and ground keeps one on every pin",
+              got.get("GND") == 4, got)
 
 
 def run(*args):
@@ -305,6 +607,10 @@ def main():
           rc == 0 and "place    1 x GND" in log_one, log_one)
     check("...and both files are written",
           o4a.exists() and o4b.exists())
+
+    test_flag_clash(tmp)
+    test_flag_lead(tmp)
+    test_one_per_node(tmp)
 
     print()
     if FAILURES:

@@ -1414,6 +1414,137 @@ def _band(name, mem, box, nets, pinsof, localpins, rails, decl, gap_x, gap_y,
     return band
 
 
+def align_shared(placed, blocks, nets, pinsof, localpins, rails, decl, ao):
+    """Put a satellite's shared pin on the same line as its hub's.
+
+    The star model places a satellite in a row above or below its hub,
+    at whatever x the row packing gives it. The net they share then has
+    to be routed from one to the other, and the router -- which may not
+    cross anything -- answers with a dog-leg. Measured over the supply
+    sheet that is a median detour of 1.39 against a hand layout's 1.0,
+    six wires with three or more corners against none, and 5.2% of the
+    sheet ringed by wire with no part inside it.
+
+    None of that is the router's doing. A wire needs a corner because
+    the two pins it joins are not on one line, and that is a placement
+    decision. So: where a satellite shares exactly one non-rail net
+    with its hub, and each of them has exactly one pin on it, move the
+    satellite along one axis until those two pins agree on the other.
+    A part lying flat gets its y matched, an upright one its x.
+
+    Only one shared net, and only one pin each -- otherwise there is no
+    single line to agree on and picking one would be arbitrary. Rails
+    are excluded because they carry flags now and are not drawn.
+
+    This only ever changes one coordinate of one satellite, so the
+    packer's x ordering survives, and `relax` and `collisions` still
+    have the last word on overlap.
+    """
+    ranked = {}
+    for d, b in blocks.items():
+        ranked.setdefault(b, set()).add(d)
+    moved = 0
+    for mem in ranked.values():
+        own, hubs = owners(mem, nets, pinsof, rails, decl)
+        for sat, hub in own.items():
+            if sat not in placed or hub not in placed or hub not in hubs:
+                continue
+            shared = [n for n in
+                      set(pinsof.get(sat, ())) & set(pinsof.get(hub, ()))
+                      if n not in rails and not n.upper().startswith("NC_")]
+            if len(shared) != 1:
+                continue
+            n = shared[0]
+            sp = [(dx, dy) for dx, dy, m in localpins.get(sat, ()) if m == n]
+            hp = [(dx, dy) for dx, dy, m in localpins.get(hub, ()) if m == n]
+            if len(set(sp)) != 1 or len(set(hp)) != 1:
+                continue
+            offs = localpins.get(sat, ())
+            xs = {dx for dx, _, _ in offs}
+            ys = {dy for _, dy, _ in offs}
+            if len(xs) == len(ys):
+                continue                      # square or single-pin: no axis
+            axis = 1 if len(xs) > len(ys) else 0   # flat -> match y
+            want = (ao[hub][axis] + placed[hub][axis] + hp[0][axis]
+                    - ao[sat][axis] - sp[0][axis])
+            cur = placed[sat]
+            new = (want, cur[1]) if axis == 0 else (cur[0], want)
+            if new != cur:
+                placed[sat] = new
+                moved += 1
+    return placed, moved
+
+
+def pull_bypass(placed, box, blocks, nets, pinsof, rails, decl, limit, pad):
+    """Bring a one-part cluster next to the thing it bypasses.
+
+    A two-pin part whose every net is a declared rail carries a flag at
+    each end and no drawn wire, so **nothing but proximity says what it
+    belongs to**. The star packer gives it a slot in its owner's row and
+    then the row wraps, and the part ends up 100 mm away looking like a
+    capacitor somebody forgot: 35 of this board's 39 such parts sat more
+    than 38 mm from the nearest multi-pin component on their own rail,
+    one of them 182 mm.
+
+    Electrically nothing is wrong and no net check can see it -- which
+    is exactly the class of fault this project keeps finding late.
+
+    Candidates are tried outward from the owner and the first one that
+    overlaps nothing wins, so a dense block simply keeps more of its
+    original spacing rather than piling up.
+    """
+    ranked = collections.defaultdict(set)
+    for d, b in blocks.items():
+        ranked[b].add(d)
+    moved, gave_up = 0, 0
+    for mem in ranked.values():
+        own, _hubs = owners(mem, nets, pinsof, rails, decl)
+        bypass = [d for d in sorted(mem, key=_desig_key)
+                  if d in placed and d in own and own[d] in placed
+                  and len([n for n in pinsof.get(d, ())
+                           if not n.upper().startswith("NC_")]) == 2
+                  and all(n in rails for n in pinsof.get(d, ())
+                          if not n.upper().startswith("NC_"))]
+        for d in bypass:
+            o = own[d]
+            ow, oh = box[o][2] - box[o][0], box[o][3] - box[o][1]
+            dw, dh = box[d][2] - box[d][0], box[d][3] - box[d][1]
+            ox, oy = placed[o]
+            best = None
+            for r in range(1, limit // 20 + 1):
+                step = r * 20
+                for dx, dy in ((0, -(oh / 2 + dh / 2 + step)),
+                               (0, oh / 2 + dh / 2 + step),
+                               (-(ow / 2 + dw / 2 + step), 0),
+                               (ow / 2 + dw / 2 + step, 0)):
+                    cx = ox + (ow - dw) / 2 + dx
+                    cy = oy + (oh - dh) / 2 + dy
+                    nb = (box[d][0] + cx, box[d][1] + cy,
+                          box[d][2] + cx, box[d][3] + cy)
+                    clash = False
+                    for q, (qx, qy) in placed.items():
+                        if q == d:
+                            continue
+                        qb = (box[q][0] + qx, box[q][1] + qy,
+                              box[q][2] + qx, box[q][3] + qy)
+                        if (nb[0] - pad < qb[2] and qb[0] - pad < nb[2]
+                                and nb[1] - pad < qb[3]
+                                and qb[1] - pad < nb[3]):
+                            clash = True
+                            break
+                    if not clash:
+                        best = (cx, cy)
+                        break
+                if best:
+                    break
+            if best and best != placed[d]:
+                placed[d] = best
+                moved += 1
+            elif not best:
+                gave_up += 1
+    return placed, moved, gave_up
+
+
 def upright(lines, design, rails, wide=False):
     """Which parts to stand up, and which way round, measured per part.
 
@@ -1649,6 +1780,14 @@ def main() -> int:
                          "than from the one being arranged. A carved sheet "
                          "holds a subset, whose spacings are multiples of "
                          "the real pitch and not the pitch")
+    ap.add_argument("--pull-bypass", type=int, default=0,
+                    help="bring a rail-only two-pin part within this many "
+                         "units of the component it bypasses; nothing but "
+                         "proximity says what such a part belongs to")
+    ap.add_argument("--align-series", action="store_true",
+                    help="move each satellite onto the line of the hub pin "
+                         "it shares a signal net with, so that net needs no "
+                         "corner")
     ap.add_argument("--block-gap", type=int, default=120,
                     help="extra units between blocks (default 120)")
     a = ap.parse_args()
@@ -1807,10 +1946,48 @@ def main() -> int:
             if order != was:
                 print("  flow order: " + " -> ".join(order[:4])
                       + (" ..." if len(order) > 4 else ""))
-        placed = relax(star_pack(blocks, order, box, nets, pinsof,
-                                 localpins, rails, decl, a.gap, a.gap,
-                                 a.block_gap, a.columns, a.max_row,
-                                 a.stagger, flow_depth), box, a.gap)
+        placed = star_pack(blocks, order, box, nets, pinsof,
+                           localpins, rails, decl, a.gap, a.gap,
+                           a.block_gap, a.columns, a.max_row,
+                           a.stagger, flow_depth)
+        if a.align_series:
+            cell_of = {d: c for c, d in owner.items()}
+            anch = anchors_of(lines, of_record, owner)
+            ao = {d: (anch[d][0] - grid.origin(*cell_of[d])[0],
+                      anch[d][1] - grid.origin(*cell_of[d])[1])
+                  for d in placed if d in anch and d in cell_of}
+            placed, nalign = align_shared(placed, blocks, nets, pinsof,
+                                          localpins, rails, decl, ao)
+            placed = relax(placed, box, a.gap)
+            # Again after relax. Relax pushes overlapping boxes apart and
+            # does not know which coordinate was deliberate, so it undoes
+            # the alignment it was handed; aligning once more and letting
+            # `collisions` have the last word keeps both -- the run fails
+            # closed if the second pass reintroduces an overlap.
+            placed, nalign2 = align_shared(placed, blocks, nets, pinsof,
+                                           localpins, rails, decl, ao)
+            print(f"  {nalign} satellite(s) moved onto their hub pin's line, "
+                  f"{nalign2} re-aligned after relax")
+        if a.pull_bypass:
+            placed, npull, nfail = pull_bypass(
+                placed, box, blocks, nets, pinsof, rails, decl,
+                a.pull_bypass, a.gap)
+            # Then relax, then pull again. Relax pushes overlapping boxes
+            # apart without knowing which coordinate was deliberate, so
+            # it undid every one of these: all seven of the supply
+            # sheet's clusters were pulled in and all seven came out
+            # further away than they went in. Same shape as the pin
+            # alignment, same remedy, and `collisions` still has the last
+            # word.
+            placed = relax(placed, box, a.gap)
+            placed, npull2, nfail = pull_bypass(
+                placed, box, blocks, nets, pinsof, rails, decl,
+                a.pull_bypass, a.gap)
+            print(f"  {npull} one-part cluster(s) pulled beside what they "
+                  f"bypass, {npull2} re-pulled after relax"
+                  + (f", {nfail} with no room within {a.pull_bypass} units"
+                     if nfail else ""))
+        placed = relax(placed, box, a.gap)
         missing = sorted(set(blocks) - set(placed))
         if missing:
             print(f"  error: star layout placed nothing for "

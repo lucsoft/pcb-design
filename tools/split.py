@@ -208,6 +208,12 @@ def main() -> int:
     # twelve blocks makes every sheet demand geometry for the whole board
     # and refuse. Each sheet gets only its own blocks.
     rails, keep_line = [], False
+    # `dnf:` has to travel too. It is the only machine-readable record
+    # that a pad is placed and must not be fitted, and a sheet that
+    # loses it reports those parts as ordinary -- and, since
+    # blocktitles prints the reason beside the part, says nothing on
+    # the drawing either. Per sheet, only the designators on it.
+    dnf_lines, in_dnf, dnf_cur = [], False, None
     for line in (a.design / "design.yaml").read_text(
             encoding="utf-8").splitlines():
         if line.startswith("rails:"):
@@ -216,6 +222,18 @@ def main() -> int:
             keep_line = False
         if keep_line:
             rails.append(line)
+        if re.match(r"^dnf:\s*$", line):
+            in_dnf = True
+            continue
+        if in_dnf:
+            if line and not line[0].isspace():
+                in_dnf = False
+            else:
+                m = re.match(r"^  (\S[^:]*):", line)
+                if m:
+                    dnf_cur = m.group(1).strip()
+                if dnf_cur:
+                    dnf_lines.append((dnf_cur, line))
 
     for sh, o in written:
         slug = re.sub(r"[^a-z0-9]+", "-", sh.lower()).strip("-")
@@ -235,7 +253,12 @@ def main() -> int:
                "# netlist, and a designator in no block is an error in",
                "# arrange.py -- placing it somewhere by default would put",
                "# a part in the wrong block silently.", ""]
-        yml += rails + ["", "blocks:"]
+        yml += rails
+        mine_dnf = [ln for d_, ln in dnf_lines
+                    if d_ in {c["props"]["Designator"] for c in o.values()}]
+        if mine_dnf:
+            yml += ["", "dnf:"] + mine_dnf
+        yml += ["", "blocks:"]
         for b in sorted(mine):
             yml.append(f"  {b}: [{', '.join(sorted(mine[b]))}]")
         (d / "design.yaml").write_text("\n".join(yml) + "\n",

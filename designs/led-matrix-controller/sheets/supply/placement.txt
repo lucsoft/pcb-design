@@ -1,0 +1,90 @@
+# Supply sheet, laid out by hand.
+#
+# The reference an automatic layout gets judged against. Two cascaded
+# buck converters, each drawn the way its own datasheet draws it.
+#
+# Three rules set this arrangement, all of them from review findings:
+#
+#   1. A support capacitor stands within about 60 units -- 15 mm -- of
+#      the pin it serves. Nothing but proximity says what a part
+#      carrying only rail flags belongs to, so distance is the whole of
+#      its meaning. C8 and C9 cannot both be that close on one side;
+#      the bypass gets the near slot and the bulk sits beyond it.
+#   2. Each block is a contiguous rectangle with no foreign part inside
+#      it, and the blocks run in flow order down the sheet: 36 V to 5 V
+#      first, 5 V to 3V3 below it.
+#   3. Nothing enters the zone band or the title block. Both are
+#      reserved by ISO 5457 and a plotter cuts at the frame;
+#      blocktitles.py refuses to write when something does.
+#
+# Shunt parts stand upright, supply up and ground down, without
+# exception. U4's four right-hand pins each turn downward at their own
+# x, and the catch diode stays out of those corridors.
+#
+# designator  x     y    rotation
+
+# ---- Stage 1: TPS54360, VBUS -> 5 V ----------------------------------
+# U4's VBUS pin sits at symbol-local y=-5, so the anchor goes to y=125
+# and every pin lands on the 10-unit lattice.
+U4    330    125     0
+C5    330     40     0        # bootstrap, bridges SW_BOOT to SW over the IC
+C9    220    140    90        # 220nF 100V input bypass, hard against VIN
+C8     140    140    90        # 4.7uF 100V input bulk, beyond it
+R24   250    250    90        # RT_SET, straight down from the pin
+R25    950    130    90        # 5 V feedback divider, top
+R26    950    250    90        # 5 V feedback divider, bottom
+C7     440    250    90        # compensation, COMP to GND
+R27    560    250    90        # compensation series
+C6     560    370    90        # ... and its capacitor, directly under it
+D2    500    130    90        # catch diode, hanging off the switch node
+L1    620    110     0        # 10uH, switch node to the 5 V rail
+C10    730    130    90
+C11    810    130    90
+
+# ---- Stage 2: SY8089A1, 5 V -> 3V3 -----------------------------------
+# Turned 180 deliberately. The symbol puts its input on the right and
+# its output on the left, so at rotation 0 the stage reads backwards
+# against the sheet. The flip costs upside-down pin text and buys a
+# power path running the same way as stage 1 and as the page.
+U5      280    490   180
+C12     185    500    90        # 22uF input, hard against the 5 V pin
+C14    105    500    90
+R28    690    540    90        # 3V3 feedback divider, top
+R29    690    660    90        # 3V3 feedback divider, bottom
+L2     480    480     0        # 2.2uH, LX to the 3V3 rail
+C13    560    500    90
+R30     410    610   270        # enable pull-up, supply end upward
+
+# ---- Fan header ------------------------------------------------------
+J4      770    500     0        # not fitted; see design.yaml dnf:
+
+# ---- Measured, and deliberately left -----------------------------------
+# Three wire ends carry no visible name. They are the stubs whose second
+# copy of a name was hidden -- a divider's two resistors each label the
+# node between them, and one of the two copies goes. The name is still
+# on the twin a few units away. A counter that asks "does this end have
+# a name?" rather than "is this end's net named here?" reports them, and
+# that is the counter's question being wrong, not the sheet's.
+#
+# ---- Why this is A3 and not A4 -----------------------------------------
+# Measured with everything the format picker sees -- parts, flags, leads,
+# labels, the cross-sheet list and the remarks box -- the drawing is
+# 990 x 779 units. A4's usable area, inside the zone band, is 971 x 668.
+# The width is 19 over and could be closed; the height is 111 over and
+# cannot. Tightening every column gap from 120 to 110 and lifting the
+# second band buys about 50 to 60, so A4 needs the sheet reorganised
+# rather than nudged. Three attempts to close it by moving parts are in
+# the history; each produced a sheet whose own clip check refused it.
+#
+# ---- The flag lead is 60 units, and that is measured ------------------
+# A flag carried out of the pin field puts a new line end near the
+# neighbouring pin's name, and three labels read as ambiguous for it.
+# Swept against every counter at once: 40 units leaves three, 60 leaves
+# one, 80 goes back to three -- the tip has to land past the neighbour's
+# name rather than beside it. 50 through 70 all read one, so the
+# setting is a plateau and not a knife edge.
+#
+# The other direction was tried first and is worse: pushing the labels
+# further out instead. --label-offset 8 gives three ambiguous and
+# nothing else; 14 adds a label on a foreign wire; 20 gives five
+# ambiguous. The names are already as far out as they can usefully go.

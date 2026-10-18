@@ -9,6 +9,7 @@ to be exercised by something other than itself.
 """
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -81,10 +82,243 @@ def build(d: Path):
     return d / "in.epro2", len(rows)
 
 
+def build_at(d: Path, places):
+    """Like build(), but the caller says where each part goes.
+
+    The shared fixture puts every part in one row, so the bottom right
+    corner is always occupied and the title block could only ever go
+    below. That made the free-corner branch untestable with it.
+    """
+    d.mkdir(parents=True, exist_ok=True)
+    nl = {f"gge{i + 1}": {"props": {"Designator": des, "Supplier Part": "C9"},
+                          "pins": {"1": "GND"}}
+          for i, (des, _, _) in enumerate(places)}
+    (d / "netlist.json").write_text(json.dumps(nl), encoding="utf-8")
+    gen = ["    # ---- Front " + "-" * 30]
+    gen += [f'        ("{des}", "C9", "x", "y", {{}}),' for des, _, _ in places]
+    (d / "netlist.py").write_text("\n".join(gen) + "\n", encoding="utf-8")
+
+    rows, t = [], 0
+
+    def add(h, b):
+        nonlocal t
+        t += 1
+        h["ticket"] = t
+        rows.append((h, b))
+
+    add({"type": "DOCHEAD"}, {"docType": "SCH_PAGE", "uuid": "sch"})
+    for i, (des, px, py) in enumerate(places):
+        add({"type": "COMPONENT", "id": f"c{i}"},
+            {"partId": "P.1", "x": px, "y": py, "rotation": 0,
+             "isMirror": False})
+        add({"type": "ATTR", "id": f"d{i}"},
+            {"parentId": f"c{i}", "key": "Designator", "value": des})
+        add({"type": "ATTR", "id": f"s{i}"},
+            {"parentId": f"c{i}", "key": "Symbol", "value": "sym"})
+    add({"type": "DOCHEAD"}, {"docType": "SYMBOL", "uuid": "sym"})
+    add({"type": "RECT", "id": "r"},
+        {"dotX1": -20, "dotY1": -20, "dotX2": 20, "dotY2": 20})
+    body = "\n".join(
+        json.dumps(h, separators=(",", ":")) + "||"
+        + json.dumps(b, separators=(",", ":")) + "|" for h, b in rows)
+    with zipfile.ZipFile(d / "in.epro2", "w") as z:
+        z.writestr("project2.json", json.dumps({"title": "t"}))
+        z.writestr("doc.epru", body)
+    return d / "in.epro2"
+
+
 def read(path):
     z = zipfile.ZipFile(path)
     e = [n for n in z.namelist() if n.endswith(".epru")][0]
     return [l for l in z.read(e).decode("utf-8").split("\n") if l]
+
+
+def _title_ys(path):
+    """The y of every title-block line in a written sheet."""
+    out = []
+    for line in read(path):
+        h, _, b = line.partition("||")
+        try:
+            hh, bb = json.loads(h), json.loads(b.rstrip("|"))
+        except json.JSONDecodeError:
+            continue
+        if hh.get("type") == "ATTR" and str(bb.get("key", "")).startswith(
+                "Sheet ") and isinstance(bb.get("y"), (int, float)):
+            out.append(bb["y"])
+    return out
+
+
+def test_title_block_corner(tmp):
+    """Inside the drawing area when the corner is free, below when not.
+
+    Appending it below always costs height, and on a sheet whose bottom
+    right quadrant is empty that was a whole paper format -- A2 for a
+    drawing that fits A3 with the field beside it.
+    """
+    args = ["--sheet-title", "T", "--doc-number", "D", "--sheet", "1 of 1",
+            "--revision", "A", "--date", "2026-01-01"]
+
+    # an L: a row along the top and a column down the left, so the
+    # bottom right is empty
+    free = build_at(tmp / "free",
+                    [("R1", 0, 0), ("R2", 400, 0), ("R3", 800, 0),
+                     ("R4", 0, 400), ("R5", 0, 800)])
+    rc, log = run(free, (tmp / "free") / "netlist.json",
+                  *args, "-o", tmp / "free" / "out.epro2")
+    # The coordinate, not the message. Checking only what the tool says
+    # it did let both mutations through -- forcing the field above the
+    # drawing and forcing it below were each invisible, because the
+    # sentence is computed separately from the position.
+    ys = _title_ys(tmp / "free" / "out.epro2")
+    check("a free bottom right corner takes the title block",
+          rc == 0 and ys and max(ys) <= 820, f"{log}\n{ys}")
+
+    # a full rectangle: every corner occupied
+    taken = build_at(tmp / "taken",
+                     [("R1", 0, 0), ("R2", 400, 0), ("R3", 800, 0),
+                      ("R4", 0, 400), ("R5", 400, 400), ("R6", 800, 400)])
+    rc, log = run(taken, (tmp / "taken") / "netlist.json",
+                  *args, "-o", tmp / "taken" / "out.epro2")
+    ys2 = _title_ys(tmp / "taken" / "out.epro2")
+    check("an occupied corner pushes it below the drawing",
+          rc == 0 and ys2 and min(ys2) > 420, f"{log}\n{ys2}")
+
+
+def test_iso_sheet(tmp):
+    """The frame is a real ISO drawing area, not a box round the content.
+
+    The probe measures the aspect ratio, because that is the property
+    that failed: a frame hugging its content came out at 0.853 while the
+    title block beside it said A3, and every ISO A format is 0.707.
+    """
+    args = ["--sheet-title", "T", "--doc-number", "D", "--sheet", "1 of 1",
+            "--revision", "A", "--date", "2026-01-01", "--iso-sheet"]
+
+    def frame_of(path):
+        xs, ys = [], []
+        for line in read(path):
+            h, _, b = line.partition("||")
+            try:
+                hh, bb = json.loads(h), json.loads(b.rstrip("|"))
+            except json.JSONDecodeError:
+                continue
+            if hh.get("type") == "LINE" and str(
+                    bb.get("lineGroup", "")) and "startX" in bb:
+                xs += [bb["startX"], bb["endX"]]
+                ys += [bb["startY"], bb["endY"]]
+        return (max(xs) - min(xs), max(ys) - min(ys)) if xs else (0, 0)
+
+    small = build_at(tmp / "iso1", [("R1", 0, 0), ("R2", 300, 0),
+                                    ("R3", 0, 200)])
+    rc, log = run(small, (tmp / "iso1") / "netlist.json",
+                  *args, "-o", tmp / "iso1" / "out.epro2")
+    check("a small drawing gets an ISO sheet", rc == 0 and " sheet:" in log,
+          log)
+    if rc == 0:
+        w, h = frame_of(tmp / "iso1" / "out.epro2")
+        check("...whose frame has the ISO aspect ratio",
+              w and abs(h / w - 0.707) < 0.02, f"{w} x {h} = {h / w:.3f}")
+        check("...and the smallest format that holds it",
+              "A4 sheet" in log, log)
+
+    # Wider than A4's drawing area (1051 units), so the next format up.
+    big = build_at(tmp / "iso2", [("R1", 0, 0), ("R2", 1400, 0),
+                                  ("R3", 0, 300)])
+    rc, log = run(big, (tmp / "iso2") / "netlist.json",
+                  *args, "-o", tmp / "iso2" / "out.epro2")
+    check("a drawing too wide for A4 moves up a format",
+          rc == 0 and "A3 sheet" in log, log)
+    if rc == 0:
+        w, h = frame_of(tmp / "iso2" / "out.epro2")
+        check("...and that frame is ISO-shaped too",
+              w and abs(h / w - 0.707) < 0.02, f"{w} x {h} = {h / w:.3f}")
+
+
+def test_clip_covers_everything(tmp):
+    """Two separate things, which the first version conflated.
+
+    The *picker* must size the sheet from everything the checker will
+    test -- wires and flags included -- or it chooses a format and then
+    refuses the file it just sized. The *checker* must still refuse a
+    part that lands in the title block, which no format change fixes.
+
+    The first probe put a stray wire 4000 units out, which exhausted
+    the format table; the run stopped at the picker and the clip rule
+    was never reached, so deleting it changed nothing and the probe
+    passed anyway.
+    """
+    args = ["--sheet-title", "T", "--doc-number", "D", "--sheet", "1 of 1",
+            "--revision", "A", "--date", "2026-01-01", "--iso-sheet"]
+
+    def with_stray(path, dy, dx=0):
+        import zipfile as _z
+        src = _z.ZipFile(build_at(path.parent, [("R1", 0, 0), ("R2", 300, 0),
+                                                ("R3", 0, 200)]))
+        body = src.read("doc.epru").decode("utf-8").split("\n")
+        if dy or dx:
+            body.insert(1, json.dumps({"type": "WIRE", "ticket": 900,
+                                       "id": "stray"}, separators=(",", ":"))
+                        + "||" + json.dumps({"groupId": ""},
+                                            separators=(",", ":")) + "|")
+            body.insert(2, json.dumps({"type": "LINE", "ticket": 901,
+                                       "id": "strayl"},
+                                      separators=(",", ":")) + "||"
+                        + json.dumps({"lineGroup": "stray",
+                                      "startX": dx, "startY": dy,
+                                      "endX": dx + 50, "endY": dy},
+                                     separators=(",", ":"))
+                        + "|")
+        with _z.ZipFile(path, "w") as z:
+            z.writestr("project2.json", src.read("project2.json"))
+            z.writestr("doc.epru", "\n".join(body))
+        return path
+
+    def fmt(log):
+        m_ = re.search(r"(A[0-4]) sheet", log)
+        return m_.group(1) if m_ else None
+
+    d1 = tmp / "nostray"
+    d1.mkdir(parents=True, exist_ok=True)
+    rc, log1 = run(with_stray(d1 / "probe.epro2", 0), d1 / "netlist.json",
+                   *args, "-o", d1 / "out.epro2")
+    check("a small drawing is written", rc == 0, log1)
+
+    # A wire 900 units below the parts: still a real format, but a
+    # bigger one. The picker must see it.
+    d2 = tmp / "stray"
+    d2.mkdir(parents=True, exist_ok=True)
+    rc, log2 = run(with_stray(d2 / "probe.epro2", 900), d2 / "netlist.json",
+                   *args, "-o", d2 / "out.epro2")
+    check("a stray wire makes the picker choose a bigger sheet",
+          rc == 0 and fmt(log1) != fmt(log2),
+          f"{fmt(log1)} -> {fmt(log2)}\n{log2}")
+
+    # The same in x. One axis is not two: with only a vertical stray
+    # the x half of the picker could be deleted and nothing noticed.
+    d2b = tmp / "strayx"
+    d2b.mkdir(parents=True, exist_ok=True)
+    rc, log2b = run(with_stray(d2b / "probe.epro2", 0, 1400),
+                    d2b / "netlist.json", *args, "-o", d2b / "out.epro2")
+    check("a stray wire far to the right does the same",
+          rc == 0 and fmt(log1) != fmt(log2b),
+          f"{fmt(log1)} -> {fmt(log2b)}\n{log2b}")
+
+    # And the checker itself: a part in the bottom right corner lands in
+    # the title block, which growing the sheet does not fix.
+    d3 = tmp / "intb"
+    # Nearly the whole of A4's usable area, so the title block really is
+    # where the corner part is. With a small drawing the sheet simply
+    # grows and the part ends up beside the field, not in it -- which is
+    # why the first version of this probe never fired.
+    corner = build_at(d3, [("R1", 0, 0), ("R2", 930, 0), ("R3", 0, 620),
+                           ("R4", 910, 600)])
+    # A4 forced: the picker would pick A3 and then nothing could fall
+    # outside, which is exactly what makes the clip rule unreachable
+    # when the picker is right.
+    rc, log3 = run(corner, d3 / "netlist.json", *args,
+                   "--sheet-size", "A4", "-o", d3 / "out.epro2")
+    check("a part in the title block stops the run",
+          rc != 0 and "title block" in log3, log3)
 
 
 def main():
@@ -163,6 +397,10 @@ def main():
     check("a netlist with no blocks is refused", rc == 1, log)
     check("...and says where blocks come from", "design.yaml" in log, log)
     check("...and writes nothing", not (d2 / "out.epro2").exists())
+
+    test_title_block_corner(tmp)
+    test_iso_sheet(tmp)
+    test_clip_covers_everything(tmp)
 
     print()
     if FAILURES:

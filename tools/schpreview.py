@@ -15,6 +15,13 @@ look.
 
     schpreview.py <export.epro2> -o preview.png
     schpreview.py <export.epro2> -o preview.png --band "MCU"
+    schpreview.py <export.epro2> -o corner.png --region 180,60,420,260
+
+`--band` crops to a component's own extents; `--region` crops to a
+rectangle of the canvas. They answer different questions -- the first
+"what does this part look like", the second "what sits between these two"
+-- and only the second is any use at a size the net names can be read at.
+
 
 **More negative y is higher on the sheet** — the title block, always at the
 bottom, sits at y = -230 while components span -1905 to -35. The y axis is
@@ -76,7 +83,7 @@ def place(ax, ay, rot, mirror, px, py):
     return ax + dx, ay + dy
 
 
-def draw(path: Path, out: Path, band: str | None, dpi: int):
+def draw(path: Path, out: Path, band: str | None, dpi: int, region=None):
     rows = load(path)
     desig = {b["parentId"]: b["value"] for h, b, _ in rows
              if h["type"] == "ATTR" and b.get("key") == "Designator"
@@ -84,6 +91,10 @@ def draw(path: Path, out: Path, band: str | None, dpi: int):
     symref = {b["parentId"]: b["value"] for h, b, _ in rows
               if h["type"] == "ATTR" and b.get("key") == "Symbol"
               and b.get("value")}
+    dpos = {b["parentId"]: (b["x"], b["y"]) for h, b, _ in rows
+            if h["type"] == "ATTR" and b.get("key") == "Designator"
+            and b.get("valueVisible") is True
+            and isinstance(b.get("x"), (int, float))}
     anchor = {h["id"]: (b["x"], b["y"]) for h, b, _ in rows
               if h["type"] == "COMPONENT" and b.get("partId")
               and isinstance(b.get("x"), (int, float))}
@@ -170,9 +181,36 @@ def draw(path: Path, out: Path, band: str | None, dpi: int):
                 x1, y1 = place(cx, cy, r, m, px, py)
                 x2, y2 = place(cx, cy, r, m, ex, ey)
                 line(x1, y1, x2, y2, PIN, 0.8, own=True)
+            elif kind == "ATTR" and g.get("key") in ("Pin Name",
+                                                     "Pin Number") \
+                    and g.get("valueVisible") is True and g.get("value") \
+                    and isinstance(g.get("x"), (int, float)):
+                # Pin names and numbers live in the SYMBOL document at
+                # symbol-local coordinates, carry valueVisible true, and
+                # are what EasyEDA draws inside every IC body. Leaving
+                # them out made U4 a nameless rectangle: a reviewer could
+                # not tell which pin was BOOT and capped the sheet's
+                # readability at 1,8 for it. The file had all 253 of
+                # them. Fourth time this previewer has decided a grade.
+                tx, ty = place(cx, cy, r, m, g["x"], g["y"])
+                ax.text(tx, -ty, str(g["value"]), fontsize=2.2,
+                        color=PIN if g["key"] == "Pin Number" else INK,
+                        ha="center", va="center", family="monospace")
         if h["id"] in desig:
-            ax.text(cx, -cy + 22, d, fontsize=3.4, color=LABEL,
-                    ha="center", va="bottom", family="monospace")
+            # Where the file puts it, not where this previewer guessed.
+            # Drawing every designator at the anchor plus 22 put twenty
+            # of them across their own part's lead on a sheet where the
+            # records say otherwise -- and a reviewer marked the sheet
+            # down for it. 23 of 23 carry coordinates here; the anchor
+            # offset is the fallback for the ones that do not, which is
+            # what EasyEDA itself does with them.
+            dx_, dy_ = dpos.get(h["id"], (None, None))
+            if dx_ is None:
+                ax.text(cx, -cy + 22, d, fontsize=3.4, color=LABEL,
+                        ha="center", va="bottom", family="monospace")
+            else:
+                ax.text(dx_, -dy_, d, fontsize=3.4, color=LABEL,
+                        ha="center", va="center", family="monospace")
 
     # The net names, which are the bulk of what a reader actually sees.
     # Leaving them out made the preview look cleaner than the sheet: all
@@ -186,7 +224,8 @@ def draw(path: Path, out: Path, band: str | None, dpi: int):
                 and (b.get("key") == "Block"
                      or str(b.get("key", "")).startswith("Sheet ")
                      or str(b.get("key", "")).startswith("Xref ")
-                     or str(b.get("key", "")).startswith("Zone "))
+                     or str(b.get("key", "")).startswith("Zone ")
+                     or str(b.get("key", "")).startswith("DNF "))
                 and b.get("value")
                 and b.get("valueVisible") is not False
                 and isinstance(b.get("x"), (int, float))):
@@ -251,13 +290,36 @@ def draw(path: Path, out: Path, band: str | None, dpi: int):
         return 1
     pad = 60
     vx, vy = (cxs, cys) if (want and cxs) else (xs, ys)
-    ax.set_xlim(min(vx) - pad, max(vx) + pad)
-    ax.set_ylim(min(vy) - pad, max(vy) + pad)
+    if region:
+        # A canvas rectangle, for reading one corner of the sheet at a
+        # size the text is legible at. `--band` crops to a component's own
+        # extents, which is the wrong box when the question is what sits
+        # *between* two of them.
+        rx0, ry0, rx1, ry1 = region
+        ax.set_xlim(rx0, rx1)
+        ax.set_ylim(-ry1, -ry0)
+        vx, vy = [rx0, rx1], [-ry0, -ry1]
+    else:
+        ax.set_xlim(min(vx) - pad, max(vx) + pad)
+        ax.set_ylim(min(vy) - pad, max(vy) + pad)
     ax.set_aspect("equal")
     ax.axis("off")
     fig.patch.set_facecolor("#fdfdfb")
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=dpi, bbox_inches="tight", facecolor=fig.get_facecolor())
+    if region:
+        # `bbox_inches="tight"` recomputes the frame from every artist, which
+        # undoes the crop: the first version of this option set the limits and
+        # still wrote the whole sheet, 6976 x 4921, because the off-region
+        # text was an artist like any other. Pin the figure to the requested
+        # rectangle instead, at a size the text is legible at.
+        w_u, h_u = rx1 - rx0, ry1 - ry0
+        scale = 11.0 / max(w_u, h_u)          # long side 11 in
+        fig.set_size_inches(max(w_u * scale, 0.4), max(h_u * scale, 0.4))
+        ax.set_position([0, 0, 1, 1])
+        fig.savefig(out, dpi=dpi, facecolor=fig.get_facecolor())
+    else:
+        fig.savefig(out, dpi=dpi, bbox_inches="tight",
+                    facecolor=fig.get_facecolor())
     plt.close(fig)
     w = (max(vx) - min(vx)) * 0.254
     hgt = (max(vy) - min(vy)) * 0.254
@@ -275,11 +337,26 @@ def main() -> int:
     ap.add_argument("-o", "--out", type=Path, required=True)
     ap.add_argument("--band", help="only these designators, comma separated")
     ap.add_argument("--dpi", type=int, default=200)
+    ap.add_argument("--region", metavar="X0,Y0,X1,Y1",
+                    help="canvas rectangle to draw, for reading one corner "
+                         "of the sheet at a legible size")
     a = ap.parse_args()
+    region = None
+    if a.region:
+        try:
+            region = tuple(float(v) for v in a.region.split(","))
+        except ValueError:
+            print("error: --region takes four numbers X0,Y0,X1,Y1",
+                  file=sys.stderr)
+            return 2
+        if len(region) != 4:
+            print("error: --region takes four numbers X0,Y0,X1,Y1",
+                  file=sys.stderr)
+            return 2
     if not a.export.exists():
         print(f"error: {a.export} not found", file=sys.stderr)
         return 2
-    return draw(a.export, a.out, a.band, a.dpi)
+    return draw(a.export, a.out, a.band, a.dpi, region)
 
 
 if __name__ == "__main__":

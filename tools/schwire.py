@@ -588,9 +588,26 @@ def main() -> int:
                          "A tighter sheet needs a wider box: the detour "
                          "round an obstacle is what it is, and bounding it "
                          "too hard turns a routable net into a label")
+    ap.add_argument("--local-rail", type=int, default=0,
+                    help="a flagged net whose pins all lie within this "
+                         "many units is drawn as a wire anyway; it is one "
+                         "node of the circuit, not a rail crossing the "
+                         "sheet")
+    ap.add_argument("--skip-flagged", action="store_true",
+                    help="do not route to a pin that already carries a rail "
+                         "flag; the flag names and connects it, so a wire "
+                         "there states the same thing twice")
+    ap.add_argument("--never-draw", default="GND",
+                    help="nets that stay labels whatever their grouping: "
+                         "every pin on one carries a symbol already, so a "
+                         "line between them is noise. Default GND")
     ap.add_argument("--max-pins", type=int, default=4,
                     help="leave a net as a label above this pin count "
                          "(default 4; the power rails are far above it)")
+    ap.add_argument("--keep-text", action="store_true",
+                    help="leave every stub's net name visible, including "
+                         "the ones on a pin the drawn wire already reaches "
+                         "(default: one name per drawn node)")
     a = ap.parse_args()
     if not a.dry_run and not a.out:
         print("error: give -o/--out, or --dry-run", file=sys.stderr)
@@ -601,6 +618,7 @@ def main() -> int:
             return 2
 
     priority = {s.strip() for s in a.priority_nets.split(",") if s.strip()}
+    never = {s.strip() for s in a.never_draw.split(",") if s.strip()}
 
     name, rows = load(a.export)
     pins = pin_positions(rows)
@@ -622,6 +640,39 @@ def main() -> int:
         for n in at[(x, y)]:
             bynet[n].append((d, x, y))
 
+    # A pin carrying a rail flag is already connected, by symbol, and the
+    # flag names the net -- so a wire does not have to reach it, and one
+    # that does states the same connection twice. The second statement is
+    # the expensive one: it is what makes a three-pin rail cross the sheet
+    # to collect a pin a +5V flag had already finished with. Drawing among
+    # the *unflagged* pins only beats both the old behaviour and skipping
+    # the net, which would drop the pins that have no flag back to labels.
+    #
+    # A flag is a placed component carrying no Designator -- netflags.py
+    # mints them that way, and that is what keeps them out of the BOM. So
+    # this reads the file rather than taking a second --nets list that
+    # would drift out of step with the one netflags was given.
+    hasdesig = {b["parentId"] for h, b, _, _ in rows
+                if h and h["type"] == "ATTR" and b.get("key") == "Designator"
+                and b.get("value")}
+    flagpt = {grid(b["x"], b["y"]) for h, b, doc, _ in rows
+              if h and h["type"] == "COMPONENT" and doc
+              and doc[0] in ("SCH", "SCH_PAGE") and h["id"] not in hasdesig
+              and isinstance(b.get("x"), (int, float))}
+    flagged_pin = set()
+    if flagpt:
+        stubgeom = collections.defaultdict(list)
+        for h, b, _, _ in rows:
+            if h and h["type"] == "LINE" and b.get("lineGroup"):
+                stubgeom[b["lineGroup"]].append(
+                    (grid(b["startX"], b["startY"]),
+                     grid(b["endX"], b["endY"])))
+        pinpts = {(x, y) for _, x, y in pins}
+        for ends in stubgeom.values():
+            touched = {p for seg in ends for p in seg}
+            if touched & flagpt:
+                flagged_pin |= touched & pinpts
+
     design = json.loads(a.netlist.read_text(encoding="utf-8"))
     want = collections.Counter()
     for c in design.values():
@@ -630,8 +681,69 @@ def main() -> int:
                 want[n] += 1
 
     draw, skipped = {}, collections.Counter()
+    dropped_flagged = local_rails = 0
     for n, members in bynet.items():
         pts = sorted({(x, y) for _, x, y in members})
+        if n in never:
+            # Ground is the one net a reader does not follow: every pin
+            # of it carries a symbol, and a line joining those symbols
+            # says nothing the symbols do not. The local-rail rule below
+            # draws a grouped net *before* the pin-count test, so this
+            # has to come first -- left to the router it depended on the
+            # route failing, and when it stopped failing the 5 V sheet
+            # grew a wire round six ground pins that nobody had drawn.
+            skipped["carried by a symbol on every pin"] += 1
+            continue
+        if a.skip_flagged and flagged_pin:
+            # ... unless the whole net is a local node. L1's output and
+            # the two capacitors across it are one point of the circuit
+            # three hundred units wide, and with every pin flagged
+            # nothing was drawn between them: two capacitors hanging
+            # between a +5V flag and a ground triangle with no visible
+            # tie to anything, and the inductor's stub ending in air.
+            # A rail that leaves the sheet is a flag by right; a rail
+            # that is one node on it is a wire.
+            # A rail crosses the sheet, but it does not do so evenly:
+            # L1's output, the two capacitors across it and the feedback
+            # divider are one point of the circuit, and the jump to the
+            # second converter is a different matter. Grouping the pins
+            # by proximity draws the local node and leaves the jump to
+            # the flags -- which is what a schematic does. Before this,
+            # BUS_5V was flagged end to end and the output capacitors
+            # hung between a +5V flag and a ground triangle with nothing
+            # tying them to the inductor they smooth.
+            groups = []
+            for q in sorted(pts):
+                for g in groups:
+                    if any(abs(q[0] - r[0]) + abs(q[1] - r[1])
+                           <= a.local_rail for r in g):
+                        g.append(q)
+                        break
+                else:
+                    groups.append([q])
+            merged = True
+            while merged:
+                merged = False
+                for i in range(len(groups)):
+                    for j in range(i + 1, len(groups)):
+                        if any(abs(u[0] - v[0]) + abs(u[1] - v[1])
+                               <= a.local_rail
+                               for u in groups[i] for v in groups[j]):
+                            groups[i] += groups.pop(j)
+                            merged = True
+                            break
+                    if merged:
+                        break
+            keep = [g for g in groups if len(g) > 1]
+            if keep and a.local_rail:
+                local_rails += len(keep)
+                dropped_flagged += len(pts) - sum(len(g) for g in keep)
+                draw[n] = keep
+                continue
+            free = [p for p in pts if p not in flagged_pin]
+            if len(free) < len(pts):
+                dropped_flagged += len(pts) - len(free)
+                pts = free
         if n.upper().startswith("NC_") or len(pts) < 2:
             skipped["single pin or deliberately open"] += 1
             continue
@@ -643,9 +755,15 @@ def main() -> int:
         if span > a.max_span:
             skipped[f"span over {a.max_span} units"] += 1
             continue
-        draw[n] = pts
+        draw[n] = [pts]
 
     print(f"  {len(draw)} net(s) to draw, {sum(skipped.values())} left as labels")
+    if local_rails:
+        print(f"         {local_rails:3d}  flagged net(s) drawn anyway, "
+              f"being one node rather than a rail across the sheet")
+    if dropped_flagged:
+        print(f"         {dropped_flagged:3d}  pin(s) left to their rail flag, "
+              f"which already names and connects them")
     for why, c in skipped.most_common():
         print(f"         {c:3d}  {why}")
 
@@ -692,6 +810,16 @@ def main() -> int:
         for d, bx in body.items():
             if any(crosses_box(s, bx) for s in segs):
                 return bx, [f"through {d}"]
+        # A net name a wire runs through is a false statement about that
+        # wire, and the three fixed shapes never consulted the obstacle
+        # map -- only the maze did. So fourteen labels sat on a foreign
+        # line on a sheet this check called clean. Its own name is
+        # exempt: a label on the wire it names is the point of it.
+        for lx0, ly0, lx1, ly1, lnet in label_boxes:
+            if lnet == net:
+                continue
+            if any(crosses_box(s, (lx0, ly0, lx1, ly1)) for s in segs):
+                return (lx0, ly0, lx1, ly1), [f"across the {lnet} label"]
         # Crossing a foreign stub, or a wire already drawn for another
         # net. There is no junction record in this format -- the
         # hand-drawn reference has none, so EasyEDA renders the dot
@@ -746,9 +874,11 @@ def main() -> int:
             ly0 = free0[1] + ddy * a.label_offset
             w0 = len(str(b["value"])) * 3.0
             if ddy:
-                label_boxes.append((lx0 - 4, ly0 - w0, lx0 + 4, ly0 + w0))
+                label_boxes.append((lx0 - 4, ly0 - w0, lx0 + 4, ly0 + w0,
+                                    b["value"]))
             else:
-                label_boxes.append((lx0 - w0, ly0 - 4, lx0 + w0, ly0 + 4))
+                label_boxes.append((lx0 - w0, ly0 - 4, lx0 + w0, ly0 + 4,
+                                    b["value"]))
 
     # The pin bodies, as thin boxes. The check asked "over a foreign pin
     # *point*" and answered zero while 203 segments crossed a pin
@@ -792,8 +922,12 @@ def main() -> int:
                               max(ax_, bx_) + 1, max(ay_, by_) + 1,
                               pnet[0] if isinstance(pnet, tuple) else pnet))
 
-    obst = Obstacles(list(body.values()) + label_boxes, at,
+    obst = Obstacles(list(body.values()) + [q[:4] for q in label_boxes], at,
                      stubs, a.clearance, a.end_clearance, pin_boxes)
+
+    # The node each pin was assigned to, kept for the label rule below:
+    # routing replaces `draw` with segments and the grouping is gone.
+    nodegroups = {n: [list(g) for g in gs] for n, gs in draw.items()}
 
     chosen, shorted, laid = {}, [], []
     # Shortest first. Every drawn net becomes an obstacle for the next,
@@ -808,17 +942,22 @@ def main() -> int:
         # signals and leaves VBUS -> U4 -> BUS_5V as three labels. Within
         # each group it is still shortest-first, because a short net
         # boxed out by a long one is the worse trade.
+        flat = [q for g in pts for q in g]
         return (item[0] not in priority,
-                max(x for x, _ in pts) - min(x for x, _ in pts)
-                + max(y for _, y in pts) - min(y for _, y in pts), item[0])
+                max(x for x, _ in flat) - min(x for x, _ in flat)
+                + max(y for _, y in flat) - min(y for _, y in flat), item[0])
 
-    for n, pts in sorted(draw.items(), key=_span):
-        for segs in routes(pts, obst, a.detour, n):
-            if collides(n, pts, segs, laid) is None:
-                chosen[n] = segs
-                laid += [(x1, y1, x2, y2, n) for x1, y1, x2, y2 in segs]
-                obst.add_wire(segs, n)
-                break
+    for n, groups_ in sorted(draw.items(), key=_span):
+        got = []
+        for pts in groups_:
+            for segs in routes(pts, obst, a.detour, n):
+                if collides(n, pts, segs, laid) is None:
+                    got += segs
+                    laid += [(x1, y1, x2, y2, n) for x1, y1, x2, y2 in segs]
+                    obst.add_wire(segs, n)
+                    break
+        if got:
+            chosen[n] = got
         else:
             shorted.append(n)
     if shorted:
@@ -862,7 +1001,68 @@ def main() -> int:
     # package. Moving the text is safe in a way that moving a wire is not
     # -- the net is carried by the attribute's *value* on the wire, not by
     # where its text sits -- so this only ever repositions, never renames.
-    moved = 0
+    moved, hidden = 0, 0
+    hide = set()
+
+    # --- one name per drawn node -------------------------------------------
+    # `--one-per-node` in netflags gave a drawn rail one flag rather than
+    # one per pin, and the stub labels were left standing beside it, so
+    # the 5 V rail still read BUS_5V four times: three texts and a flag,
+    # and the reader has four chances to ask whether they are the same
+    # node. They are -- schwire has just drawn them together. A name at
+    # a pin the wire already reaches adds nothing, and where the node
+    # carries a flag the symbol *is* the name. Visibility only: the
+    # attribute stays, so the value that carries the connectivity and
+    # `epro.py diff` are both untouched.
+    if not a.keep_text:
+        pinpts_ = {(x, y) for _, x, y in pins}
+        lglines = collections.defaultdict(list)
+        for h_, b_, _, _ in rows:
+            if h_ and h_["type"] == "LINE" and b_.get("lineGroup"):
+                lglines[b_["lineGroup"]].append(
+                    (grid(b_["startX"], b_["startY"]),
+                     grid(b_["endX"], b_["endY"])))
+        flagged_pt = set()
+        for _lg, _ends in lglines.items():
+            _touched = {p for _s, _e in _ends for p in (_s, _e)}
+            if _touched & flagpt:
+                flagged_pt |= _touched & pinpts_
+        bypin = collections.defaultdict(list)      # (net, pin) -> [ATTR]
+        for h_, b_, _, _ in rows:
+            if (not h_ or h_["type"] != "ATTR" or b_.get("key") != "NET"
+                    or b_.get("valueVisible") is not True
+                    or b_.get("parentId") not in lglines):
+                continue
+            for _s, _e in lglines[b_["parentId"]]:
+                _p = _s if _s in pinpts_ else (_e if _e in pinpts_ else None)
+                if _p is not None:
+                    bypin[b_["value"], _p].append(b_)
+        for n_ in sorted(chosen):
+            for g_ in nodegroups[n_]:
+                gset = set(g_)
+                here = [b_ for p_ in gset for b_ in bypin.get((n_, p_), [])]
+                if not here:
+                    continue
+                # A node with a symbol keeps none of its texts; one
+                # without keeps the first in reading order, so the net is
+                # still named exactly once on the wire that carries it.
+                keep_ = (None if gset & flagged_pt
+                         else min(here, key=lambda b_: (b_.get("y") or 0,
+                                                        b_.get("x") or 0)))
+                for b_ in here:
+                    if b_ is not keep_:
+                        hide.add(id(b_))
+        if hide:
+            print(f"         {len(hide):3d}  stub label(s) hidden, the node "
+                  f"they name already carrying a flag or another label")
+
+    # Bound outside the flag on purpose. Both are read by the write loop
+    # below, and `hide` is no longer filled only here: the one-name-per-node
+    # rule hides a stub label on any flag-carrying node whether or not the
+    # labels are being moved, so the write loop reaches for `label_fix`
+    # without --labels-outward and used to raise NameError instead.
+    label_fix, moved = {}, 0
+
     if a.labels_outward:
         pinpts = {(x, y) for _, x, y in pins}
         geom = {}
@@ -870,7 +1070,7 @@ def main() -> int:
             if h and h["type"] == "LINE" and b.get("lineGroup"):
                 geom[b["lineGroup"]] = (grid(b["startX"], b["startY"]),
                                         grid(b["endX"], b["endY"]))
-        label_fix = {}
+
         for h, b, _, _ in rows:
             if (not h or h["type"] != "ATTR" or b.get("key") != "NET"
                     or b.get("valueVisible") is not True
@@ -907,8 +1107,26 @@ def main() -> int:
             # where a reader looks for it; pushing the near edge out
             # moves the whole name away by its own length.
             vertical = dy != 0
-            label_fix[id(b)] = (free[0] + dx * a.label_offset,
-                                free[1] + dy * a.label_offset,
+            # Sideways as well as outward. A rotated label is a narrow
+            # vertical strip centred on its own x, and its only offset
+            # was along the stub -- so the line it names ran straight
+            # through the glyphs, 21 times on one sheet. Offsetting
+            # perpendicular as well puts the name beside the line, which
+            # is where every drawing standard puts it.
+            # Perpendicular, and only on the axis where there is room.
+            # A rotated name moves 7 units sideways and clears its line.
+            # A horizontal one cannot: the pin pitch is 10 and the text
+            # is 8 tall, so every offset that takes it off its own wire
+            # puts it between two pin rows. Measured, all counters at
+            # once -- 0: thirteen names on their own line and nothing
+            # else; -5: none, but nine labels nearer a foreign stub than
+            # their own; -7: nine of those and six on a foreign net's
+            # wire as well. A name lying on the line it names is
+            # unambiguous; a name between two rows is not.
+            sx = 7 if vertical else 0
+            sy = 0
+            label_fix[id(b)] = (free[0] + dx * a.label_offset + sx,
+                                free[1] + dy * a.label_offset + sy,
                                 "left" if dx > 0 else
                                 "right" if dx < 0 else "center",
                                 90 if vertical else 0)
@@ -918,16 +1136,51 @@ def main() -> int:
         # tried and left 53 pins with a stub ending in nothing, which
         # reads as not connected -- the overlap was the lesser fault and
         # this is where it belongs.
-        # Grouped on a coarse grid in both axes. Bucketing on the single
-        # axis they "should" stack on was tried and measured worse -- 22
-        # overlapping pairs against 19 -- because the collisions are not
-        # all column-shaped. Measured beats reasoned here.
-        bucket = collections.defaultdict(list)
-        for key, (lx, ly, al, _r) in label_fix.items():
-            bucket[(al, round(lx / 40) if al == "center" else round(ly / 40),
-                    round(ly / 40) if al == "center" else round(lx / 40)
-                    )].append(key)
-        for keys in bucket.values():
+        #
+        # Stagger only the labels that actually touch. The first version
+        # bucketed them on a coarse 40-unit grid and pushed the second and
+        # third member of every bucket outward, which is a false positive
+        # by construction: a 10-unit pin row holds text 8 tall, so three
+        # names down one row do not touch and it staggered them anyway.
+        # That is what put NC_BUCK_EN 32 units off its own stub and left
+        # it nearer C9's pin -- on a different net -- than its own line.
+        # Overlap, not proximity, is the thing to resolve.
+        lval = {id(b): b["value"] for h, b, _, _ in rows
+                if h and h["type"] == "ATTR" and b.get("key") == "NET"
+                and b.get("value")}
+
+        def _lbox(k):
+            lx, ly, _al, rot_ = label_fix[k]
+            w_ = len(str(lval[k])) * 3.0
+            return ((lx - 4, ly - w_, lx + 4, ly + w_) if rot_ % 180
+                    else (lx - w_, ly - 4, lx + w_, ly + 4))
+
+        # A rotated label needs no stagger: it is a pin pitch wide, so its
+        # neighbours cannot reach it. Left out of the overlap graph as
+        # well as the loop.
+        lkeys = [k for k in label_fix if not label_fix[k][3]]
+        lparent = {}
+
+        def _lfind(x):
+            lparent.setdefault(x, x)
+            while lparent[x] != x:
+                lparent[x] = lparent[lparent[x]]
+                x = lparent[x]
+            return x
+
+        for i, k1 in enumerate(lkeys):
+            b1 = _lbox(k1)
+            for k2 in lkeys[i + 1:]:
+                b2 = _lbox(k2)
+                if (b1[0] < b2[2] and b2[0] < b1[2]
+                        and b1[1] < b2[3] and b2[1] < b1[3]):
+                    ra, rb = _lfind(k1), _lfind(k2)
+                    if ra != rb:
+                        lparent[ra] = rb
+        lgroups = collections.defaultdict(list)
+        for k in lkeys:
+            lgroups[_lfind(k)].append(k)
+        for keys in lgroups.values():
             if len(keys) < 2:
                 continue
             for rank, key in enumerate(sorted(keys, key=lambda k: label_fix[k])):
@@ -939,10 +1192,6 @@ def main() -> int:
                 # the reader can still read an overlap, but a detached
                 # label belongs to nothing. Three levels, then wrap.
                 step = (rank % 3) * a.label_offset * 2
-                # A rotated label needs no stagger: it is a pin pitch
-                # wide, so its neighbours cannot reach it.
-                if rot_:
-                    continue
                 if al == "left":
                     label_fix[key] = (lx + step, ly, al, rot_)
                 elif al == "right":
@@ -951,9 +1200,112 @@ def main() -> int:
                     label_fix[key] = (lx, ly + step, al, rot_)
         moved = len(label_fix)
 
+        # Two copies of ONE name landing on top of each other -- the two
+        # resistors of a divider, each labelling the node between them --
+        # is the commonest text collision left, and it is redundancy
+        # rather than ambiguity. Hiding one is safe in a way that hiding
+        # a lone label is not: the net is still named, a few units away,
+        # on the other half of itself. The value is untouched, so the
+        # connectivity the attribute carries is untouched.
+        val = {}
+        boxes_ = {}
+        for h, b, _, _ in rows:
+            if (not h or h["type"] != "ATTR" or b.get("key") != "NET"
+                    or b.get("valueVisible") is not True
+                    or id(b) not in label_fix):
+                continue
+            lx, ly, _al, rot_ = label_fix[id(b)]
+            w_ = len(str(b["value"])) * 3.0
+            boxes_[id(b)] = ((lx - 4, ly - w_, lx + 4, ly + w_) if rot_ % 180
+                             else (lx - w_, ly - 4, lx + w_, ly + 4))
+            val[id(b)] = b["value"]
+        order_ = sorted(boxes_, key=lambda k: (val[k], label_fix[k]))
+        for ii, k1 in enumerate(order_):
+            if k1 in hide:
+                continue
+            for k2 in order_[ii + 1:]:
+                if val[k1] != val[k2] or k2 in hide:
+                    continue
+                u, v = boxes_[k1], boxes_[k2]
+                if u[0] < v[2] and v[0] < u[2] and u[1] < v[3] and v[1] < u[3]:
+                    hide.add(k2)
+        hidden = len(hide)
+
+    # Designators clear of their own package. Every one of this sheet's
+    # 23 sat on the outline of the part it names -- the importer puts
+    # them at the symbol origin and nothing had moved them since. An
+    # upright part gets its name to the right of the body, a flat one
+    # above it; both outside the outline by a glyph height.
+    desig_fix, dmoved = {}, 0
+    if a.labels_outward:
+        # Where every net label has ended up, so a designator can be put
+        # somewhere none of them is.
+        label_rects = []
+        for h, b, _, _ in rows:
+            if (not h or h["type"] != "ATTR" or b.get("key") != "NET"
+                    or b.get("valueVisible") is not True
+                    or id(b) in hide):
+                continue
+            if id(b) in label_fix:
+                lx, ly, _al, rot_ = label_fix[id(b)]
+            elif isinstance(b.get("x"), (int, float)):
+                lx, ly, rot_ = b["x"], b["y"], (b.get("rotation") or 0)
+            else:
+                continue
+            w2 = len(str(b["value"])) * 3.0
+            label_rects.append((lx - 4, ly - w2, lx + 4, ly + w2)
+                               if rot_ % 180 else
+                               (lx - w2, ly - 4, lx + w2, ly + 4))
+        for h, b, _, _ in rows:
+            if (not h or h["type"] != "ATTR" or b.get("key") != "Designator"
+                    or b.get("valueVisible") is not True
+                    or not isinstance(b.get("x"), (int, float))):
+                continue
+            bx = body.get(b.get("value"))
+            if bx is None:
+                continue
+            w_ = len(str(b["value"])) * 3.0
+            upright = (bx[3] - bx[1]) > (bx[2] - bx[0])
+            # Four sides, first clear one wins. One side is not enough:
+            # J4's pins face left, so its name went right onto the two
+            # net labels already there and turned one fault into two.
+            tries = ([(bx[2] + 8 + w_, (bx[1] + bx[3]) / 2),
+                      (bx[0] - 8 - w_, (bx[1] + bx[3]) / 2),
+                      ((bx[0] + bx[2]) / 2, bx[1] - 12),
+                      ((bx[0] + bx[2]) / 2, bx[3] + 12)] if upright
+                     else [((bx[0] + bx[2]) / 2, bx[1] - 12),
+                           ((bx[0] + bx[2]) / 2, bx[3] + 12),
+                           (bx[2] + 8 + w_, (bx[1] + bx[3]) / 2),
+                           (bx[0] - 8 - w_, (bx[1] + bx[3]) / 2)])
+            for tx, ty in tries:
+                r_ = (tx - w_, ty - 4, tx + w_, ty + 4)
+                if any(r_[0] < q[2] and q[0] < r_[2]
+                       and r_[1] < q[3] and q[1] < r_[3]
+                       for q in label_rects) or \
+                   any(r_[0] < q[2] and q[0] < r_[2]
+                       and r_[1] < q[3] and q[1] < r_[3]
+                       for q in body.values()):
+                    continue
+                desig_fix[id(b)] = (tx, ty)
+                dmoved += 1
+                break
+
     out_lines = []
     for i, (h, b, doc, raw) in enumerate(rows):
-        if moved and h and id(b) in label_fix:
+        if h and id(b) in desig_fix:
+            nb = dict(b)
+            nb["x"], nb["y"] = (int(v) for v in desig_fix[id(b)])
+            raw = (f"{json.dumps(h, separators=(',', ':'))}||"
+                   f"{json.dumps(nb, separators=(',', ':'))}|")
+        elif h and id(b) in hide:
+            nb = dict(b)
+            nb["valueVisible"] = False
+            if id(b) in label_fix:
+                nb["x"], nb["y"], nb["align"], nb["rotation"] = \
+                    label_fix[id(b)]
+            raw = (f"{json.dumps(h, separators=(',', ':'))}||"
+                   f"{json.dumps(nb, separators=(',', ':'))}|")
+        elif moved and h and id(b) in label_fix:
             nb = dict(b)
             nb["x"], nb["y"], nb["align"], nb["rotation"] = \
                 label_fix[id(b)]
@@ -980,19 +1332,24 @@ def main() -> int:
         return 1
     new_ids = {h["id"] for h, _ in added}
     kept = [r for r in back if not (r[0] and r[0].get("id") in new_ids)]
-    # Append-only, with exactly one named exception. `--labels-outward`
-    # repositions net labels, so those records *do* change -- and that is
-    # the only change allowed, in only three keys. Loosening the check to
-    # "some records may differ" would retire the thing it is for; naming
-    # the exception keeps every other record as locked as before.
-    LABEL_KEYS = {"x", "y", "align", "rotation"}
+    # Append-only, with exactly two named exceptions. `--labels-outward`
+    # repositions net labels; the one-name-per-node rule hides a stub label
+    # on a node that already carries a name, which is a `valueVisible` flip
+    # and nothing else. Everything else stays as locked as before --
+    # loosening this to "some records may differ" would retire the check it
+    # exists to be.
+    LABEL_KEYS = {"x", "y", "align", "rotation", "valueVisible"}
     for (h1, b1, _, _), (h2, b2, _, _) in zip(rows, kept):
         if (h1, b1) == (h2, b2):
             continue
         differs = {k for k in set(b1) | set(b2) if b1.get(k) != b2.get(k)}
-        allowed = (a.labels_outward and h1 == h2
-                   and b1.get("key") == "NET" and differs <= LABEL_KEYS)
-        if not allowed:
+        moved_label = (a.labels_outward and h1 == h2
+                       and b1.get("key") in ("NET", "Designator")
+                       and differs <= LABEL_KEYS)
+        just_hidden = (h1 == h2 and b1.get("key") == "NET"
+                       and differs <= {"valueVisible"}
+                       and b2.get("valueVisible") is False)
+        if not (moved_label or just_hidden):
             a.out.unlink(missing_ok=True)
             print(f"  error: an existing record changed in "
                   f"{sorted(differs) or 'its header'} — {a.out} deleted\n",
@@ -1001,6 +1358,11 @@ def main() -> int:
 
     if a.labels_outward:
         print(f"  {moved} net label(s) moved past their stub end")
+        if dmoved:
+            print(f"  {dmoved} designator(s) moved clear of their own body")
+    if hidden:
+        print(f"  {hidden} duplicate net label(s) hidden where two copies of "
+              f"one name overlapped")
 
     # Text against text, which nothing measured until a reviewer counted
     # it by eye and found U2's pin row reading `GNDGNDGNDGND`. The checks
@@ -1049,6 +1411,9 @@ def main() -> int:
                 (round(b["startX"]), round(b["startY"])),
                 (round(b["endX"]), round(b["endY"])))
     lends = [(pt, w) for w, g in lgeom.items() for pt in g]
+    lnet = {b["parentId"]: b["value"] for h, b, _, _ in fin
+            if h and h["type"] == "ATTR" and b.get("key") == "NET"
+            and b.get("value")}
     adrift = 0
     for h, b, _, _ in fin:
         if (not h or h["type"] != "ATTR" or b.get("key") != "NET"
@@ -1056,12 +1421,20 @@ def main() -> int:
                 or not isinstance(b.get("x"), (int, float))
                 or b.get("parentId") not in lgeom):
             continue
-        near = sorted((((b["x"] - pt[0]) ** 2
-                        + (b["y"] - pt[1]) ** 2) ** 0.5, w)
-                      for pt, w in lends)
-        mine_ = next(i for i, (_, w) in enumerate(near)
-                     if w == b["parentId"])
-        if mine_ > 0 and near[0][0] <= near[mine_][0]:
+        # Nearest stub of a *different net*, against the nearest of its
+        # own. By line group this reported a divider's two resistors as
+        # ambiguous for a label sitting between two stubs that carry the
+        # same name -- which is not ambiguous at all, because either
+        # reading gives the reader the same net.
+        own = [dist for dist, w in
+               ((((b["x"] - pt[0]) ** 2 + (b["y"] - pt[1]) ** 2) ** 0.5, w)
+                for pt, w in lends)
+               if lnet.get(w) == b["value"]]
+        other = [dist for dist, w in
+                 ((((b["x"] - pt[0]) ** 2 + (b["y"] - pt[1]) ** 2) ** 0.5, w)
+                  for pt, w in lends)
+                 if lnet.get(w) not in (None, b["value"])]
+        if own and other and min(other) <= min(own):
             adrift += 1
     print(f"  {adrift} net label(s) sit nearer a foreign stub than their own"
           + ("" if adrift == 0 else " — which pin they name is a guess"))
@@ -1072,8 +1445,22 @@ def main() -> int:
     # stacked the labels, turning them cured the stack and put them on
     # the wire. A measure of what was corrected is not a measure of what
     # was caused.
+    # By **net**, not by line group. The first version exempted only the
+    # label's own stub, so a divider's two resistors facing each other
+    # scored two violations for a label lying on the other half of its
+    # own net, and every label sitting on the wire this tool had just
+    # drawn for it scored one more. On the hand-laid supply sheet all
+    # fourteen reported faults were of those two kinds -- a label on the
+    # line it names is the point of it. Fifth time a counter here has
+    # asked a question next to the one that matters.
+    wirenet = {hashlib.sha256(f"wire/{n}".encode()).hexdigest()[:16]: n
+               for n in want}
+    netof_ = {b["parentId"]: b["value"] for h, b, _, _ in fin
+              if h and h["type"] == "ATTR" and b.get("key") == "NET"
+              and b.get("value")}
     segs_ = [(round(b["startX"]), round(b["startY"]),
-              round(b["endX"]), round(b["endY"]), b["lineGroup"])
+              round(b["endX"]), round(b["endY"]),
+              netof_.get(b["lineGroup"]) or wirenet.get(b["lineGroup"]))
              for h, b, _, _ in fin
              if h and h["type"] == "LINE" and b.get("lineGroup")]
     onwire_ = 0
@@ -1087,9 +1474,11 @@ def main() -> int:
             r = (b["x"] - 4, b["y"] - w, b["x"] + 4, b["y"] + w)
         else:
             r = (b["x"] - w, b["y"] - 4, b["x"] + w, b["y"] + 4)
-        for x1, y1, x2, y2, g in segs_:
-            if g == b.get("parentId"):
-                continue              # its own stub is where it belongs
+        for x1, y1, x2, y2, gnet in segs_:
+            # Its own net, wherever on it: its own stub, the other half
+            # of the net, or the wire drawn for it.
+            if gnet is None or gnet == b["value"]:
+                continue
             if y1 == y2:
                 hit = (r[1] < y1 < r[3] and min(x1, x2) < r[2]
                        and r[0] < max(x1, x2))

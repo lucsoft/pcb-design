@@ -2952,6 +2952,30 @@ as a parts list. Three tools turn that into a sheet:
 
 ![The arranged schematic: two columns, each functional block a cluster of its IC with the passives that belong to it](figures/schematic-arranged.png)
 
+**1b. Or place it by hand, and measure the difference.** `handplace.py`
+takes a file of designator, x, y, rotation and puts the parts there, with
+`arrange.py`'s safety argument unchanged: rotate each cluster about its
+own anchor, translate it rigidly, check anchor-relative geometry after
+writing. It exists to produce the reference an automatic layout can be
+judged against — on one sheet, so "the packer is not as good as a human"
+stops being an opinion and becomes a diff.
+
+`designs/led-matrix-controller/sheets/supply/placement.txt` is that
+reference. Two cascaded buck converters, each drawn the way its own
+datasheet draws it, on an ISO 5457 A3 sheet with a frame, an eight by six
+zone grid, a nine-line EN ISO 7200 title block, the cross-sheet signal
+list and the do-not-fit note that otherwise lives only in `design.yaml`.
+
+![The supply sheet placed by hand: two converter bands on an A3 frame with zone grid, title block and cross-sheet signal list](figures/supply-sheet-handplaced.png)
+
+An independent review of the automatic layout of this same netlist put it
+at 4,5 and the hand layout at 3,0 — and every number the project had at
+the time said the automatic one was better. All five were zero bounds:
+they count how often a distance is too *small*. `layoutmetrics.py` adds
+the four upper bounds that separate them the way the eye does — detour,
+span, reversal and enclosed empty area.
+
+
 Each band is one of the twelve functional blocks, with its hub IC centred
 and the parts that belong to it above and below. Measured against the
 importer's order, in the star model — every net the centroid of the parts

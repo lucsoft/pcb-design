@@ -125,6 +125,66 @@ def read_records(path):
     return out
 
 
+def test_align_shared():
+    """A satellite sharing one signal net with its hub lands on its line.
+
+    Two probes, because the rule has a fail-open shape that a positive
+    case cannot see: it could move nothing and every geometry check
+    would still pass. So the second probe gives it a satellite it must
+    NOT move -- the shared net is a rail, which carries a flag and no
+    wire -- and requires the count to stay zero.
+    """
+    from arrange import align_shared
+
+    # U1 has a pin at local (+50, -10) on SIG; R1 lies flat with its
+    # SIG pin at (-20, 0). Aligned, R1's y must satisfy
+    #   ao[R1].y + placed[R1].y + 0 == ao[U1].y + placed[U1].y + (-10)
+    # U1 needs five pins: owners() calls a part with fewer a satellite,
+    # so a two-pin fixture exercised nothing and the probe read zero.
+    # R1 shares *two* nets with U1, one of them a rail. That is what
+    # makes this probe bite: drop the rail exclusion and the shared set
+    # has two members, no single line to agree on, and nothing moves.
+    # With R1 sharing only SIG the probe passed either way, which is
+    # how the first version of it let the exclusion be deleted.
+    nets = {"SIG": ["U1", "R1"], "VCC": ["U1", "R1"]}
+    pinsof = {"U1": ["SIG", "VCC", "A", "B", "C"], "R1": ["SIG", "VCC"]}
+    localpins = {"U1": [(50, -10, "SIG"), (-50, 0, "VCC"), (-50, 10, "A"),
+                        (-50, 20, "B"), (-50, 30, "C")],
+                 "R1": [(-20, 0, "SIG"), (20, 0, "VCC")]}
+    blocks = {"U1": "B", "R1": "B"}
+    decl = {"U1": 0, "R1": 1}
+    ao = {"U1": (0, 0), "R1": (0, 0)}
+    placed = {"U1": (0, 0), "R1": (300, 400)}
+
+    out, moved = align_shared(dict(placed), blocks, nets, pinsof, localpins,
+                              {"VCC", "GND"}, decl, ao)
+    check("a flat satellite is moved onto its hub pin's row", moved == 1,
+          f"{moved} moved")
+    check("...to exactly that pin's y", out["R1"] == (300, -10), out)
+    check("...without changing its x", out["R1"][0] == placed["R1"][0], out)
+
+    # the inverse probe: the only shared net is a rail, so nothing moves
+    pinsof2 = {"U1": ["VCC", "SIG", "A", "B", "C"], "R1": ["VCC", "OUT"]}
+    localpins2 = {"U1": [(50, -10, "VCC"), (-50, 0, "SIG"), (-50, 10, "A"),
+                         (-50, 20, "B"), (-50, 30, "C")],
+                  "R1": [(-20, 0, "VCC"), (20, 0, "OUT")]}
+    nets2 = {"VCC": ["U1", "R1"], "SIG": ["U1"], "OUT": ["R1"]}
+    out2, moved2 = align_shared(dict(placed), blocks, nets2, pinsof2,
+                                localpins2, {"VCC", "GND"}, decl, ao)
+    check("a satellite sharing only a rail is left alone", moved2 == 0,
+          f"{moved2} moved")
+    check("...and its position is untouched", out2["R1"] == placed["R1"], out2)
+
+    # an upright satellite matches x, not y
+    localpins3 = {"U1": [(50, -10, "SIG"), (-50, 0, "VCC"), (-50, 10, "A"),
+                         (-50, 20, "B"), (-50, 30, "C")],
+                  "R1": [(0, -20, "SIG"), (0, 20, "OUT")]}
+    out3, moved3 = align_shared(dict(placed), blocks, nets, pinsof,
+                                localpins3, {"VCC", "GND"}, decl, ao)
+    check("an upright satellite is moved onto its hub pin's column",
+          moved3 == 1 and out3["R1"] == (50, 400), out3)
+
+
 def main():
     tmp = Path(tempfile.mkdtemp())
 
@@ -484,6 +544,8 @@ def main():
     # entirely. The change is measured on the real board instead: columns
     # holding three or more parts went 3 -> 1, and colinear stub pairs
     # 4 -> 1, both reported by arrange.py on every run.
+
+    test_align_shared()
 
     print()
     if FAILURES:

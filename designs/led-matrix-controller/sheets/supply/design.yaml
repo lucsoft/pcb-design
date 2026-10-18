@@ -72,6 +72,11 @@ rails:
     type: ground
 
 
+dnf:
+  J4: >-
+    Fan header. Fitted only if the thermal model turns out optimistic, and then
+    at <=50 mA - see Cooling.
+
 blocks:
   36 V -> 5 V: [C10, C11, C5, C6, C7, C8, C9, D2, L1, R24, R25, R26, R27, U4]
   5 V -> 3.3 V: [C12, C13, C14, L2, R28, R29, R30, U5]
