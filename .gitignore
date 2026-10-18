@@ -11,3 +11,9 @@ __pycache__/
 
 # Mermaid render check output
 /tmp-render/
+
+# npm pulls the bridge server dependencies in; they are re-fetchable
+# with `npm install` and large enough to drown a diff.
+node_modules/
+tools/eda-bridge/dist/
+tools/eda-bridge/*.eext

@@ -1,0 +1,26 @@
+{
+	"name": "pcb-design-bridge",
+	"uuid": "7b3c1f2a9d6e4a08b5c7e1d4f6a2b093",
+	"displayName": "pcb-design bridge",
+	"description": "Lets the pcb-design toolchain drive this editor over a local WebSocket.",
+	"version": "0.1.0",
+	"publisher": "lucsoft",
+	"engines": { "eda": "^2.3.0" },
+	"license": "Apache-2.0",
+	"categories": "Other",
+	"activationEvents": {},
+	"entry": "./dist/index",
+	"headerMenus": {
+		"home": [
+			{
+				"id": "bridge",
+				"title": "pcb-design bridge",
+				"child": [
+					{ "id": "connect", "title": "Connect", "command": "connect" },
+					{ "id": "disconnect", "title": "Disconnect", "command": "disconnect" },
+					{ "id": "status", "title": "Status", "command": "status" }
+				]
+			}
+		]
+	}
+}

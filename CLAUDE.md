@@ -680,6 +680,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── erc.py             electrical rule check
     │   ├── epro.py            read an EasyEDA .epro2 (types, bom, nets, diff)
     │   ├── arrange.py         group an imported schematic into functional blocks
+    │   ├── autoplace.py       place a block the way a person draws it
     │   ├── handplace.py       place parts at hand-written coordinates
     │   ├── fixparts.py        put the real LCSC number on each instance
     │   ├── schwire.py         draw wires between pins already side by side
@@ -696,6 +697,7 @@ Neither one is evidence the board works. That takes a physical board.
     │   ├── blocktitles.py     name each functional block on the sheet
     │   ├── stock.py           check a BOM against live LCSC stock
     │   ├── okf.py             check the docs against OKF v0.2 conformance
+    │   ├── eda-bridge.sh     MCP launcher: drive a live EasyEDA editor
     │   └── jlcpcb-mcp.sh      MCP launcher (supplies the nix-shell)
     └── tests/                 regression tests, one file per tool
 

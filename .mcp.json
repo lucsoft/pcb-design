@@ -5,6 +5,12 @@
       "command": "/home/lucsoft/pcb-design/tools/jlcpcb-mcp.sh",
       "args": [],
       "env": {}
+    },
+    "eda-bridge": {
+      "type": "stdio",
+      "command": "/home/lucsoft/pcb-design/tools/eda-bridge.sh",
+      "args": [],
+      "env": {}
     }
   }
 }
